@@ -16,22 +16,28 @@ data/
 ## Usage
 
 ### Templates/
+
 Contains sample transcript files and templates. These files are tracked in Git to provide examples and templates for users.
 
 ### Incoming/
+
 Place new meeting transcript files here for automatic processing. Supported formats:
+
 - `.txt` - Plain text files
-- `.md` - Markdown files  
+- `.md` - Markdown files
 - `.json` - JSON formatted transcripts
 - `.xml` - XML formatted transcripts
 - `.docx` - Microsoft Word documents
 - `.pdf` - PDF documents
 
 ### Processing/
+
 Temporary directory used during file processing. Files are briefly moved here while being analyzed and converted to Jira tickets.
 
 ### Archive/
+
 Contains processed files with timestamps and status indicators. Files are automatically moved here after processing with names like:
+
 - `YYYYMMDD_HHMMSS_success_original_filename.txt`
 - `YYYYMMDD_HHMMSS_error_original_filename.txt`
 
