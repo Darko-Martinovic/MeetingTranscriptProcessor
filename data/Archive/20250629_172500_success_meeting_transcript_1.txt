@@ -1,0 +1,55 @@
+MEETING TRANSCRIPT
+=================
+Date: 2025-06-29
+Time: 14:00 CET
+Participants: Farid (Business Representative), Christopher (Product Owner - External)
+Meeting Type: Business Discussion - Data Analysis
+Language: English (B1-B2 level speakers)
+
+TRANSCRIPT:
+-----------
+
+Farid: Hello Christopher, good afternoon! How is your day going?
+
+Christopher: Hello Farid! Quite busy today, lots of meetings. How about you? Is the weather nice in Belgium?
+
+Farid: Yes, it's actually sunny today, which is rare for this time of year! Anyway, let's discuss this PLU data issue we received from GK company.
+
+Christopher: Right, yes. I reviewed the JSON data they sent us yesterday. There seems to be some inconsistencies with our current PLU groups, non?
+
+Farid: Exactly. The JSON structure looks correct, but when we try to match the PLU information with our existing database, we cannot find the corresponding PLU groups. I think we need a detailed analysis.
+
+Christopher: I agree. This could be test data or maybe their data structure is different from what we expected. We need someone technical to investigate this thoroughly.
+
+Farid: I was thinking to assign this to Darko and Nikola. Darko has the architecture knowledge and Nikola can help with the Java implementation since this is for the new system.
+
+Christopher: Perfect choice. Darko understands both systems and Nikola is strong with Java and data processing. What do you think should be their deliverable?
+
+Farid: They should analyze the JSON structure, compare it with our current PLU group mapping, and provide a detailed report with recommendations. Maybe they can also suggest how to handle this data integration.
+
+Christopher: Sounds good. Is this urgent or can they take a week to properly investigate?
+
+Farid: Let's give them a week. It's important to get it right. The GK integration is crucial for our Q3 roadmap.
+
+Christopher: D'accord. I'll create a ticket for this. Should I assign it to both Darko and Nikola?
+
+Farid: Yes, please. Title it something like "Analyze PLU JSON data from GK API integration" and mark it as high priority.
+
+Christopher: Perfect. I'll add all the context we discussed and attach the JSON samples they sent us.
+
+Farid: Excellent. Anything else we need to discuss today?
+
+Christopher: Non, I think we covered everything. I'll have the ticket ready by end of day.
+
+Farid: Perfect. Thank you Christopher, have a good rest of your day!
+
+Christopher: You too Farid, à bientôt!
+
+ACTION ITEMS:
+-------------
+- Create new Jira ticket: "Analyze PLU JSON data from GK API integration"
+- Assigned to: Darko and Nikola
+- Priority: High
+- Due date: One week from today
+- Description: Analyze JSON structure from GK API, compare with current PLU group mapping, provide detailed report with integration recommendations
+- Attach: JSON samples from GK company
