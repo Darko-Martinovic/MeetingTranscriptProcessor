@@ -30,20 +30,26 @@ An intelligent application that automatically processes meeting transcripts and 
 
 ### Configuration
 
-1. Copy `.env.example` to `.env`
-2. Configure your settings:
+The application is fully configured through the `.env` file in the project root. All settings are optional - the application will work in simulation/fallback mode if API credentials are not provided.
+
+1. Update the `.env` file with your settings:
 
 ```env
 # Azure OpenAI Configuration (Optional - enables AI extraction)
-AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-api-key-here
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4
+AOAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AOAI_APIKEY=your-api-key-here
+CHATCOMPLETION_DEPLOYMENTNAME=gpt-35-turbo
 
 # Jira Configuration (Optional - enables actual ticket creation)
 JIRA_URL=https://your-domain.atlassian.net
 JIRA_API_TOKEN=your-api-token-here
 JIRA_EMAIL=your-email@company.com
-JIRA_DEFAULT_PROJECT=TASK
+JIRA_PROJECT_KEY=TASK
+
+# File Processing Configuration
+INCOMING_DIRECTORY=Data\Incoming
+ARCHIVE_DIRECTORY=Data\Archive
+PROCESSING_DIRECTORY=Data\Processing
 ```
 
 ### Running the Application
@@ -124,24 +130,32 @@ File Detection → Transcript Processing → Action Item Extraction → Jira Tic
 
 ### Azure OpenAI Settings
 
-| Variable                       | Description                            | Required |
-| ------------------------------ | -------------------------------------- | -------- |
-| `AZURE_OPENAI_ENDPOINT`        | Your Azure OpenAI resource endpoint    | No\*     |
-| `AZURE_OPENAI_API_KEY`         | Your API key                           | No\*     |
-| `AZURE_OPENAI_DEPLOYMENT_NAME` | Model deployment name (default: gpt-4) | No       |
+| Variable                        | Description                                   | Required | Fallback Behavior     |
+| ------------------------------- | --------------------------------------------- | -------- | --------------------- |
+| `AOAI_ENDPOINT`                 | Your Azure OpenAI resource endpoint           | No\*     | Rule-based extraction |
+| `AOAI_APIKEY`                   | Your API key                                  | No\*     | Pattern matching      |
+| `CHATCOMPLETION_DEPLOYMENTNAME` | Model deployment name (default: gpt-35-turbo) | No       | N/A                   |
 
-\*Without Azure OpenAI configuration, the app uses rule-based extraction
+\*Without Azure OpenAI, the app uses rule-based keyword detection and pattern matching for action item extraction
 
 ### Jira Settings
 
-| Variable               | Description                         | Required |
-| ---------------------- | ----------------------------------- | -------- |
-| `JIRA_URL`             | Your Jira instance URL              | No\*     |
-| `JIRA_API_TOKEN`       | Your Jira API token                 | No\*     |
-| `JIRA_EMAIL`           | Your Jira account email             | No\*     |
-| `JIRA_DEFAULT_PROJECT` | Default project key (default: TASK) | No       |
+| Variable           | Description                         | Required | Fallback Behavior   |
+| ------------------ | ----------------------------------- | -------- | ------------------- |
+| `JIRA_URL`         | Your Jira instance URL              | No\*     | Simulation mode     |
+| `JIRA_API_TOKEN`   | Your Jira API token                 | No\*     | Console-only output |
+| `JIRA_EMAIL`       | Your Jira account email             | No\*     | No actual tickets   |
+| `JIRA_PROJECT_KEY` | Default project key (default: TASK) | No       | N/A                 |
 
-\*Without Jira configuration, the app runs in simulation mode
+\*Without Jira configuration, the app shows what tickets would be created but doesn't create actual tickets
+
+### File Processing Settings
+
+| Variable               | Description                                 | Required | Default Value   |
+| ---------------------- | ------------------------------------------- | -------- | --------------- |
+| `INCOMING_DIRECTORY`   | Directory to watch for new transcript files | No       | Data\Incoming   |
+| `ARCHIVE_DIRECTORY`    | Directory for processed files               | No       | Data\Archive    |
+| `PROCESSING_DIRECTORY` | Temporary directory during processing       | No       | Data\Processing |
 
 ## Commands
 
@@ -221,3 +235,53 @@ dotnet publish -c Release
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Operation Modes
+
+The application can run in different modes depending on your configuration:
+
+### 🤖 Full AI Mode (Recommended)
+
+- **Requirements**: Azure OpenAI + Jira API credentials
+- **Features**:
+  - Intelligent action item extraction with context understanding
+  - AI-powered ticket formatting with clean titles and descriptions
+  - Actual Jira ticket creation and updates
+  - Best accuracy and formatting
+
+### 🔧 Hybrid Mode
+
+- **Requirements**: Either Azure OpenAI OR Jira API credentials
+- **Features**:
+  - With Azure OpenAI only: Smart extraction + simulated tickets
+  - With Jira only: Rule-based extraction + actual tickets
+  - Partial automation with some manual oversight needed
+
+### ⚙️ Offline Mode
+
+- **Requirements**: No API credentials needed
+- **Features**:
+  - Rule-based action item extraction using keywords and patterns
+  - Simulated ticket creation (console output only)
+  - Fully functional for testing and development
+  - No external dependencies or costs
+
+### Example Output by Mode
+
+**Full AI Mode:**
+
+```
+🤖 Calling Azure OpenAI for transcript analysis...
+🎫 Formatting Jira ticket for: Update authentication system
+✅ Created Jira ticket: TASK-1234
+```
+
+**Offline Mode:**
+
+```
+⚙️ Using rule-based fallback processing...
+🎫 Would create new ticket: SIM-001
+   📋 Title: Update authentication system
+   🔹 Type: Task
+   ⭐ Priority: Medium
+```
