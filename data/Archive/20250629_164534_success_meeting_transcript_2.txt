@@ -1,0 +1,68 @@
+MEETING TRANSCRIPT
+=================
+Date: 2025-06-29
+Time: 15:30 CET
+Participants: Farid (Business Representative), Paul (Senior Architect - External), Christopher (Product Owner - External)
+Meeting Type: Bug Review - Urgent Issue
+Language: English (B1-B2 level speakers)
+
+TRANSCRIPT:
+-----------
+
+Farid: Hello everyone, thanks for joining this urgent call. Paul, how was your weekend?
+
+Paul: Hello Farid, hello Christopher. Weekend was good, but I spent some time thinking about this Promo Search issue. It's quite problematic.
+
+Christopher: Bonjour everyone. Yes, I've been getting reports from the business users since Friday afternoon.
+
+Farid: Paul, can you explain what exactly is happening with the Promo Search stored procedure?
+
+Paul: Bien sûr. The stored procedure "sp_PromoSearch" is returning incorrect results when users search for promotions by date range. Sometimes it returns no results, sometimes duplicate entries.
+
+Christopher: This is causing major issues in the stores. The cashiers cannot see active promotions and customers are complaining.
+
+Farid: How urgent is this? Can we wait until next week?
+
+Paul: Non, non! This needs to be fixed immediately. It's affecting daily operations in all Belgian stores. The SQL Server database is showing some strange behavior in the execution plan.
+
+Christopher: I agree with Paul. This is blocking business operations. We need someone who knows SQL Server and the old .NET Framework system very well.
+
+Paul: I think Aidil would be the best choice. He has good experience with stored procedures and the legacy system architecture.
+
+Farid: Yes, Aidil is very good with SQL Server optimization. But is he available today?
+
+Paul: I checked with the EPAM team this morning. Aidil can start on this immediately. He just needs access to the production logs and the stored procedure source code.
+
+Christopher: Perfect. What's the expected timeline for the fix?
+
+Paul: If it's a query optimization issue, Aidil can probably fix it today or tomorrow morning. If it's data corruption, it might take longer.
+
+Farid: Let's prioritize this as critical. Paul, can you provide technical support to Aidil if needed?
+
+Paul: Absolument! I'll be available all week to help with the .NET Framework integration and database schema questions.
+
+Christopher: I'll monitor the business impact and communicate with the store managers.
+
+Farid: Excellent. So we create a critical bug ticket for Aidil to investigate and fix the Promo Search stored procedure.
+
+Paul: Yes, and please mention that he should check the execution plan and recent database changes. I suspect it might be related to the indexing strategy.
+
+Christopher: I'll create the ticket right after this call with all the technical details Paul mentioned.
+
+Farid: Perfect. Anything else we need to discuss?
+
+Paul: Non, I think we have a clear plan. The sooner Aidil starts, the better.
+
+Christopher: D'accord. I'll send the ticket details to everyone once it's created.
+
+Farid: Thank you both. Let's hope we can resolve this quickly!
+
+ACTION ITEMS:
+-------------
+- Create critical Jira ticket: "URGENT: Fix Promo Search stored procedure returning incorrect results"
+- Assigned to: Aidil
+- Priority: Critical
+- Start date: Immediately
+- Description: Investigate and fix sp_PromoSearch stored procedure that returns incorrect results, check execution plan and indexing strategy
+- Support: Paul available for technical assistance
+- Business impact: Affecting all Belgian stores, blocking daily operations
