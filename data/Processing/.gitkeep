@@ -1,0 +1,3 @@
+# This file ensures the Processing directory is preserved in Git
+# The Processing directory is used as a temporary location during file processing
+# Files are moved here briefly before being processed and archived

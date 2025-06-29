@@ -1,0 +1,3 @@
+# This file ensures the Incoming directory is preserved in Git
+# Place meeting transcript files here for automatic processing
+# Supported formats: .txt, .md, .json, .xml, .docx, .pdf

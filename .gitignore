@@ -3,6 +3,16 @@ bin/
 obj/
 out/
 
+#data directories (but keep .gitkeep files and Templates)
+data/Incoming/*
+!data/Incoming/.gitkeep
+data/Processing/*
+!data/Processing/.gitkeep
+data/Archive/*
+!data/Archive/.gitkeep
+
+
+
 # User-specific files
 *.user
 *.suo
