@@ -32,7 +32,13 @@ An intelligent application that automatically processes meeting transcripts and 
 
 The application is fully configured through the `.env` file in the project root. All settings are optional - the application will work in simulation/fallback mode if API credentials are not provided.
 
-1. Update the `.env` file with your settings:
+1. Copy `.env.example` to `.env` and update with your settings:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+2. Edit the `.env` file with your actual credentials:
 
 ```env
 # Azure OpenAI Configuration (Optional - enables AI extraction)
