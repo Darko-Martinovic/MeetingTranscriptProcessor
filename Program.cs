@@ -17,7 +17,10 @@ namespace MeetingTranscriptProcessor
         private static bool _isShuttingDown = false;
 
         // Directory paths - will be updated after loading environment
-        private static string DataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
+        private static string DataPath = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "Data"
+        );
         private static string IncomingPath = "";
         private static string ProcessingPath = "";
         private static string ArchivePath = "";
@@ -83,7 +86,8 @@ namespace MeetingTranscriptProcessor
             {
                 // Try to load .env file from project root, not from the bin directory
                 var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                var projectRoot = Directory.GetParent(baseDir)?.Parent?.Parent?.Parent?.FullName ?? baseDir;
+                var projectRoot =
+                    Directory.GetParent(baseDir)?.Parent?.Parent?.Parent?.FullName ?? baseDir;
                 var envPath = Path.Combine(projectRoot, ".env");
 
                 if (File.Exists(envPath))
@@ -102,7 +106,9 @@ namespace MeetingTranscriptProcessor
                     }
                     else
                     {
-                        Console.WriteLine("ℹ️  No .env file found - using system environment variables");
+                        Console.WriteLine(
+                            "ℹ️  No .env file found - using system environment variables"
+                        );
                     }
                 }
 
@@ -111,17 +117,20 @@ namespace MeetingTranscriptProcessor
                 var processingEnv = Environment.GetEnvironmentVariable("PROCESSING_DIRECTORY");
                 var archiveEnv = Environment.GetEnvironmentVariable("ARCHIVE_DIRECTORY");
 
-                IncomingPath = !string.IsNullOrEmpty(incomingEnv) && Path.IsPathRooted(incomingEnv)
-                    ? incomingEnv
-                    : Path.Combine(projectRoot, incomingEnv ?? "Data\\Incoming");
+                IncomingPath =
+                    !string.IsNullOrEmpty(incomingEnv) && Path.IsPathRooted(incomingEnv)
+                        ? incomingEnv
+                        : Path.Combine(projectRoot, incomingEnv ?? "Data\\Incoming");
 
-                ProcessingPath = !string.IsNullOrEmpty(processingEnv) && Path.IsPathRooted(processingEnv)
-                    ? processingEnv
-                    : Path.Combine(projectRoot, processingEnv ?? "Data\\Processing");
+                ProcessingPath =
+                    !string.IsNullOrEmpty(processingEnv) && Path.IsPathRooted(processingEnv)
+                        ? processingEnv
+                        : Path.Combine(projectRoot, processingEnv ?? "Data\\Processing");
 
-                ArchivePath = !string.IsNullOrEmpty(archiveEnv) && Path.IsPathRooted(archiveEnv)
-                    ? archiveEnv
-                    : Path.Combine(projectRoot, archiveEnv ?? "Data\\Archive");
+                ArchivePath =
+                    !string.IsNullOrEmpty(archiveEnv) && Path.IsPathRooted(archiveEnv)
+                        ? archiveEnv
+                        : Path.Combine(projectRoot, archiveEnv ?? "Data\\Archive");
             }
             catch (Exception ex)
             {
@@ -191,14 +200,22 @@ namespace MeetingTranscriptProcessor
             Console.WriteLine($"📁 Archive: {ArchivePath}");
 
             // Service status
-            Console.WriteLine($"🤖 Azure OpenAI: {(_azureOpenAIService?.IsConfigured() == true ? "✅ Configured" : "⚠️  Not configured (using fallback)")}");
-            Console.WriteLine($"🎫 Jira Integration: {(IsJiraConfigured() ? "✅ Configured" : "⚠️  Not configured (simulation mode)")}");
+            Console.WriteLine(
+                $"🤖 Azure OpenAI: {(_azureOpenAIService?.IsConfigured() == true ? "✅ Configured" : "⚠️  Not configured (using fallback)")}"
+            );
+            Console.WriteLine(
+                $"🎫 Jira Integration: {(IsJiraConfigured() ? "✅ Configured" : "⚠️  Not configured (simulation mode)")}"
+            );
 
             Console.WriteLine("──────────────────────────────────────────────────────────────");
             Console.WriteLine();
             Console.WriteLine("📝 Instructions:");
-            Console.WriteLine("1. Place transcript files (.txt, .md, .json, .xml, .docx, .pdf) in the Incoming folder");
-            Console.WriteLine("2. Files will be automatically processed and moved to Processing folder");
+            Console.WriteLine(
+                "1. Place transcript files (.txt, .md, .json, .xml, .docx, .pdf) in the Incoming folder"
+            );
+            Console.WriteLine(
+                "2. Files will be automatically processed and moved to Processing folder"
+            );
             Console.WriteLine("3. Action items will be extracted and Jira tickets created/updated");
             Console.WriteLine("4. Processed files will be archived");
             Console.WriteLine();
@@ -247,7 +264,9 @@ namespace MeetingTranscriptProcessor
                             break;
 
                         default:
-                            Console.WriteLine($"Unknown command: '{input}'. Type 'help' for available commands.");
+                            Console.WriteLine(
+                                $"Unknown command: '{input}'. Type 'help' for available commands."
+                            );
                             break;
                     }
 
@@ -267,7 +286,8 @@ namespace MeetingTranscriptProcessor
         {
             try
             {
-                if (_isShuttingDown) return;
+                if (_isShuttingDown)
+                    return;
 
                 Console.WriteLine($"\n📄 Processing file: {e.FileName}");
                 Console.WriteLine("──────────────────────────────────────────────────────────────");
@@ -319,7 +339,9 @@ namespace MeetingTranscriptProcessor
             Console.WriteLine($"   📋 Action Items Found: {result.ActionItemsFound}");
             Console.WriteLine($"   🆕 Tickets Created: {result.TicketsCreated}");
             Console.WriteLine($"   📝 Tickets Updated: {result.TicketsUpdated}");
-            Console.WriteLine($"   ⏱️  Processing Time: {result.ProcessingDuration.TotalSeconds:F1}s");
+            Console.WriteLine(
+                $"   ⏱️  Processing Time: {result.ProcessingDuration.TotalSeconds:F1}s"
+            );
             Console.WriteLine($"   ✅ Success: {(result.Success ? "Yes" : "No")}");
 
             if (!string.IsNullOrEmpty(result.ErrorMessage))
@@ -335,7 +357,9 @@ namespace MeetingTranscriptProcessor
                 {
                     var status = ticketResult.Success ? "✅" : "❌";
                     var operation = ticketResult.Operation.ToString().ToUpper();
-                    Console.WriteLine($"      {status} {operation}: {ticketResult.TicketKey} - {ticketResult.Message}");
+                    Console.WriteLine(
+                        $"      {status} {operation}: {ticketResult.TicketKey} - {ticketResult.Message}"
+                    );
                 }
             }
         }
@@ -347,7 +371,8 @@ namespace MeetingTranscriptProcessor
         {
             try
             {
-                if (!File.Exists(filePath)) return;
+                if (!File.Exists(filePath))
+                    return;
 
                 var fileName = Path.GetFileName(filePath);
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -361,7 +386,9 @@ namespace MeetingTranscriptProcessor
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️  Warning: Failed to archive file {Path.GetFileName(filePath)}: {ex.Message}");
+                Console.WriteLine(
+                    $"⚠️  Warning: Failed to archive file {Path.GetFileName(filePath)}: {ex.Message}"
+                );
             }
         }
 
@@ -380,12 +407,16 @@ namespace MeetingTranscriptProcessor
             Console.WriteLine("   • Files are automatically processed when detected");
             Console.WriteLine();
             Console.WriteLine("🎫 Jira Integration:");
-            Console.WriteLine("   • Set JIRA_URL, JIRA_API_TOKEN, JIRA_EMAIL environment variables");
+            Console.WriteLine(
+                "   • Set JIRA_URL, JIRA_API_TOKEN, JIRA_EMAIL environment variables"
+            );
             Console.WriteLine("   • Optional: Set JIRA_DEFAULT_PROJECT (default: TASK)");
             Console.WriteLine("   • Without configuration, operates in simulation mode");
             Console.WriteLine();
             Console.WriteLine("🤖 Azure OpenAI Integration:");
-            Console.WriteLine("   • Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY environment variables");
+            Console.WriteLine(
+                "   • Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY environment variables"
+            );
             Console.WriteLine("   • Optional: Set AZURE_OPENAI_DEPLOYMENT_NAME (default: gpt-4)");
             Console.WriteLine("   • Without configuration, uses rule-based extraction");
             Console.WriteLine();
@@ -401,9 +432,9 @@ namespace MeetingTranscriptProcessor
         /// </summary>
         private static bool IsJiraConfigured()
         {
-            return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_URL")) &&
-                   !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_API_TOKEN")) &&
-                   !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_EMAIL"));
+            return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_URL"))
+                && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_API_TOKEN"))
+                && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_EMAIL"));
         }
 
         /// <summary>
