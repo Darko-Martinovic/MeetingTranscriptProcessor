@@ -14,6 +14,12 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     private readonly IHallucinationDetector _hallucinationDetector;
     private readonly IConsistencyManager _consistencyManager;
     private readonly ILogger? _logger;
+    
+    // Validation service control settings - loaded from environment
+    private readonly bool _enableValidation;
+    private readonly bool _enableHallucinationDetection;
+    private readonly bool _enableConsistencyManagement;
+    private readonly double _validationConfidenceThreshold;
 
     public TranscriptProcessorService(
         IAzureOpenAIService aiService,
@@ -27,6 +33,12 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         _hallucinationDetector = hallucinationDetector ?? throw new ArgumentNullException(nameof(hallucinationDetector));
         _consistencyManager = consistencyManager ?? throw new ArgumentNullException(nameof(consistencyManager));
         _logger = logger;
+
+        // Load validation settings from environment variables
+        _enableValidation = bool.TryParse(Environment.GetEnvironmentVariable("ENABLE_VALIDATION"), out var validation) ? validation : true;
+        _enableHallucinationDetection = bool.TryParse(Environment.GetEnvironmentVariable("ENABLE_HALLUCINATION_DETECTION"), out var hallucination) ? hallucination : true;
+        _enableConsistencyManagement = bool.TryParse(Environment.GetEnvironmentVariable("ENABLE_CONSISTENCY_MANAGEMENT"), out var consistency) ? consistency : true;
+        _validationConfidenceThreshold = double.TryParse(Environment.GetEnvironmentVariable("VALIDATION_CONFIDENCE_THRESHOLD"), out var threshold) ? threshold : 0.5;
     }
 
     /// <summary>
@@ -202,7 +214,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     }
 
     /// <summary>
-    /// Extracts action items using AI analysis with validation and consistency checking
+    /// Extracts action items using AI analysis with optional validation and consistency checking
     /// </summary>
     private async Task ExtractActionItemsAsync(MeetingTranscript transcript)
     {
@@ -213,62 +225,126 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         {
             Console.WriteLine("🤖 Analyzing transcript with AI to extract action items...");
 
-            // 1. Use consistency manager to get optimal extraction configuration
-            var consistencyContext = _consistencyManager.CreateConsistencyContext(transcript);
-            var optimalPrompt = _consistencyManager.GenerateContextualPrompt(transcript, consistencyContext);
-            var optimalParams = _consistencyManager.GetOptimalParameters(consistencyContext);
+            // 1. Use consistency manager for optimal extraction configuration (if enabled)
+            string promptToUse;
+            ConsistencyContext? consistencyContext = null;
+            
+            if (_enableConsistencyManagement)
+            {
+                Console.WriteLine("🎯 Using consistency management for context-aware extraction...");
+                consistencyContext = _consistencyManager.CreateConsistencyContext(transcript);
+                promptToUse = _consistencyManager.GenerateContextualPrompt(transcript, consistencyContext);
+                var optimalParams = _consistencyManager.GetOptimalParameters(consistencyContext);
+            }
+            else
+            {
+                Console.WriteLine("⚠️  Consistency management disabled - using standard prompt");
+                promptToUse = CreateActionItemExtractionPrompt(transcript);
+            }
 
-            // 2. Extract action items with AI using contextual prompt
-            var aiResponse = await _aiService.ProcessTranscriptAsync(optimalPrompt);
+            // 2. Extract action items with AI using chosen prompt
+            var aiResponse = await _aiService.ProcessTranscriptAsync(promptToUse);
             aiExtracted = ParseActionItemsFromAIResponse(aiResponse, transcript);
 
-            // 3. Also get rule-based extraction for comparison/validation
-            ruleBasedExtracted = ExtractActionItemsWithRules(transcript);
-
-            // 4. Validate AI extraction using cross-validation with rule-based results
-            var validationResult = _validator.ValidateActionItems(aiExtracted, ruleBasedExtracted, transcript);
-
-            Console.WriteLine($"🔍 Validation Results:");
-            Console.WriteLine($"   - AI extracted: {aiExtracted.Count} items");
-            Console.WriteLine($"   - Rule-based: {ruleBasedExtracted.Count} items");
-            Console.WriteLine($"   - Cross-validation score: {validationResult.CrossValidationScore:F2}");
-            Console.WriteLine($"   - Overall confidence: {validationResult.OverallConfidence:F2}");
-            Console.WriteLine($"   - Potential false positives: {validationResult.PotentialFalsePositives.Count}");
-            Console.WriteLine($"   - Potential false negatives: {validationResult.PotentialFalseNegatives.Count}");
-
-            // 5. Check for hallucinations
-            var hallucinationAnalysis = _hallucinationDetector.AnalyzeActionItems(aiExtracted, transcript);
-            Console.WriteLine($"🧠 Hallucination Analysis:");
-            Console.WriteLine($"   - Hallucination rate: {hallucinationAnalysis.HallucinationRate:P}");
-            Console.WriteLine($"   - Likely hallucinations: {hallucinationAnalysis.LikelyHallucinations.Count}");
-
-            // 6. Filter out high-confidence items and apply business rules
-            var highConfidenceItems = _hallucinationDetector.FilterHighConfidenceItems(
-                aiExtracted, transcript, consistencyContext.ConfidenceThreshold);
-
-            transcript.ActionItems = ApplyBusinessRules(highConfidenceItems);
-
-            // 7. Log validation warnings
-            if (validationResult.PotentialFalsePositives.Any())
+            // 3. Get rule-based extraction for comparison/validation (if validation enabled)
+            if (_enableValidation)
             {
-                Console.WriteLine("⚠️  Potential false positives detected:");
-                validationResult.PotentialFalsePositives.ForEach(fp => Console.WriteLine($"   - {fp}"));
+                ruleBasedExtracted = ExtractActionItemsWithRules(transcript);
             }
 
-            if (validationResult.PotentialFalseNegatives.Any())
+            // 4. Validate AI extraction using cross-validation (if enabled)
+            ValidationResult? validationResult = null;
+            if (_enableValidation)
             {
-                Console.WriteLine("⚠️  Potential false negatives detected:");
-                validationResult.PotentialFalseNegatives.ForEach(fn => Console.WriteLine($"   - {fn}"));
+                Console.WriteLine("🔍 Performing validation...");
+                validationResult = _validator.ValidateActionItems(aiExtracted, ruleBasedExtracted, transcript);
+
+                Console.WriteLine($"🔍 Validation Results:");
+                Console.WriteLine($"   - AI extracted: {aiExtracted.Count} items");
+                Console.WriteLine($"   - Rule-based: {ruleBasedExtracted.Count} items");
+                Console.WriteLine($"   - Cross-validation score: {validationResult.CrossValidationScore:F2}");
+                Console.WriteLine($"   - Overall confidence: {validationResult.OverallConfidence:F2}");
+                Console.WriteLine($"   - Potential false positives: {validationResult.PotentialFalsePositives.Count}");
+                Console.WriteLine($"   - Potential false negatives: {validationResult.PotentialFalseNegatives.Count}");
+            }
+            else
+            {
+                Console.WriteLine("⚠️  Validation disabled - skipping cross-validation");
             }
 
-            if (hallucinationAnalysis.LikelyHallucinations.Any())
+            // 5. Check for hallucinations (if enabled)
+            HallucinationAnalysis? hallucinationAnalysis = null;
+            if (_enableHallucinationDetection)
+            {
+                Console.WriteLine("🧠 Performing hallucination detection...");
+                hallucinationAnalysis = _hallucinationDetector.AnalyzeActionItems(aiExtracted, transcript);
+                Console.WriteLine($"🧠 Hallucination Analysis:");
+                Console.WriteLine($"   - Hallucination rate: {hallucinationAnalysis.HallucinationRate:P}");
+                Console.WriteLine($"   - Likely hallucinations: {hallucinationAnalysis.LikelyHallucinations.Count}");
+            }
+            else
+            {
+                Console.WriteLine("⚠️  Hallucination detection disabled - skipping hallucination analysis");
+            }
+
+            // 6. Filter and apply business rules
+            List<ActionItem> finalItems;
+            
+            if (_enableHallucinationDetection && hallucinationAnalysis != null)
+            {
+                // Use confidence threshold from consistency context or default
+                var confidenceThreshold = consistencyContext?.ConfidenceThreshold ?? _validationConfidenceThreshold;
+                var highConfidenceItems = _hallucinationDetector.FilterHighConfidenceItems(
+                    aiExtracted, transcript, confidenceThreshold);
+                finalItems = ApplyBusinessRules(highConfidenceItems);
+            }
+            else
+            {
+                // Apply business rules directly to AI extracted items
+                finalItems = ApplyBusinessRules(aiExtracted);
+            }
+
+            transcript.ActionItems = finalItems;
+
+            // 7. Log validation warnings (if validation was performed)
+            if (_enableValidation && validationResult != null)
+            {
+                if (validationResult.PotentialFalsePositives.Any())
+                {
+                    Console.WriteLine("⚠️  Potential false positives detected:");
+                    validationResult.PotentialFalsePositives.ForEach(fp => Console.WriteLine($"   - {fp}"));
+                }
+
+                if (validationResult.PotentialFalseNegatives.Any())
+                {
+                    Console.WriteLine("⚠️  Potential false negatives detected:");
+                    validationResult.PotentialFalseNegatives.ForEach(fn => Console.WriteLine($"   - {fn}"));
+                }
+            }
+
+            if (_enableHallucinationDetection && hallucinationAnalysis != null && hallucinationAnalysis.LikelyHallucinations.Any())
             {
                 Console.WriteLine("🚨 Likely hallucinations detected and filtered:");
                 hallucinationAnalysis.LikelyHallucinations.ForEach(h =>
                     Console.WriteLine($"   - {h.Title}"));
             }
 
-            Console.WriteLine($"✅ Final result: {transcript.ActionItems.Count} validated action items");
+            // Log final results with service status
+            var statusIndicator = "";
+            if (!_enableValidation && !_enableHallucinationDetection && !_enableConsistencyManagement)
+            {
+                statusIndicator = " (⚠️  All validation services disabled)";
+            }
+            else if (!_enableValidation || !_enableHallucinationDetection || !_enableConsistencyManagement)
+            {
+                var disabled = new List<string>();
+                if (!_enableValidation) disabled.Add("validation");
+                if (!_enableHallucinationDetection) disabled.Add("hallucination detection");
+                if (!_enableConsistencyManagement) disabled.Add("consistency management");
+                statusIndicator = $" (⚠️  {string.Join(", ", disabled)} disabled)";
+            }
+
+            Console.WriteLine($"✅ Final result: {transcript.ActionItems.Count} action items{statusIndicator}");
         }
         catch (Exception ex)
         {

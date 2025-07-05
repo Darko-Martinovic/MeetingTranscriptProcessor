@@ -25,6 +25,12 @@ namespace MeetingTranscriptProcessor
         private static readonly CancellationTokenSource _cancellationTokenSource = new();
         private static int _maxConcurrentFiles = 3; // Default value, configurable via environment
 
+        // Validation service control - configurable via environment
+        private static bool _enableValidation = true;
+        private static bool _enableHallucinationDetection = true;
+        private static bool _enableConsistencyManagement = true;
+        private static double _validationConfidenceThreshold = 0.5;
+
         // Directory paths - will be updated after loading environment
         private static string DataPath = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory,
@@ -148,6 +154,36 @@ namespace MeetingTranscriptProcessor
                     _maxConcurrentFiles = maxConcurrent;
                 }
                 Console.WriteLine($"📊 Max concurrent file processing: {_maxConcurrentFiles}");
+
+                // Configure validation service settings
+                var enableValidationEnv = Environment.GetEnvironmentVariable("ENABLE_VALIDATION");
+                if (bool.TryParse(enableValidationEnv, out var enableValidation))
+                {
+                    _enableValidation = enableValidation;
+                }
+
+                var enableHallucinationEnv = Environment.GetEnvironmentVariable("ENABLE_HALLUCINATION_DETECTION");
+                if (bool.TryParse(enableHallucinationEnv, out var enableHallucination))
+                {
+                    _enableHallucinationDetection = enableHallucination;
+                }
+
+                var enableConsistencyEnv = Environment.GetEnvironmentVariable("ENABLE_CONSISTENCY_MANAGEMENT");
+                if (bool.TryParse(enableConsistencyEnv, out var enableConsistency))
+                {
+                    _enableConsistencyManagement = enableConsistency;
+                }
+
+                var thresholdEnv = Environment.GetEnvironmentVariable("VALIDATION_CONFIDENCE_THRESHOLD");
+                if (double.TryParse(thresholdEnv, out var threshold) && threshold >= 0.0 && threshold <= 1.0)
+                {
+                    _validationConfidenceThreshold = threshold;
+                }
+
+                Console.WriteLine($"🔍 Validation enabled: {_enableValidation}");
+                Console.WriteLine($"🧠 Hallucination detection: {_enableHallucinationDetection}");
+                Console.WriteLine($"🎯 Consistency management: {_enableConsistencyManagement}");
+                Console.WriteLine($"📊 Validation threshold: {_validationConfidenceThreshold:F1}");
             }
             catch (Exception ex)
             {
@@ -244,6 +280,12 @@ namespace MeetingTranscriptProcessor
                 $"🎫 Jira Integration: {(IsJiraConfigured() ? "✅ Configured" : "⚠️  Not configured (simulation mode)")}"
             );
 
+            // Validation services status
+            Console.WriteLine($"🔍 Validation: {(_enableValidation ? "✅ Enabled" : "⚠️  Disabled")}");
+            Console.WriteLine($"🧠 Hallucination Detection: {(_enableHallucinationDetection ? "✅ Enabled" : "⚠️  Disabled")}");
+            Console.WriteLine($"🎯 Consistency Management: {(_enableConsistencyManagement ? "✅ Enabled" : "⚠️  Disabled")}");
+            Console.WriteLine($"📊 Validation Threshold: {_validationConfidenceThreshold:F1}");
+
             // Concurrency status
             var availableSlots = _processingSemaphore?.CurrentCount ?? 0;
             var usedSlots = _maxConcurrentFiles - availableSlots;
@@ -266,6 +308,7 @@ namespace MeetingTranscriptProcessor
             Console.WriteLine();
             Console.WriteLine("⌨️  Commands:");
             Console.WriteLine("   'status' - Show current status");
+            Console.WriteLine("   'metrics' - Show AI validation metrics");
             Console.WriteLine("   'help' - Show this help message");
             Console.WriteLine("   'quit' or Ctrl+C - Exit application");
             Console.WriteLine();
@@ -520,6 +563,13 @@ namespace MeetingTranscriptProcessor
             );
             Console.WriteLine("   • Optional: Set AZURE_OPENAI_DEPLOYMENT_NAME (default: gpt-4)");
             Console.WriteLine("   • Without configuration, uses rule-based extraction");
+            Console.WriteLine();
+            Console.WriteLine("🔍 AI/ML Validation Features:");
+            Console.WriteLine($"   • Validation: {(_enableValidation ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_VALIDATION)");
+            Console.WriteLine($"   • Hallucination Detection: {(_enableHallucinationDetection ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_HALLUCINATION_DETECTION)");
+            Console.WriteLine($"   • Consistency Management: {(_enableConsistencyManagement ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_CONSISTENCY_MANAGEMENT)");
+            Console.WriteLine($"   • Confidence Threshold: {_validationConfidenceThreshold:F1} (VALIDATION_CONFIDENCE_THRESHOLD)");
+            Console.WriteLine("   • Set these environment variables to false to temporarily disable features");
             Console.WriteLine();
             Console.WriteLine("⚡ Concurrency Features:");
             Console.WriteLine($"   • Parallel processing of up to {_maxConcurrentFiles} files simultaneously");
