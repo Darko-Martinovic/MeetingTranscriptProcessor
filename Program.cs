@@ -4,6 +4,7 @@ using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace MeetingTranscriptProcessor
 {
@@ -17,6 +18,12 @@ namespace MeetingTranscriptProcessor
         private static ITranscriptProcessorService? _transcriptProcessor;
         private static IJiraTicketService? _jiraTicketService;
         private static bool _isShuttingDown = false;
+
+        // Concurrency control
+        private static SemaphoreSlim? _processingSemaphore;
+        private static readonly ConcurrentDictionary<string, bool> _processingFiles = new();
+        private static readonly CancellationTokenSource _cancellationTokenSource = new();
+        private static int _maxConcurrentFiles = 3; // Default value, configurable via environment
 
         // Directory paths - will be updated after loading environment
         private static string DataPath = Path.Combine(
@@ -133,6 +140,14 @@ namespace MeetingTranscriptProcessor
                     !string.IsNullOrEmpty(archiveEnv) && Path.IsPathRooted(archiveEnv)
                         ? archiveEnv
                         : Path.Combine(projectRoot, archiveEnv ?? "Data\\Archive");
+
+                // Configure concurrency settings
+                var maxConcurrentEnv = Environment.GetEnvironmentVariable("MAX_CONCURRENT_FILES");
+                if (int.TryParse(maxConcurrentEnv, out var maxConcurrent) && maxConcurrent > 0 && maxConcurrent <= 10)
+                {
+                    _maxConcurrentFiles = maxConcurrent;
+                }
+                Console.WriteLine($"📊 Max concurrent file processing: {_maxConcurrentFiles}");
             }
             catch (Exception ex)
             {
@@ -146,6 +161,9 @@ namespace MeetingTranscriptProcessor
         private static void InitializeServices()
         {
             Console.WriteLine("🔧 Initializing services...");
+
+            // Initialize concurrency semaphore
+            _processingSemaphore = new SemaphoreSlim(_maxConcurrentFiles, _maxConcurrentFiles);
 
             // Ensure directories exist
             Directory.CreateDirectory(IncomingPath);
@@ -220,6 +238,13 @@ namespace MeetingTranscriptProcessor
                 $"🎫 Jira Integration: {(IsJiraConfigured() ? "✅ Configured" : "⚠️  Not configured (simulation mode)")}"
             );
 
+            // Concurrency status
+            var availableSlots = _processingSemaphore?.CurrentCount ?? 0;
+            var usedSlots = _maxConcurrentFiles - availableSlots;
+            var filesBeingProcessed = _processingFiles.Count;
+
+            Console.WriteLine($"⚡ Concurrency: {usedSlots}/{_maxConcurrentFiles} slots used, {filesBeingProcessed} files processing");
+
             Console.WriteLine("──────────────────────────────────────────────────────────────");
             Console.WriteLine();
             Console.WriteLine("📝 Instructions:");
@@ -231,6 +256,7 @@ namespace MeetingTranscriptProcessor
             );
             Console.WriteLine("3. Action items will be extracted and Jira tickets created/updated");
             Console.WriteLine("4. Processed files will be archived");
+            Console.WriteLine("5. Up to 3 files can be processed concurrently");
             Console.WriteLine();
             Console.WriteLine("⌨️  Commands:");
             Console.WriteLine("   'status' - Show current status");
@@ -293,53 +319,102 @@ namespace MeetingTranscriptProcessor
         }
 
         /// <summary>
-        /// Handles file detection events
+        /// Handles file detection events with concurrent processing support
         /// </summary>
         private static async void OnFileDetected(object? sender, FileDetectedEventArgs e)
         {
+            // Fire and forget pattern to allow concurrent processing
+            await Task.Run(async () =>
+            {
+                await ProcessFileAsync(e.FilePath, e.FileName);
+            });
+        }
+
+        /// <summary>
+        /// Processes a single file with concurrency control
+        /// </summary>
+        private static async Task ProcessFileAsync(string filePath, string fileName)
+        {
+            // Check if we're shutting down
+            if (_isShuttingDown || _cancellationTokenSource.Token.IsCancellationRequested)
+                return;
+
+            // Check if this file is already being processed
+            if (!_processingFiles.TryAdd(filePath, true))
+            {
+                Console.WriteLine($"⚠️  File already being processed: {fileName}");
+                return;
+            }
+
             try
             {
-                if (_isShuttingDown)
-                    return;
-
-                Console.WriteLine($"\n📄 Processing file: {e.FileName}");
-                Console.WriteLine("──────────────────────────────────────────────────────────────");
-
-                // Process the transcript
-                var transcript = await _transcriptProcessor!.ProcessTranscriptAsync(e.FilePath);
-
-                if (transcript.Status == TranscriptStatus.Error)
+                // Wait for available processing slot
+                if (_processingSemaphore != null)
                 {
-                    Console.WriteLine($"❌ Failed to process transcript: {e.FileName}");
-                    ArchiveFile(e.FilePath, "error");
-                    return;
+                    await _processingSemaphore.WaitAsync(_cancellationTokenSource.Token);
                 }
-
-                // Process action items and create Jira tickets
-                var result = await _jiraTicketService!.ProcessActionItemsAsync(transcript);
-
-                // Display results
-                DisplayProcessingResults(result);
-
-                // Archive the processed file
-                ArchiveFile(e.FilePath, result.Success ? "success" : "error");
-
-                Console.WriteLine("──────────────────────────────────────────────────────────────");
-                Console.WriteLine("🟢 Ready for next file...");
-                Console.Write("> ");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Error processing file {e.FileName}: {ex.Message}");
 
                 try
                 {
-                    ArchiveFile(e.FilePath, "error");
+                    // Double-check if we're still not shutting down
+                    if (_isShuttingDown || _cancellationTokenSource.Token.IsCancellationRequested)
+                        return;
+
+                    Console.WriteLine($"\n📄 Processing file: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})");
+                    Console.WriteLine("──────────────────────────────────────────────────────────────");
+
+                    // Process the transcript
+                    var transcript = await _transcriptProcessor!.ProcessTranscriptAsync(filePath);
+
+                    if (transcript.Status == TranscriptStatus.Error)
+                    {
+                        Console.WriteLine($"❌ Failed to process transcript: {fileName}");
+                        ArchiveFile(filePath, "error");
+                        return;
+                    }
+
+                    // Process action items and create Jira tickets
+                    var result = await _jiraTicketService!.ProcessActionItemsAsync(transcript);
+
+                    // Display results (thread-safe console output)
+                    lock (Console.Out)
+                    {
+                        DisplayProcessingResults(result);
+                        Console.WriteLine("──────────────────────────────────────────────────────────────");
+                        Console.WriteLine($"✅ File processed: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})");
+                        Console.Write("> ");
+                    }
+
+                    // Archive the processed file
+                    ArchiveFile(filePath, result.Success ? "success" : "error");
+                }
+                finally
+                {
+                    // Release the processing slot
+                    _processingSemaphore?.Release();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine($"⚠️  Processing cancelled for file: {fileName}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error processing file {fileName}: {ex.Message}");
+
+                try
+                {
+                    ArchiveFile(filePath, "error");
                 }
                 catch (Exception archiveEx)
                 {
                     Console.WriteLine($"❌ Failed to archive error file: {archiveEx.Message}");
                 }
+            }
+            finally
+            {
+                // Remove from processing dictionary
+                _processingFiles.TryRemove(filePath, out _);
             }
         }
 
@@ -418,6 +493,8 @@ namespace MeetingTranscriptProcessor
             Console.WriteLine("   • Supported formats: .txt, .md, .json, .xml, .docx, .pdf");
             Console.WriteLine("   • Place files in: " + IncomingPath);
             Console.WriteLine("   • Files are automatically processed when detected");
+            Console.WriteLine("   • Up to 3 files can be processed concurrently");
+            Console.WriteLine("   • Duplicate files are automatically handled");
             Console.WriteLine();
             Console.WriteLine("🎫 Jira Integration:");
             Console.WriteLine(
@@ -432,6 +509,13 @@ namespace MeetingTranscriptProcessor
             );
             Console.WriteLine("   • Optional: Set AZURE_OPENAI_DEPLOYMENT_NAME (default: gpt-4)");
             Console.WriteLine("   • Without configuration, uses rule-based extraction");
+            Console.WriteLine();
+            Console.WriteLine("⚡ Concurrency Features:");
+            Console.WriteLine($"   • Parallel processing of up to {_maxConcurrentFiles} files simultaneously");
+            Console.WriteLine("   • Thread-safe console output with thread ID tracking");
+            Console.WriteLine("   • Graceful shutdown waits for ongoing operations");
+            Console.WriteLine("   • Duplicate file detection prevents double processing");
+            Console.WriteLine("   • Configurable via MAX_CONCURRENT_FILES environment variable");
             Console.WriteLine();
             Console.WriteLine("⌨️  Available Commands:");
             Console.WriteLine("   status (s)  - Show system status");
@@ -453,23 +537,52 @@ namespace MeetingTranscriptProcessor
         /// <summary>
         /// Handles Ctrl+C graceful shutdown
         /// </summary>
+        /// <summary>
+        /// Handles Ctrl+C cancellation requests
+        /// </summary>
         private static void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
         {
             e.Cancel = true; // Prevent immediate termination
             _isShuttingDown = true;
+            _cancellationTokenSource.Cancel();
             Console.WriteLine("\n🛑 Shutdown requested. Cleaning up...");
         }
 
         /// <summary>
         /// Cleans up resources on shutdown
         /// </summary>
-        private static Task CleanupAsync()
+        /// <summary>
+        /// Cleanup application resources
+        /// </summary>
+        private static async Task CleanupAsync()
         {
             try
             {
                 Console.WriteLine("🧹 Cleaning up resources...");
 
+                // Signal shutdown and cancel any ongoing operations
+                _isShuttingDown = true;
+                _cancellationTokenSource.Cancel();
+
+                // Stop file watcher first
                 _fileWatcher?.Stop();
+
+                // Wait for any ongoing file processing to complete (with timeout)
+                var waitStart = DateTime.UtcNow;
+                while (_processingFiles.Count > 0 && DateTime.UtcNow - waitStart < TimeSpan.FromSeconds(10))
+                {
+                    Console.WriteLine($"⏳ Waiting for {_processingFiles.Count} file(s) to finish processing...");
+                    await Task.Delay(500);
+                }
+
+                if (_processingFiles.Count > 0)
+                {
+                    Console.WriteLine($"⚠️  Force closing with {_processingFiles.Count} file(s) still processing");
+                }
+
+                // Dispose concurrency resources
+                _processingSemaphore?.Dispose();
+                _cancellationTokenSource?.Dispose();
 
                 // Dispose service provider (this will dispose all registered services)
                 if (_serviceProvider is IDisposable disposableProvider)
@@ -483,8 +596,6 @@ namespace MeetingTranscriptProcessor
             {
                 Console.WriteLine($"⚠️  Error during cleanup: {ex.Message}");
             }
-
-            return Task.CompletedTask;
         }
     }
 }
