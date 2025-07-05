@@ -392,7 +392,10 @@ public class HallucinationDetector : IHallucinationDetector
     /// <summary>
     /// Analyzes action items for hallucination indicators (interface implementation)
     /// </summary>
-    public HallucinationAnalysis AnalyzeActionItems(List<ActionItem> actionItems, MeetingTranscript transcript)
+    public HallucinationAnalysis AnalyzeActionItems(
+        List<ActionItem> actionItems,
+        MeetingTranscript transcript
+    )
     {
         return AnalyzeForHallucinations(actionItems, transcript);
     }
@@ -400,7 +403,11 @@ public class HallucinationDetector : IHallucinationDetector
     /// <summary>
     /// Filters action items to only include high-confidence items
     /// </summary>
-    public List<ActionItem> FilterHighConfidenceItems(List<ActionItem> actionItems, MeetingTranscript transcript, double minConfidence = 0.7)
+    public List<ActionItem> FilterHighConfidenceItems(
+        List<ActionItem> actionItems,
+        MeetingTranscript transcript,
+        double minConfidence = 0.7
+    )
     {
         var analysis = AnalyzeForHallucinations(actionItems, transcript);
 

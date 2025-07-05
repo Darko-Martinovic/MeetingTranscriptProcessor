@@ -484,11 +484,16 @@ Always respond in valid JSON format with the exact structure specified.";
             Language = config.Language,
             ExpectedActionVerbs = config.ValidationRules.ActionVerbs.ToList(),
             ConfidenceThreshold = 0.7,
-            RequireAssignee = config.MeetingType == MeetingType.Standup || config.MeetingType == MeetingType.Incident,
-            RequireDueDate = config.MeetingType == MeetingType.Incident || config.MeetingType == MeetingType.ProjectPlanning,
-            DefaultTimeframe = config.MeetingType == MeetingType.Standup
-                ? TimeSpan.FromDays(1)
-                : TimeSpan.FromDays(7)
+            RequireAssignee =
+                config.MeetingType == MeetingType.Standup
+                || config.MeetingType == MeetingType.Incident,
+            RequireDueDate =
+                config.MeetingType == MeetingType.Incident
+                || config.MeetingType == MeetingType.ProjectPlanning,
+            DefaultTimeframe =
+                config.MeetingType == MeetingType.Standup
+                    ? TimeSpan.FromDays(1)
+                    : TimeSpan.FromDays(7)
         };
     }
 
