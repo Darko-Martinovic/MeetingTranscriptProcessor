@@ -12,6 +12,7 @@ namespace MeetingTranscriptProcessor.Models
         public string Content { get; set; } = string.Empty;
         public List<string> Participants { get; set; } = new();
         public string? ProjectKey { get; set; }
+        public string DetectedLanguage { get; set; } = "en"; // Detected language code (en, fr, nl, etc.)
         public DateTime ProcessedAt { get; set; }
         public string ProcessedBy { get; set; } = "AI Assistant";
         public List<ActionItem> ActionItems { get; set; } = new();

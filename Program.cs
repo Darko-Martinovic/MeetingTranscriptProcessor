@@ -426,7 +426,7 @@ namespace MeetingTranscriptProcessor
                     if (transcript.Status == TranscriptStatus.Error)
                     {
                         Console.WriteLine($"❌ Failed to process transcript: {fileName}");
-                        ArchiveFile(filePath, "error");
+                        ArchiveFile(filePath, "error", transcript.DetectedLanguage);
                         return;
                     }
 
@@ -443,7 +443,7 @@ namespace MeetingTranscriptProcessor
                     }
 
                     // Archive the processed file
-                    ArchiveFile(filePath, result.Success ? "success" : "error");
+                    ArchiveFile(filePath, result.Success ? "success" : "error", transcript.DetectedLanguage);
                 }
                 finally
                 {
@@ -461,7 +461,7 @@ namespace MeetingTranscriptProcessor
 
                 try
                 {
-                    ArchiveFile(filePath, "error");
+                    ArchiveFile(filePath, "error"); // No language info available in error case
                 }
                 catch (Exception archiveEx)
                 {
@@ -510,9 +510,9 @@ namespace MeetingTranscriptProcessor
         }
 
         /// <summary>
-        /// Archives a processed file
+        /// Archives a processed file with language information
         /// </summary>
-        private static void ArchiveFile(string filePath, string status)
+        private static void ArchiveFile(string filePath, string status, string? languageCode = null)
         {
             try
             {
@@ -521,7 +521,10 @@ namespace MeetingTranscriptProcessor
 
                 var fileName = Path.GetFileName(filePath);
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var archivedFileName = $"{timestamp}_{status}_{fileName}";
+
+                // Include language in filename if available
+                var languageInfo = string.IsNullOrEmpty(languageCode) ? "" : $"_{GetLanguageName(languageCode)}";
+                var archivedFileName = $"{timestamp}_{status}{languageInfo}_{fileName}";
                 var archivedPath = Path.Combine(ArchivePath, archivedFileName);
 
                 // Move file to archive
@@ -704,6 +707,23 @@ namespace MeetingTranscriptProcessor
             {
                 Console.WriteLine($"❌ Error displaying validation metrics: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Converts language code to readable name for archiving
+        /// </summary>
+        private static string GetLanguageName(string languageCode)
+        {
+            return languageCode switch
+            {
+                "en" => "English",
+                "fr" => "French",
+                "nl" => "Dutch",
+                "es" => "Spanish",
+                "de" => "German",
+                "pt" => "Portuguese",
+                _ => "Unknown"
+            };
         }
     }
 }

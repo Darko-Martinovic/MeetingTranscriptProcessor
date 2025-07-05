@@ -207,7 +207,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             );
 
             _logger?.LogInformation(
-                $"Extracted metadata - Title: {transcript.Title}, Participants: {transcript.Participants.Count}"
+                $"Extracted metadata - Title: {transcript.Title}, Participants: {transcript.Participants.Count}, Language: {transcript.DetectedLanguage}"
             );
         }
         catch (Exception ex)
@@ -237,12 +237,24 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             {
                 Console.WriteLine("🎯 Using consistency management for context-aware extraction...");
                 consistencyContext = _consistencyManager.CreateConsistencyContext(transcript);
+
+                // Set the detected language on the transcript
+                var extractionConfig = _consistencyManager.CreateExtractionConfiguration(transcript);
+                transcript.DetectedLanguage = extractionConfig.Language;
+                Console.WriteLine($"🌍 Detected language: {GetLanguageName(transcript.DetectedLanguage)} ({transcript.DetectedLanguage})");
+
                 promptToUse = _consistencyManager.GenerateContextualPrompt(transcript, consistencyContext);
                 var optimalParams = _consistencyManager.GetOptimalParameters(consistencyContext);
             }
             else
             {
                 Console.WriteLine("⚠️  Consistency management disabled - using standard prompt");
+
+                // Fallback language detection when consistency management is disabled
+                var extractionConfig = _consistencyManager.CreateExtractionConfiguration(transcript);
+                transcript.DetectedLanguage = extractionConfig.Language;
+                Console.WriteLine($"🌍 Detected language: {GetLanguageName(transcript.DetectedLanguage)} ({transcript.DetectedLanguage})");
+
                 promptToUse = _configService.GetExtractionPrompt(transcript);
             }
 
@@ -774,5 +786,22 @@ Focus on:
         }
 
         return actionItems;
+    }
+
+    /// <summary>
+    /// Converts language code to readable name
+    /// </summary>
+    private static string GetLanguageName(string languageCode)
+    {
+        return languageCode switch
+        {
+            "en" => "English",
+            "fr" => "French",
+            "nl" => "Dutch",
+            "es" => "Spanish",
+            "de" => "German",
+            "pt" => "Portuguese",
+            _ => "Unknown"
+        };
     }
 }
