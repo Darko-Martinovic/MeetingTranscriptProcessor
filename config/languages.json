@@ -1,0 +1,53 @@
+{
+  "englishPatterns": [
+    "the",
+    "and",
+    "is",
+    "to",
+    "in",
+    "that",
+    "have",
+    "for",
+    "not",
+    "with",
+    "he",
+    "as",
+    "you",
+    "do",
+    "at"
+  ],
+  "frenchPatterns": [
+    "le",
+    "de",
+    "et",
+    "être",
+    "à",
+    "il",
+    "avoir",
+    "ne",
+    "je",
+    "son",
+    "que",
+    "se",
+    "qui",
+    "ce",
+    "dans"
+  ],
+  "dutchPatterns": [
+    "de",
+    "het",
+    "een",
+    "en",
+    "van",
+    "in",
+    "te",
+    "dat",
+    "op",
+    "met",
+    "zijn",
+    "voor",
+    "niet",
+    "die",
+    "aan"
+  ]
+}

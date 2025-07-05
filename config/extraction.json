@@ -1,0 +1,99 @@
+{
+  "actionKeywords": [
+    "implement",
+    "create",
+    "fix",
+    "review",
+    "update",
+    "add",
+    "remove",
+    "investigate",
+    "analyze",
+    "setup",
+    "configure",
+    "test",
+    "develop",
+    "build",
+    "deploy",
+    "monitor",
+    "optimize",
+    "refactor",
+    "document"
+  ],
+  "actionPatterns": [
+    "action\\s*item:",
+    "todo:",
+    "follow\\s*up:",
+    "\\[\\s*\\]",
+    "•\\s*({keywords})",
+    "-\\s*({keywords})",
+    "^\\s*\\d+\\.\\s*({keywords})",
+    "({keywords})\\s+",
+    "(will|should|need\\s+to|must)\\s+({keywords})",
+    "create\\s+new\\s+jira\\s+ticket:",
+    "create\\s+jira\\s+ticket:",
+    "new\\s+jira\\s+ticket:",
+    "jira\\s+ticket:",
+    "assigned\\s+to:",
+    "due\\s+date:",
+    "priority:"
+  ],
+  "titlePrefixes": [
+    "^action\\s*item:\\s*",
+    "^todo:\\s*",
+    "^follow\\s*up:\\s*",
+    "^\\[\\s*\\]\\s*",
+    "^[•\\-]\\s*",
+    "^\\d+\\.\\s*",
+    "^create\\s+new\\s+jira\\s+ticket:\\s*",
+    "^create\\s+jira\\s+ticket:\\s*",
+    "^new\\s+jira\\s+ticket:\\s*",
+    "^jira\\s+ticket:\\s*",
+    "^assigned\\s+to:\\s*[^-]+[-:]\\s*",
+    "^priority:\\s*[^-]+[-:]\\s*",
+    "^due\\s+date:\\s*[^-]+[-:]\\s*"
+  ],
+  "bugKeywords": [
+    "bug",
+    "fix",
+    "error",
+    "issue",
+    "problem",
+    "broken",
+    "crash",
+    "failure"
+  ],
+  "investigationKeywords": [
+    "investigate",
+    "research",
+    "analyze",
+    "explore",
+    "study",
+    "examine"
+  ],
+  "documentationKeywords": [
+    "document",
+    "write",
+    "spec",
+    "specification",
+    "manual",
+    "guide",
+    "readme"
+  ],
+  "reviewKeywords": [
+    "review",
+    "check",
+    "validate",
+    "verify",
+    "approve",
+    "audit"
+  ],
+  "storyKeywords": [
+    "story",
+    "feature",
+    "enhancement",
+    "improvement",
+    "requirement"
+  ],
+  "maxTitleLength": 100
+}

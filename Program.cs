@@ -215,6 +215,9 @@ namespace MeetingTranscriptProcessor
             // Register custom logger wrapper
             services.AddSingleton<MeetingTranscriptProcessor.Services.ILogger, ConsoleLogger>();
 
+            // Register configuration service first (other services depend on it)
+            services.AddSingleton<IConfigurationService, ConfigurationService>();
+
             // Register services
             services.AddSingleton<IAzureOpenAIService, AzureOpenAIService>();
             services.AddSingleton<ITranscriptProcessorService, TranscriptProcessorService>();

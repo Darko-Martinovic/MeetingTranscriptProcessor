@@ -8,33 +8,21 @@ namespace MeetingTranscriptProcessor.Services;
 /// </summary>
 public class AzureOpenAIService : IAzureOpenAIService, IDisposable
 {
-    private readonly string? _endpoint;
-    private readonly string? _apiKey;
-    private readonly string? _deploymentName;
+    private readonly IConfigurationService _configService;
     private readonly HttpClient _httpClient;
     private readonly ILogger? _logger;
 
-    public AzureOpenAIService(ILogger? logger = null)
+    public AzureOpenAIService(IConfigurationService configService, ILogger? logger = null)
     {
-        // Load Azure OpenAI configuration from environment variables
-        _endpoint =
-            Environment.GetEnvironmentVariable("AOAI_ENDPOINT")
-            ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT");
-        _apiKey =
-            Environment.GetEnvironmentVariable("AOAI_APIKEY")
-            ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
-        _deploymentName =
-            Environment.GetEnvironmentVariable("CHATCOMPLETION_DEPLOYMENTNAME")
-            ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME")
-            ?? "gpt-4";
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _logger = logger;
-
         _httpClient = new HttpClient();
 
         // Configure HttpClient for Azure OpenAI API if credentials are available
         if (IsConfigured())
         {
-            _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
+            var settings = _configService.GetAzureOpenAISettings();
+            _httpClient.DefaultRequestHeaders.Add("api-key", settings.ApiKey);
             _httpClient.DefaultRequestHeaders.Accept.Add(
                 new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json")
             );
@@ -56,6 +44,7 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
         {
             Console.WriteLine("🤖 Calling Azure OpenAI for transcript analysis...");
 
+            var settings = _configService.GetAzureOpenAISettings();
             var requestBody = new
             {
                 messages = new[]
@@ -63,20 +52,19 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
                     new
                     {
                         role = "system",
-                        content = "You are an expert assistant that analyzes meeting transcripts and extracts actionable items. You respond in valid JSON format."
+                        content = settings.SystemPrompt
                     },
                     new { role = "user", content = prompt }
-                }, //all these values are hard-coded for simplicity, but in reality it would be in a configuration file
-                max_tokens = 4000,
-                temperature = 0.1, // Low temperature for consistent, factual responses
-                top_p = 0.95
+                },
+                max_tokens = settings.MaxTokens,
+                temperature = settings.Temperature,
+                top_p = settings.TopP
             };
 
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var url =
-                $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
+            var url = $"{settings.Endpoint}/openai/deployments/{settings.DeploymentName}/chat/completions?api-version={settings.ApiVersion}";
             var response = await _httpClient.PostAsync(url, content);
 
             if (response.IsSuccessStatusCode)
@@ -176,6 +164,7 @@ Rules:
 5. Choose appropriate type based on the action needed
 ";
 
+            var settings = _configService.GetAzureOpenAISettings();
             var requestBody = new
             {
                 messages = new[]
@@ -195,8 +184,7 @@ Rules:
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var url =
-                $"{_endpoint}/openai/deployments/{_deploymentName}/chat/completions?api-version=2024-02-15-preview";
+            var url = $"{settings.Endpoint}/openai/deployments/{settings.DeploymentName}/chat/completions?api-version={settings.ApiVersion}";
             var response = await _httpClient.PostAsync(url, content);
 
             if (response.IsSuccessStatusCode)
@@ -254,9 +242,10 @@ Rules:
     /// </summary>
     public bool IsConfigured()
     {
-        return !string.IsNullOrEmpty(_endpoint)
-            && !string.IsNullOrEmpty(_apiKey)
-            && !string.IsNullOrEmpty(_deploymentName);
+        var settings = _configService.GetAzureOpenAISettings();
+        return !string.IsNullOrEmpty(settings.Endpoint)
+            && !string.IsNullOrEmpty(settings.ApiKey)
+            && !string.IsNullOrEmpty(settings.DeploymentName);
     }
 
     /// <summary>

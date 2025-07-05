@@ -13,6 +13,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     private readonly IActionItemValidator _validator;
     private readonly IHallucinationDetector _hallucinationDetector;
     private readonly IConsistencyManager _consistencyManager;
+    private readonly IConfigurationService _configService;
     private readonly ILogger? _logger;
 
     // Validation service control settings - loaded from environment
@@ -26,12 +27,14 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         IActionItemValidator validator,
         IHallucinationDetector hallucinationDetector,
         IConsistencyManager consistencyManager,
+        IConfigurationService configService,
         ILogger? logger = null)
     {
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _hallucinationDetector = hallucinationDetector ?? throw new ArgumentNullException(nameof(hallucinationDetector));
         _consistencyManager = consistencyManager ?? throw new ArgumentNullException(nameof(consistencyManager));
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _logger = logger;
 
         // Load validation settings from environment variables
@@ -199,7 +202,8 @@ public class TranscriptProcessorService : ITranscriptProcessorService
 
             // Extract project key from filename or content
             transcript.ProjectKey = ExtractProjectKey(
-                transcript.FileName + " " + transcript.Content
+                transcript.FileName,
+                transcript.Content
             );
 
             _logger?.LogInformation(
@@ -239,7 +243,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             else
             {
                 Console.WriteLine("⚠️  Consistency management disabled - using standard prompt");
-                promptToUse = CreateActionItemExtractionPrompt(transcript);
+                promptToUse = _configService.GetExtractionPrompt(transcript);
             }
 
             // 2. Extract action items with AI using chosen prompt
@@ -475,19 +479,20 @@ Focus on:
     /// <summary>
     /// Fallback method to extract action items using rule-based approach
     /// </summary>
-    private static List<ActionItem> ExtractActionItemsWithRules(MeetingTranscript transcript)
+    private List<ActionItem> ExtractActionItemsWithRules(MeetingTranscript transcript)
     {
         var actionItems = new List<ActionItem>();
         var lines = transcript.Content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var extractionSettings = _configService.GetExtractionSettings();
 
         foreach (var line in lines)
         {
             var trimmedLine = line.Trim();
 
-            // Look for action item patterns
-            if (IsActionItemLine(trimmedLine))
+            // Look for action item patterns using configurable settings
+            if (IsActionItemLine(trimmedLine, extractionSettings))
             {
-                var actionItem = CreateActionItemFromLine(trimmedLine, transcript);
+                var actionItem = CreateActionItemFromLine(trimmedLine, transcript, extractionSettings);
                 if (actionItem != null)
                 {
                     actionItems.Add(actionItem);
@@ -499,53 +504,40 @@ Focus on:
     }
 
     /// <summary>
-    /// Checks if a line contains an action item
+    /// Checks if a line contains an action item using configurable patterns
     /// </summary>
-    private static bool IsActionItemLine(string line)
+    private static bool IsActionItemLine(string line, ExtractionSettings settings)
     {
-        var actionPatterns = new[]
-        {
-            @"action\s*item:",
-            @"todo:",
-            @"follow\s*up:",
-            @"\[\s*\]", // Checkbox
-            @"•\s*(implement|create|fix|review|update|add|remove|investigate|analyze|setup|configure|test)",
-            @"-\s*(implement|create|fix|review|update|add|remove|investigate|analyze|setup|configure|test)",
-            @"^\s*\d+\.\s*(implement|create|fix|review|update|add|remove|investigate|analyze|setup|configure|test)",
-            @"(implement|create|fix|review|update|add|remove|investigate|analyze|setup|configure|test)\s+",
-            @"(will|should|need\s+to|must)\s+(implement|create|fix|review|update|add|remove|investigate|analyze|setup|configure|test)",
-            @"create\s+new\s+jira\s+ticket:",
-            @"create\s+jira\s+ticket:",
-            @"new\s+jira\s+ticket:",
-            @"jira\s+ticket:",
-            @"assigned\s+to:",
-            @"due\s+date:",
-            @"priority:"
-        };
+        // Replace {keywords} placeholder in patterns with actual keywords
+        var keywordsPattern = string.Join("|", settings.ActionKeywords.Select(Regex.Escape));
+        var actionPatterns = settings.ActionPatterns
+            .Select(pattern => pattern.Replace("{keywords}", keywordsPattern))
+            .ToArray();
 
         return actionPatterns.Any(pattern => Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase));
     }
 
     /// <summary>
-    /// Creates an action item from a line of text
+    /// Creates an action item from a line of text using configurable settings
     /// </summary>
-    private static ActionItem? CreateActionItemFromLine(string line, MeetingTranscript transcript)
+    private static ActionItem? CreateActionItemFromLine(string line, MeetingTranscript transcript, ExtractionSettings settings)
     {
         try
         {
             // Clean up the line and remove common prefixes
-            var cleanLine = CleanActionItemTitle(line);
+            var cleanLine = CleanActionItemTitle(line, settings);
             if (string.IsNullOrEmpty(cleanLine))
                 return null;
 
+            var maxLength = settings.MaxTitleLength;
             return new ActionItem
             {
-                Title = cleanLine.Length > 100 ? cleanLine.Substring(0, 100) + "..." : cleanLine,
+                Title = cleanLine.Length > maxLength ? cleanLine.Substring(0, maxLength) + "..." : cleanLine,
                 Description = cleanLine,
                 Context = line,
                 ProjectKey = transcript.ProjectKey,
                 Priority = ActionItemPriority.Medium,
-                Type = DetermineActionItemType(cleanLine)
+                Type = DetermineActionItemType(cleanLine, settings)
             };
         }
         catch
@@ -555,33 +547,24 @@ Focus on:
     }
 
     /// <summary>
-    /// Cleans up action item title by removing prefixes and formatting
+    /// Legacy method for backward compatibility - delegates to configurable version
     /// </summary>
     private static string CleanActionItemTitle(string line)
     {
-        // Remove common action item prefixes and markers
+        // Use default extraction settings for backward compatibility
+        var defaultSettings = new ExtractionSettings();
+        return CleanActionItemTitle(line, defaultSettings);
+    }
+
+    /// <summary>
+    /// Cleans up action item title by removing prefixes and formatting using configurable patterns
+    /// </summary>
+    private static string CleanActionItemTitle(string line, ExtractionSettings settings)
+    {
         var cleanLine = line.Trim();
 
-        // Remove numbered lists, bullets, checkboxes
-        cleanLine = Regex.Replace(cleanLine, @"^[-•\[\]\s\d+\.]+", "").Trim();
-
-        // Remove common action item prefixes
-        var prefixPatterns = new[]
-        {
-            @"^action\s*item:\s*",
-            @"^todo:\s*",
-            @"^follow\s*up:\s*",
-            @"^create\s+new\s+jira\s+ticket:\s*",
-            @"^create\s+jira\s+ticket:\s*",
-            @"^new\s+jira\s+ticket:\s*",
-            @"^jira\s+ticket:\s*",
-            @"^task:\s*",
-            @"^assigned\s+to:\s*[^-]+[-:]\s*",
-            @"^priority:\s*[^-]+[-:]\s*",
-            @"^due\s+date:\s*[^-]+[-:]\s*"
-        };
-
-        foreach (var pattern in prefixPatterns)
+        // Remove common prefixes using configurable patterns
+        foreach (var pattern in settings.TitlePrefixes)
         {
             cleanLine = Regex.Replace(cleanLine, pattern, "", RegexOptions.IgnoreCase).Trim();
         }
@@ -596,100 +579,79 @@ Focus on:
     }
 
     /// <summary>
-    /// Determines action item type based on content
+    /// Legacy method for backward compatibility - delegates to configurable version
     /// </summary>
     private static ActionItemType DetermineActionItemType(string content)
     {
+        // Use default extraction settings for backward compatibility
+        var defaultSettings = new ExtractionSettings();
+        return DetermineActionItemType(content, defaultSettings);
+    }
+
+    /// <summary>
+    /// Determines action item type based on content using configurable keywords
+    /// </summary>
+    private static ActionItemType DetermineActionItemType(string content, ExtractionSettings settings)
+    {
         var lowerContent = content.ToLowerInvariant();
 
-        if (
-            lowerContent.Contains("bug")
-            || lowerContent.Contains("fix")
-            || lowerContent.Contains("error")
-        )
+        if (settings.BugKeywords.Any(keyword => lowerContent.Contains(keyword)))
             return ActionItemType.Bug;
 
-        if (lowerContent.Contains("investigate") || lowerContent.Contains("research"))
+        if (settings.InvestigationKeywords.Any(keyword => lowerContent.Contains(keyword)))
             return ActionItemType.Investigation;
 
-        if (
-            lowerContent.Contains("document")
-            || lowerContent.Contains("write")
-            || lowerContent.Contains("spec")
-        )
+        if (settings.DocumentationKeywords.Any(keyword => lowerContent.Contains(keyword)))
             return ActionItemType.Documentation;
 
-        if (lowerContent.Contains("review") || lowerContent.Contains("check"))
+        if (settings.ReviewKeywords.Any(keyword => lowerContent.Contains(keyword)))
             return ActionItemType.Review;
 
-        if (lowerContent.Contains("story") || lowerContent.Contains("feature"))
+        if (settings.StoryKeywords.Any(keyword => lowerContent.Contains(keyword)))
             return ActionItemType.Story;
 
         return ActionItemType.Task;
     }
 
     /// <summary>
-    /// Parses action items from plain text AI response
+    /// Legacy wrapper for backward compatibility
     /// </summary>
-    private static List<ActionItem> ParseActionItemsFromText(
-        string text,
-        MeetingTranscript transcript
-    )
+    private static ActionItem? CreateActionItemFromLine(string line, MeetingTranscript transcript)
     {
-        // Simple text-based parsing as fallback
-        var actionItems = new List<ActionItem>();
-        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var line in lines)
-        {
-            if (IsActionItemLine(line))
-            {
-                var actionItem = CreateActionItemFromLine(line, transcript);
-                if (actionItem != null)
-                {
-                    actionItems.Add(actionItem);
-                }
-            }
-        }
-
-        return actionItems;
+        var defaultSettings = new ExtractionSettings();
+        return CreateActionItemFromLine(line, transcript, defaultSettings);
     }
 
     /// <summary>
-    /// Applies business rules to filter and prioritize action items
+    /// Extracts title from content
     /// </summary>
-    private static List<ActionItem> ApplyBusinessRules(List<ActionItem> actionItems)
-    {
-        return actionItems
-            .Where(item => !string.IsNullOrWhiteSpace(item.Title))
-            .Where(item => item.Title.Length >= 10) // Minimum meaningful length
-            .GroupBy(item => item.Title.ToLowerInvariant())
-            .Select(group => group.First()) // Remove duplicates
-            .OrderByDescending(item => item.Priority)
-            .ThenBy(item => item.DueDate ?? DateTime.MaxValue)
-            .ToList();
-    }
-
-    #region Helper Methods
-
     private static string? ExtractTitle(string firstLine)
     {
-        // Remove common prefixes and clean up
-        var title = Regex
-            .Replace(firstLine, @"^(meeting|transcript|notes?):\s*", "", RegexOptions.IgnoreCase)
-            .Trim();
+        // Remove common prefixes and return clean title
+        var title = firstLine.Trim();
+        if (string.IsNullOrEmpty(title)) return null;
+
+        // Remove markdown headers
+        title = title.TrimStart('#').Trim();
+
+        // Remove common meeting prefixes
+        title = Regex.Replace(title, @"^(meeting|call|standup|sync):\s*", "", RegexOptions.IgnoreCase);
+
         return string.IsNullOrEmpty(title) ? null : title;
     }
 
+    /// <summary>
+    /// Extracts meeting date from content
+    /// </summary>
     private static DateTime? ExtractMeetingDate(string content)
     {
-        // Look for date patterns
+        // Look for date patterns in content
         var datePatterns = new[]
         {
             @"date:\s*(\d{4}-\d{2}-\d{2})",
             @"(\d{1,2}/\d{1,2}/\d{4})",
             @"(\d{4}-\d{2}-\d{2})",
-            @"(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}"
+            @"(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}"
         };
 
         foreach (var pattern in datePatterns)
@@ -704,11 +666,14 @@ Focus on:
         return null;
     }
 
+    /// <summary>
+    /// Extracts participants from content
+    /// </summary>
     private static List<string> ExtractParticipants(string content)
     {
         var participants = new List<string>();
 
-        // Look for participant lists
+        // Look for participant patterns
         var participantPatterns = new[]
         {
             @"participants?:\s*([^\n]+)",
@@ -721,34 +686,93 @@ Focus on:
             var match = Regex.Match(content, pattern, RegexOptions.IgnoreCase);
             if (match.Success)
             {
-                var names = match.Groups[1].Value
-                    .Split(new[] { ',', ';', '&', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(name => name.Trim())
-                    .Where(name => !string.IsNullOrEmpty(name))
-                    .ToList();
-
-                participants.AddRange(names);
+                var participantList = match.Groups[1].Value;
+                participants.AddRange(participantList.Split(',', ';')
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrEmpty(p)));
                 break;
             }
+        }
+
+        // If no explicit participants found, look for speaker names
+        if (!participants.Any())
+        {
+            var speakerMatches = Regex.Matches(content, @"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*):", RegexOptions.Multiline);
+            participants.AddRange(speakerMatches.Cast<Match>()
+                .Select(m => m.Groups[1].Value.Trim())
+                .Distinct()
+                .Take(10)); // Limit to reasonable number
         }
 
         return participants.Distinct().ToList();
     }
 
-    private static string? ExtractProjectKey(string text)
+    /// <summary>
+    /// Extracts project key from content
+    /// </summary>
+    private static string ExtractProjectKey(string fileName, string content)
     {
-        // Look for Jira project keys
-        var pattern = @"\b([A-Z]{2,10})-\d+\b";
-        var match = Regex.Match(text, pattern);
-
-        if (match.Success)
+        // Look for project key patterns
+        var projectPatterns = new[]
         {
-            // Extract just the project part (e.g., "OPS" from "OPS-123")
-            return match.Groups[1].Value;
+            @"project:\s*([A-Z]{2,10})",
+            @"project[_\s]key:\s*([A-Z]{2,10})",
+            @"\b([A-Z]{2,10})-\d+\b"
+        };
+
+        foreach (var pattern in projectPatterns)
+        {
+            var match = Regex.Match(content, pattern, RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                return match.Groups[1].Value.ToUpperInvariant();
+            }
         }
 
-        return null;
+        // Try to extract from filename
+        var fileMatch = Regex.Match(fileName, @"([A-Z]{2,10})");
+        if (fileMatch.Success)
+        {
+            return fileMatch.Groups[1].Value.ToUpperInvariant();
+        }
+
+        return "TASK"; // Default project key
     }
 
-    #endregion
+    /// <summary>
+    /// Applies business rules to filter and prioritize action items
+    /// </summary>
+    private static List<ActionItem> ApplyBusinessRules(List<ActionItem> actionItems)
+    {
+        return actionItems
+            .Where(item => !string.IsNullOrWhiteSpace(item.Title))
+            .Where(item => item.Title.Length >= 5) // Minimum meaningful length
+            .OrderByDescending(item => item.Priority)
+            .ThenBy(item => item.Title)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Parses action items from plain text AI response
+    /// </summary>
+    private static List<ActionItem> ParseActionItemsFromText(string text, MeetingTranscript transcript)
+    {
+        var actionItems = new List<ActionItem>();
+        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var defaultSettings = new ExtractionSettings();
+
+        foreach (var line in lines)
+        {
+            if (IsActionItemLine(line, defaultSettings))
+            {
+                var actionItem = CreateActionItemFromLine(line, transcript, defaultSettings);
+                if (actionItem != null)
+                {
+                    actionItems.Add(actionItem);
+                }
+            }
+        }
+
+        return actionItems;
+    }
 }

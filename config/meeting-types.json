@@ -1,0 +1,54 @@
+{
+  "standupPatterns": [
+    "standup",
+    "daily",
+    "scrum",
+    "yesterday",
+    "today",
+    "blockers",
+    "impediments"
+  ],
+  "sprintPatterns": [
+    "sprint",
+    "retrospective",
+    "retro",
+    "planning",
+    "backlog",
+    "velocity",
+    "burndown"
+  ],
+  "architecturePatterns": [
+    "architecture",
+    "design",
+    "technical",
+    "system",
+    "infrastructure",
+    "platform"
+  ],
+  "projectPatterns": [
+    "project",
+    "milestone",
+    "deadline",
+    "timeline",
+    "roadmap",
+    "status"
+  ],
+  "oneOnOnePatterns": [
+    "1:1",
+    "one-on-one",
+    "performance",
+    "feedback",
+    "career",
+    "growth"
+  ],
+  "allHandsPatterns": [
+    "all-hands",
+    "company",
+    "quarterly",
+    "announcement",
+    "update",
+    "townhall"
+  ],
+  "oneOnOneMaxParticipants": 2,
+  "standupMaxContentLength": 1000
+}
