@@ -31,6 +31,14 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             ?? "TASK";
         _logger = logger;
 
+        // Debug output for JIRA configuration
+        Console.WriteLine("🔍 JIRA Configuration Debug:");
+        Console.WriteLine($"   JIRA_URL: {(!string.IsNullOrWhiteSpace(_jiraBaseUrl) ? "✓ Set" : "❌ Missing")} = '{_jiraBaseUrl}'");
+        Console.WriteLine($"   JIRA_API_TOKEN: {(!string.IsNullOrWhiteSpace(_jiraApiToken) ? "✓ Set" : "❌ Missing")} = '{(_jiraApiToken?.Length > 10 ? _jiraApiToken[..10] + "..." : _jiraApiToken)}'");
+        Console.WriteLine($"   JIRA_EMAIL: {(!string.IsNullOrWhiteSpace(_jiraUserEmail) ? "✓ Set" : "❌ Missing")} = '{_jiraUserEmail}'");
+        Console.WriteLine($"   JIRA_PROJECT_KEY: {_defaultProjectKey} (env: '{Environment.GetEnvironmentVariable("JIRA_PROJECT_KEY")}')");
+        Console.WriteLine($"   IsJiraConfigured: {IsJiraConfigured()}");
+
         _httpClient = new HttpClient();
 
         // Configure HttpClient for Jira API if credentials are available
@@ -44,6 +52,11 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             _httpClient.DefaultRequestHeaders.Accept.Add(
                 new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json")
             );
+            Console.WriteLine("✅ JIRA HTTP client configured for real API calls");
+        }
+        else
+        {
+            Console.WriteLine("⚠️  JIRA not configured - will use simulation mode");
         }
     }
 
@@ -181,6 +194,17 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var url = $"{_jiraBaseUrl}/rest/api/3/issue";
+
+            Console.WriteLine("═══════ JIRA TICKET CREATION DEBUG ═══════");
+            Console.WriteLine($"🔍 Making JIRA API call:");
+            Console.WriteLine($"   URL: {url}");
+            Console.WriteLine($"   Project Key: {projectKey}");
+            Console.WriteLine($"   Action Item ProjectKey: {actionItem.ProjectKey}");
+            Console.WriteLine($"   Transcript ProjectKey: {transcript.ProjectKey}");
+            Console.WriteLine($"   Default ProjectKey: {_defaultProjectKey}");
+            Console.WriteLine($"   Title: {formattedTicket.Title}");
+            Console.WriteLine("═══════════════════════════════════════════");
+
             var response = await _httpClient.PostAsync(url, content);
 
             if (response.IsSuccessStatusCode)
@@ -213,6 +237,10 @@ public class JiraTicketService : IJiraTicketService, IDisposable
                 errorContent
             );
 
+            Console.WriteLine($"❌ JIRA API Error: {response.StatusCode}");
+            Console.WriteLine($"   Response: {errorContent}");
+            Console.WriteLine("   Falling back to simulation mode");
+
             // Fallback to simulation
             return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created);
         }
@@ -222,6 +250,8 @@ public class JiraTicketService : IJiraTicketService, IDisposable
                 ex,
                 $"Error creating Jira ticket for action item: {actionItem.Title}"
             );
+            Console.WriteLine($"❌ Exception creating JIRA ticket: {ex.Message}");
+            Console.WriteLine("   Falling back to simulation mode");
             return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created);
         }
     }

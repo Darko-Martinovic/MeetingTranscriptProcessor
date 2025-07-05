@@ -203,7 +203,8 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             // Extract project key from filename or content
             transcript.ProjectKey = ExtractProjectKey(
                 transcript.FileName,
-                transcript.Content
+                transcript.Content,
+                Environment.GetEnvironmentVariable("JIRA_PROJECT_KEY")
             );
 
             _logger?.LogInformation(
@@ -722,7 +723,7 @@ Focus on:
     /// <summary>
     /// Extracts project key from content
     /// </summary>
-    private static string ExtractProjectKey(string fileName, string content)
+    private static string ExtractProjectKey(string fileName, string content, string? defaultProjectKey = null)
     {
         // Look for project key patterns
         var projectPatterns = new[]
@@ -748,7 +749,8 @@ Focus on:
             return fileMatch.Groups[1].Value.ToUpperInvariant();
         }
 
-        return "TASK"; // Default project key
+        // Use provided default or fallback to TASK
+        return defaultProjectKey ?? Environment.GetEnvironmentVariable("JIRA_PROJECT_KEY") ?? "TASK";
     }
 
     /// <summary>
