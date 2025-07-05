@@ -6,7 +6,7 @@ namespace MeetingTranscriptProcessor.Services;
 /// <summary>
 /// Service for processing transcript content using Azure OpenAI
 /// </summary>
-public class AzureOpenAIService : IDisposable
+public class AzureOpenAIService : IAzureOpenAIService, IDisposable
 {
     private readonly string? _endpoint;
     private readonly string? _apiKey;

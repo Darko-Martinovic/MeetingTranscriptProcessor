@@ -7,12 +7,12 @@ namespace MeetingTranscriptProcessor.Services;
 /// <summary>
 /// Service for parsing and analyzing meeting transcripts to extract action items
 /// </summary>
-public class TranscriptProcessorService
+public class TranscriptProcessorService : ITranscriptProcessorService
 {
-    private readonly AzureOpenAIService _aiService;
+    private readonly IAzureOpenAIService _aiService;
     private readonly ILogger? _logger;
 
-    public TranscriptProcessorService(AzureOpenAIService aiService, ILogger? logger = null)
+    public TranscriptProcessorService(IAzureOpenAIService aiService, ILogger? logger = null)
     {
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _logger = logger;

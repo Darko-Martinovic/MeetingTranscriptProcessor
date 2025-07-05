@@ -5,7 +5,7 @@ namespace MeetingTranscriptProcessor.Services;
 /// <summary>
 /// Service for monitoring the incoming directory for new transcript files
 /// </summary>
-public class FileWatcherService : IDisposable
+public class FileWatcherService : IFileWatcherService, IDisposable
 {
     private readonly FileSystemWatcher _watcher;
     private readonly string _incomingPath;

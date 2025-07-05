@@ -1,6 +1,9 @@
 ﻿using MeetingTranscriptProcessor.Services;
 using MeetingTranscriptProcessor.Models;
 using DotNetEnv;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace MeetingTranscriptProcessor
 {
@@ -9,11 +12,10 @@ namespace MeetingTranscriptProcessor
     /// </summary>
     internal class Program
     {
-        private static FileWatcherService? _fileWatcher;
-        private static TranscriptProcessorService? _transcriptProcessor;
-        private static JiraTicketService? _jiraTicketService;
-        private static AzureOpenAIService? _azureOpenAIService;
-        private static ConsoleLogger? _logger;
+        private static IServiceProvider? _serviceProvider;
+        private static IFileWatcherService? _fileWatcher;
+        private static ITranscriptProcessorService? _transcriptProcessor;
+        private static IJiraTicketService? _jiraTicketService;
         private static bool _isShuttingDown = false;
 
         // Directory paths - will be updated after loading environment
@@ -150,20 +152,31 @@ namespace MeetingTranscriptProcessor
             Directory.CreateDirectory(ProcessingPath);
             Directory.CreateDirectory(ArchivePath);
 
-            // Initialize logger
-            _logger = new ConsoleLogger();
+            // Configure dependency injection
+            var services = new ServiceCollection();
 
-            // Initialize Azure OpenAI service
-            _azureOpenAIService = new AzureOpenAIService(_logger);
+            // Add logging
+            services.AddLogging(builder => builder.AddConsole());
 
-            // Initialize transcript processor
-            _transcriptProcessor = new TranscriptProcessorService(_azureOpenAIService, _logger);
+            // Register custom logger wrapper
+            services.AddSingleton<MeetingTranscriptProcessor.Services.ILogger, ConsoleLogger>();
 
-            // Initialize Jira ticket service
-            _jiraTicketService = new JiraTicketService(_azureOpenAIService, _logger);
+            // Register services
+            services.AddSingleton<IAzureOpenAIService, AzureOpenAIService>();
+            services.AddSingleton<ITranscriptProcessorService, TranscriptProcessorService>();
+            services.AddSingleton<IJiraTicketService, JiraTicketService>();
+            services.AddSingleton<IFileWatcherService>(provider =>
+                new FileWatcherService(IncomingPath, ProcessingPath, provider.GetService<MeetingTranscriptProcessor.Services.ILogger>()));
 
-            // Initialize file watcher
-            _fileWatcher = new FileWatcherService(IncomingPath, ProcessingPath, _logger);
+            // Build service provider
+            _serviceProvider = services.BuildServiceProvider();
+
+            // Get services
+            _fileWatcher = _serviceProvider.GetRequiredService<IFileWatcherService>();
+            _transcriptProcessor = _serviceProvider.GetRequiredService<ITranscriptProcessorService>();
+            _jiraTicketService = _serviceProvider.GetRequiredService<IJiraTicketService>();
+
+            // Setup event handlers
             _fileWatcher.FileDetected += OnFileDetected;
 
             Console.WriteLine("✅ Services initialized successfully");
@@ -201,7 +214,7 @@ namespace MeetingTranscriptProcessor
 
             // Service status
             Console.WriteLine(
-                $"🤖 Azure OpenAI: {(_azureOpenAIService?.IsConfigured() == true ? "✅ Configured" : "⚠️  Not configured (using fallback)")}"
+                $"🤖 Azure OpenAI: {(_serviceProvider?.GetService<IAzureOpenAIService>()?.IsConfigured() == true ? "✅ Configured" : "⚠️  Not configured (using fallback)")}"
             );
             Console.WriteLine(
                 $"🎫 Jira Integration: {(IsJiraConfigured() ? "✅ Configured" : "⚠️  Not configured (simulation mode)")}"
@@ -457,15 +470,18 @@ namespace MeetingTranscriptProcessor
                 Console.WriteLine("🧹 Cleaning up resources...");
 
                 _fileWatcher?.Stop();
-                _fileWatcher?.Dispose();
-                _azureOpenAIService?.Dispose();
-                _jiraTicketService?.Dispose();
+
+                // Dispose service provider (this will dispose all registered services)
+                if (_serviceProvider is IDisposable disposableProvider)
+                {
+                    disposableProvider.Dispose();
+                }
 
                 Console.WriteLine("✅ Cleanup completed");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️  Warning during cleanup: {ex.Message}");
+                Console.WriteLine($"⚠️  Error during cleanup: {ex.Message}");
             }
 
             return Task.CompletedTask;

@@ -7,7 +7,7 @@ namespace MeetingTranscriptProcessor.Services;
 /// <summary>
 /// Service for creating and updating Jira tickets from action items
 /// </summary>
-public class JiraTicketService : IDisposable
+public class JiraTicketService : IJiraTicketService, IDisposable
 {
     private readonly string? _jiraBaseUrl;
     private readonly string? _jiraApiToken;
@@ -15,9 +15,9 @@ public class JiraTicketService : IDisposable
     private readonly string? _defaultProjectKey;
     private readonly HttpClient _httpClient;
     private readonly ILogger? _logger;
-    private readonly AzureOpenAIService _aiService;
+    private readonly IAzureOpenAIService _aiService;
 
-    public JiraTicketService(AzureOpenAIService aiService, ILogger? logger = null)
+    public JiraTicketService(IAzureOpenAIService aiService, ILogger? logger = null)
     {
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
 
