@@ -6,10 +6,14 @@ An intelligent application that automatically processes meeting transcripts and 
 
 - 📄 **Multi-format Support**: Processes .txt, .md, .json, .xml, .docx, and .pdf files
 - 🤖 **AI-Powered Extraction**: Uses Azure OpenAI to intelligently extract action items
+- 🔍 **AI/ML Validation**: Cross-validation, hallucination detection, and consistency management
+- 🎯 **Context-Aware Processing**: Adapts extraction based on meeting type and language
 - 🎫 **Jira Integration**: Automatically creates and updates Jira tickets
 - 📁 **File Monitoring**: Watches for new files and processes them automatically
+- ⚡ **Concurrent Processing**: Handles multiple files simultaneously with configurable limits
 - 🔄 **Fallback Processing**: Works without AI configuration using rule-based extraction
 - 📦 **Auto-Archiving**: Archives processed files with timestamps and status
+- 🎛️ **Runtime Configuration**: All AI/ML features can be toggled via environment variables
 
 ## Quick Start
 
@@ -126,6 +130,12 @@ File Detection → Transcript Processing → Action Item Extraction → Jira Tic
 - **AzureOpenAIService**: Processes content using Azure OpenAI for intelligent extraction
 - **JiraTicketService**: Creates and updates Jira tickets from action items
 
+### AI/ML Validation Services
+
+- **ActionItemValidator**: Cross-validates AI extraction against rule-based results
+- **HallucinationDetector**: Analyzes extracted items for AI hallucinations
+- **ConsistencyManager**: Ensures consistent extraction across meeting types and languages
+
 ### Models
 
 - **MeetingTranscript**: Meeting metadata and content
@@ -163,14 +173,63 @@ File Detection → Transcript Processing → Action Item Extraction → Jira Tic
 | `ARCHIVE_DIRECTORY`    | Directory for processed files               | No       | Data\Archive    |
 | `PROCESSING_DIRECTORY` | Temporary directory during processing       | No       | Data\Processing |
 
+### AI/ML Validation and Reliability Settings
+
+| Variable                       | Description                                           | Required | Default Value |
+| ------------------------------ | ----------------------------------------------------- | -------- | ------------- |
+| `ENABLE_VALIDATION`            | Enable cross-validation between AI and rule-based extraction | No   | true          |
+| `ENABLE_HALLUCINATION_DETECTION` | Enable detection of AI hallucinations in extracted items | No   | true          |
+| `ENABLE_CONSISTENCY_MANAGEMENT`  | Enable context-aware extraction based on meeting type | No   | true          |
+| `VALIDATION_CONFIDENCE_THRESHOLD` | Minimum confidence score for action items (0.0-1.0) | No   | 0.5           |
+
+### Concurrency Settings
+
+| Variable             | Description                                       | Required | Default Value |
+| -------------------- | ------------------------------------------------- | -------- | ------------- |
+| `MAX_CONCURRENT_FILES` | Maximum number of files to process simultaneously | No     | 3             |
+
 ## Commands
 
 While the application is running, you can use these commands:
 
 - `status` or `s` - Show current system status
+- `metrics` or `m` - Show AI validation metrics
 - `help` or `h` - Show help information
 - `quit` or `q` - Exit the application
 - `Ctrl+C` - Graceful shutdown
+
+## AI/ML Validation and Reliability
+
+The application includes enterprise-grade AI/ML validation features that can be toggled on/off via environment variables:
+
+### Cross-Validation (`ENABLE_VALIDATION`)
+- Compares AI-extracted action items with rule-based extraction
+- Detects potential false positives and false negatives
+- Provides confidence scoring for extracted items
+- Tracks validation metrics over time
+
+### Hallucination Detection (`ENABLE_HALLUCINATION_DETECTION`)
+- Analyzes extracted action items for AI hallucinations
+- Validates context snippets exist in the original transcript
+- Checks assignee names against meeting participants
+- Filters out items with low confidence scores
+
+### Consistency Management (`ENABLE_CONSISTENCY_MANAGEMENT`)
+- Automatically detects meeting type (standup, sprint, architecture, etc.)
+- Adapts extraction prompts based on meeting context
+- Supports multi-language transcript processing
+- Optimizes AI parameters for different meeting types
+
+### Runtime Toggles
+Set any of these to `false` in your `.env` file to disable temporarily:
+```env
+ENABLE_VALIDATION=false              # Disable cross-validation
+ENABLE_HALLUCINATION_DETECTION=false # Disable hallucination detection
+ENABLE_CONSISTENCY_MANAGEMENT=false  # Disable context-aware processing
+VALIDATION_CONFIDENCE_THRESHOLD=0.3  # Lower threshold for more permissive filtering
+```
+
+Use the `metrics` command while the application is running to monitor validation statistics in real-time.
 
 ## Troubleshooting
 
