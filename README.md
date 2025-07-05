@@ -175,18 +175,18 @@ File Detection → Transcript Processing → Action Item Extraction → Jira Tic
 
 ### AI/ML Validation and Reliability Settings
 
-| Variable                       | Description                                           | Required | Default Value |
-| ------------------------------ | ----------------------------------------------------- | -------- | ------------- |
-| `ENABLE_VALIDATION`            | Enable cross-validation between AI and rule-based extraction | No   | true          |
-| `ENABLE_HALLUCINATION_DETECTION` | Enable detection of AI hallucinations in extracted items | No   | true          |
-| `ENABLE_CONSISTENCY_MANAGEMENT`  | Enable context-aware extraction based on meeting type | No   | true          |
-| `VALIDATION_CONFIDENCE_THRESHOLD` | Minimum confidence score for action items (0.0-1.0) | No   | 0.5           |
+| Variable                          | Description                                                  | Required | Default Value |
+| --------------------------------- | ------------------------------------------------------------ | -------- | ------------- |
+| `ENABLE_VALIDATION`               | Enable cross-validation between AI and rule-based extraction | No       | true          |
+| `ENABLE_HALLUCINATION_DETECTION`  | Enable detection of AI hallucinations in extracted items     | No       | true          |
+| `ENABLE_CONSISTENCY_MANAGEMENT`   | Enable context-aware extraction based on meeting type        | No       | true          |
+| `VALIDATION_CONFIDENCE_THRESHOLD` | Minimum confidence score for action items (0.0-1.0)          | No       | 0.5           |
 
 ### Concurrency Settings
 
-| Variable             | Description                                       | Required | Default Value |
-| -------------------- | ------------------------------------------------- | -------- | ------------- |
-| `MAX_CONCURRENT_FILES` | Maximum number of files to process simultaneously | No     | 3             |
+| Variable               | Description                                       | Required | Default Value |
+| ---------------------- | ------------------------------------------------- | -------- | ------------- |
+| `MAX_CONCURRENT_FILES` | Maximum number of files to process simultaneously | No       | 3             |
 
 ## Commands
 
@@ -203,25 +203,30 @@ While the application is running, you can use these commands:
 The application includes enterprise-grade AI/ML validation features that can be toggled on/off via environment variables:
 
 ### Cross-Validation (`ENABLE_VALIDATION`)
+
 - Compares AI-extracted action items with rule-based extraction
 - Detects potential false positives and false negatives
 - Provides confidence scoring for extracted items
 - Tracks validation metrics over time
 
 ### Hallucination Detection (`ENABLE_HALLUCINATION_DETECTION`)
+
 - Analyzes extracted action items for AI hallucinations
 - Validates context snippets exist in the original transcript
 - Checks assignee names against meeting participants
 - Filters out items with low confidence scores
 
 ### Consistency Management (`ENABLE_CONSISTENCY_MANAGEMENT`)
+
 - Automatically detects meeting type (standup, sprint, architecture, etc.)
 - Adapts extraction prompts based on meeting context
 - Supports multi-language transcript processing
 - Optimizes AI parameters for different meeting types
 
 ### Runtime Toggles
+
 Set any of these to `false` in your `.env` file to disable temporarily:
+
 ```env
 ENABLE_VALIDATION=false              # Disable cross-validation
 ENABLE_HALLUCINATION_DETECTION=false # Disable hallucination detection

@@ -14,7 +14,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     private readonly IHallucinationDetector _hallucinationDetector;
     private readonly IConsistencyManager _consistencyManager;
     private readonly ILogger? _logger;
-    
+
     // Validation service control settings - loaded from environment
     private readonly bool _enableValidation;
     private readonly bool _enableHallucinationDetection;
@@ -228,7 +228,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             // 1. Use consistency manager for optimal extraction configuration (if enabled)
             string promptToUse;
             ConsistencyContext? consistencyContext = null;
-            
+
             if (_enableConsistencyManagement)
             {
                 Console.WriteLine("🎯 Using consistency management for context-aware extraction...");
@@ -289,7 +289,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
 
             // 6. Filter and apply business rules
             List<ActionItem> finalItems;
-            
+
             if (_enableHallucinationDetection && hallucinationAnalysis != null)
             {
                 // Use confidence threshold from consistency context or default
