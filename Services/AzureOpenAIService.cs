@@ -140,28 +140,31 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
 
             var prompt =
                 $@"
-Format the following action item into a proper Jira ticket with clean title and detailed description.
+Format the following action item into a proper Jira ticket with clean title and detailed description IN ENGLISH.
+If the input is in another language, translate it to English while preserving the meaning and context.
 
 Action Item Title: {actionItemTitle}
 Action Item Description: {actionItemDescription}
 Meeting Context: {meetingContext}
 Meeting Participants: {participants}
 
-Please provide a response in this exact JSON format:
+Please provide a response in this exact JSON format (ALL TEXT MUST BE IN ENGLISH):
 {{
-  ""title"": ""Clean, actionable title without prefixes like 'Create Jira ticket' or 'Action item'"",
-  ""description"": ""Detailed description with context and requirements"",
+  ""title"": ""Clean, actionable title in English without prefixes like 'Create Jira ticket' or 'Action item'"",
+  ""description"": ""Detailed description in English with context and requirements"",
   ""priority"": ""High/Medium/Low"",
   ""type"": ""Task/Bug/Story/Investigation/Documentation/Review"",
   ""labels"": [""meeting-generated"", ""action-item""]
 }}
 
 Rules:
-1. Title should be concise and actionable (max 80 characters)
-2. Remove any prefixes like 'Create new Jira ticket:', 'Action item:', etc.
-3. Description should include context from the meeting
-4. Choose appropriate priority based on urgency indicators
-5. Choose appropriate type based on the action needed
+1. ALL OUTPUT MUST BE IN ENGLISH - translate if necessary
+2. Title should be concise and actionable (max 80 characters) in English
+3. Remove any prefixes like 'Create new Jira ticket:', 'Action item:', etc.
+4. Description should include context from the meeting, translated to English
+5. Choose appropriate priority based on urgency indicators
+6. Choose appropriate type based on the action needed
+7. Preserve participant names as they are, but translate all other content
 ";
 
             var settings = _configService.GetAzureOpenAISettings();
@@ -172,7 +175,7 @@ Rules:
                     new
                     {
                         role = "system",
-                        content = "You are an expert at creating well-formatted Jira tickets. You always respond with valid JSON and create clear, actionable ticket titles and descriptions."
+                        content = "You are an expert at creating well-formatted Jira tickets in ENGLISH ONLY. Regardless of the input language, you must always translate and create clear, actionable ticket titles and descriptions in English. You always respond with valid JSON format."
                     },
                     new { role = "user", content = prompt }
                 },
