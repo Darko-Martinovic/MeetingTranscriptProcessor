@@ -183,6 +183,12 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IAzureOpenAIService, AzureOpenAIService>();
             services.AddSingleton<ITranscriptProcessorService, TranscriptProcessorService>();
             services.AddSingleton<IJiraTicketService, JiraTicketService>();
+
+            // Register validation and consistency services
+            services.AddSingleton<IActionItemValidator, ActionItemValidator>();
+            services.AddSingleton<IHallucinationDetector, HallucinationDetector>();
+            services.AddSingleton<IConsistencyManager, ConsistencyManager>();
+
             services.AddSingleton<IFileWatcherService>(provider =>
                 new FileWatcherService(IncomingPath, ProcessingPath, provider.GetService<MeetingTranscriptProcessor.Services.ILogger>()));
 
@@ -290,6 +296,11 @@ namespace MeetingTranscriptProcessor
                         case "status":
                         case "s":
                             DisplayStatus();
+                            break;
+
+                        case "metrics":
+                        case "m":
+                            DisplayValidationMetrics();
                             break;
 
                         case "help":
@@ -518,9 +529,10 @@ namespace MeetingTranscriptProcessor
             Console.WriteLine("   • Configurable via MAX_CONCURRENT_FILES environment variable");
             Console.WriteLine();
             Console.WriteLine("⌨️  Available Commands:");
-            Console.WriteLine("   status (s)  - Show system status");
-            Console.WriteLine("   help (h)    - Show this help");
-            Console.WriteLine("   quit (q)    - Exit application");
+            Console.WriteLine("   status (s)   - Show system status");
+            Console.WriteLine("   metrics (m)  - Show AI validation metrics");
+            Console.WriteLine("   help (h)     - Show this help");
+            Console.WriteLine("   quit (q)     - Exit application");
             Console.WriteLine();
         }
 
@@ -595,6 +607,49 @@ namespace MeetingTranscriptProcessor
             catch (Exception ex)
             {
                 Console.WriteLine($"⚠️  Error during cleanup: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Display validation metrics for monitoring AI/ML reliability
+        /// </summary>
+        private static void DisplayValidationMetrics()
+        {
+            try
+            {
+                var metrics = ActionItemValidator.GetValidationMetrics();
+
+                if (metrics.TotalValidations == 0)
+                {
+                    Console.WriteLine("📊 No validation metrics available yet");
+                    return;
+                }
+
+                Console.WriteLine("📊 Validation Metrics Summary:");
+                Console.WriteLine($"   Total validations: {metrics.TotalValidations}");
+                Console.WriteLine($"   Average confidence: {metrics.AverageConfidence:P}");
+                Console.WriteLine($"   Cross-validation score: {metrics.AverageCrossValidationScore:P}");
+                Console.WriteLine($"   Context coherence: {metrics.AverageContextCoherence:P}");
+                Console.WriteLine($"   High confidence rate: {metrics.HighConfidenceRate:P}");
+                Console.WriteLine($"   Low confidence rate: {metrics.LowConfidenceRate:P}");
+                Console.WriteLine($"   Total false positives: {metrics.TotalFalsePositives}");
+                Console.WriteLine($"   Total false negatives: {metrics.TotalFalseNegatives}");
+
+                // Calculate and display false positive/negative rates
+                if (metrics.TotalValidations > 0)
+                {
+                    var avgItemsPerValidation = 5.0; // Estimate, could be tracked more precisely
+                    var totalItems = metrics.TotalValidations * avgItemsPerValidation;
+                    var falsePositiveRate = metrics.TotalFalsePositives / totalItems;
+                    var falseNegativeRate = metrics.TotalFalseNegatives / totalItems;
+
+                    Console.WriteLine($"   Estimated false positive rate: {falsePositiveRate:P}");
+                    Console.WriteLine($"   Estimated false negative rate: {falseNegativeRate:P}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error displaying validation metrics: {ex.Message}");
             }
         }
     }

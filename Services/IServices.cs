@@ -37,3 +37,36 @@ public interface IFileWatcherService : IDisposable
     void Start();
     void Stop();
 }
+
+/// <summary>
+/// Interface for action item validation operations
+/// </summary>
+public interface IActionItemValidator
+{
+    ValidationResult ValidateActionItems(
+        List<ActionItem> aiExtracted,
+        List<ActionItem> ruleBasedExtracted,
+        MeetingTranscript transcript
+    );
+    static ValidationMetrics GetValidationMetrics() => ActionItemValidator.GetValidationMetrics();
+}
+
+/// <summary>
+/// Interface for hallucination detection operations
+/// </summary>
+public interface IHallucinationDetector
+{
+    HallucinationAnalysis AnalyzeActionItems(List<ActionItem> actionItems, MeetingTranscript transcript);
+    List<ActionItem> FilterHighConfidenceItems(List<ActionItem> actionItems, MeetingTranscript transcript, double minConfidence = 0.7);
+}
+
+/// <summary>
+/// Interface for consistency management operations
+/// </summary>
+public interface IConsistencyManager
+{
+    ConsistencyContext CreateConsistencyContext(MeetingTranscript transcript);
+    string GenerateContextualPrompt(MeetingTranscript transcript, ConsistencyContext context);
+    ExtractionParameters GetOptimalParameters(ConsistencyContext context);
+    ExtractionConfiguration CreateExtractionConfiguration(MeetingTranscript transcript);
+}
