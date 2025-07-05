@@ -66,7 +66,7 @@ public class AzureOpenAIService : IDisposable
                         content = "You are an expert assistant that analyzes meeting transcripts and extracts actionable items. You respond in valid JSON format."
                     },
                     new { role = "user", content = prompt }
-                },
+                }, //all these values are hard-coded for simplicity, but in reality it would be in a configuration file
                 max_tokens = 4000,
                 temperature = 0.1, // Low temperature for consistent, factual responses
                 top_p = 0.95
@@ -101,9 +101,7 @@ public class AzureOpenAIService : IDisposable
                     }
                 }
 
-                throw new InvalidOperationException(
-                    "Unexpected response format from Azure OpenAI"
-                );
+                throw new InvalidOperationException("Unexpected response format from Azure OpenAI");
             }
             else
             {
@@ -223,9 +221,7 @@ Rules:
                     }
                 }
 
-                throw new InvalidOperationException(
-                    "Unexpected response format from Azure OpenAI"
-                );
+                throw new InvalidOperationException("Unexpected response format from Azure OpenAI");
             }
             else
             {
@@ -299,10 +295,7 @@ Rules:
         }
 
         var result = new { actionItems };
-        return JsonSerializer.Serialize(
-            result,
-            new JsonSerializerOptions { WriteIndented = true }
-        );
+        return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
     }
 
     /// <summary>
@@ -351,6 +344,7 @@ Rules:
 
     #region Helper Methods
 
+    // These values are hard-coded for simplicity, but in reality they would be in a configuration file
     private static bool ContainsActionItemKeywords(string line)
     {
         var keywords = new[]
@@ -365,9 +359,7 @@ Rules:
             "update",
             "investigate"
         };
-        return keywords.Any(
-            keyword => line.Contains(keyword, StringComparison.OrdinalIgnoreCase)
-        );
+        return keywords.Any(keyword => line.Contains(keyword, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string ExtractTitle(string line)
@@ -403,11 +395,7 @@ Rules:
 
     private static string? ExtractDueDate(string line)
     {
-        var patterns = new[]
-        {
-            @"due:?\s*(\d{4}-\d{2}-\d{2})",
-            @"by\s+(\d{1,2}/\d{1,2}/\d{4})"
-        };
+        var patterns = new[] { @"due:?\s*(\d{4}-\d{2}-\d{2})", @"by\s+(\d{1,2}/\d{1,2}/\d{4})" };
 
         foreach (var pattern in patterns)
         {

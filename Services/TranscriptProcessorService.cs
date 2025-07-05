@@ -31,11 +31,10 @@ public class TranscriptProcessorService
             {
                 FileName = Path.GetFileName(filePath),
                 Status = TranscriptStatus.Processing,
-                ProcessedAt = DateTime.UtcNow
+                ProcessedAt = DateTime.UtcNow,
+                // Read file content
+                Content = await ReadFileContentAsync(filePath)
             };
-
-            // Read file content
-            transcript.Content = await ReadFileContentAsync(filePath);
 
             if (string.IsNullOrWhiteSpace(transcript.Content))
             {
