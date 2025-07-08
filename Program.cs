@@ -149,7 +149,11 @@ namespace MeetingTranscriptProcessor
 
                 // Configure concurrency settings
                 var maxConcurrentEnv = Environment.GetEnvironmentVariable("MAX_CONCURRENT_FILES");
-                if (int.TryParse(maxConcurrentEnv, out var maxConcurrent) && maxConcurrent > 0 && maxConcurrent <= 10)
+                if (
+                    int.TryParse(maxConcurrentEnv, out var maxConcurrent)
+                    && maxConcurrent > 0
+                    && maxConcurrent <= 10
+                )
                 {
                     _maxConcurrentFiles = maxConcurrent;
                 }
@@ -162,20 +166,30 @@ namespace MeetingTranscriptProcessor
                     _enableValidation = enableValidation;
                 }
 
-                var enableHallucinationEnv = Environment.GetEnvironmentVariable("ENABLE_HALLUCINATION_DETECTION");
+                var enableHallucinationEnv = Environment.GetEnvironmentVariable(
+                    "ENABLE_HALLUCINATION_DETECTION"
+                );
                 if (bool.TryParse(enableHallucinationEnv, out var enableHallucination))
                 {
                     _enableHallucinationDetection = enableHallucination;
                 }
 
-                var enableConsistencyEnv = Environment.GetEnvironmentVariable("ENABLE_CONSISTENCY_MANAGEMENT");
+                var enableConsistencyEnv = Environment.GetEnvironmentVariable(
+                    "ENABLE_CONSISTENCY_MANAGEMENT"
+                );
                 if (bool.TryParse(enableConsistencyEnv, out var enableConsistency))
                 {
                     _enableConsistencyManagement = enableConsistency;
                 }
 
-                var thresholdEnv = Environment.GetEnvironmentVariable("VALIDATION_CONFIDENCE_THRESHOLD");
-                if (double.TryParse(thresholdEnv, out var threshold) && threshold >= 0.0 && threshold <= 1.0)
+                var thresholdEnv = Environment.GetEnvironmentVariable(
+                    "VALIDATION_CONFIDENCE_THRESHOLD"
+                );
+                if (
+                    double.TryParse(thresholdEnv, out var threshold)
+                    && threshold >= 0.0
+                    && threshold <= 1.0
+                )
                 {
                     _validationConfidenceThreshold = threshold;
                 }
@@ -228,15 +242,22 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IHallucinationDetector, HallucinationDetector>();
             services.AddSingleton<IConsistencyManager, ConsistencyManager>();
 
-            services.AddSingleton<IFileWatcherService>(provider =>
-                new FileWatcherService(IncomingPath, ProcessingPath, provider.GetService<MeetingTranscriptProcessor.Services.ILogger>()));
+            services.AddSingleton<IFileWatcherService>(
+                provider =>
+                    new FileWatcherService(
+                        IncomingPath,
+                        ProcessingPath,
+                        provider.GetService<MeetingTranscriptProcessor.Services.ILogger>()
+                    )
+            );
 
             // Build service provider
             _serviceProvider = services.BuildServiceProvider();
 
             // Get services
             _fileWatcher = _serviceProvider.GetRequiredService<IFileWatcherService>();
-            _transcriptProcessor = _serviceProvider.GetRequiredService<ITranscriptProcessorService>();
+            _transcriptProcessor =
+                _serviceProvider.GetRequiredService<ITranscriptProcessorService>();
             _jiraTicketService = _serviceProvider.GetRequiredService<IJiraTicketService>();
 
             // Setup event handlers
@@ -284,9 +305,15 @@ namespace MeetingTranscriptProcessor
             );
 
             // Validation services status
-            Console.WriteLine($"🔍 Validation: {(_enableValidation ? "✅ Enabled" : "⚠️  Disabled")}");
-            Console.WriteLine($"🧠 Hallucination Detection: {(_enableHallucinationDetection ? "✅ Enabled" : "⚠️  Disabled")}");
-            Console.WriteLine($"🎯 Consistency Management: {(_enableConsistencyManagement ? "✅ Enabled" : "⚠️  Disabled")}");
+            Console.WriteLine(
+                $"🔍 Validation: {(_enableValidation ? "✅ Enabled" : "⚠️  Disabled")}"
+            );
+            Console.WriteLine(
+                $"🧠 Hallucination Detection: {(_enableHallucinationDetection ? "✅ Enabled" : "⚠️  Disabled")}"
+            );
+            Console.WriteLine(
+                $"🎯 Consistency Management: {(_enableConsistencyManagement ? "✅ Enabled" : "⚠️  Disabled")}"
+            );
             Console.WriteLine($"📊 Validation Threshold: {_validationConfidenceThreshold:F1}");
 
             // Concurrency status
@@ -294,7 +321,9 @@ namespace MeetingTranscriptProcessor
             var usedSlots = _maxConcurrentFiles - availableSlots;
             var filesBeingProcessed = _processingFiles.Count;
 
-            Console.WriteLine($"⚡ Concurrency: {usedSlots}/{_maxConcurrentFiles} slots used, {filesBeingProcessed} files processing");
+            Console.WriteLine(
+                $"⚡ Concurrency: {usedSlots}/{_maxConcurrentFiles} slots used, {filesBeingProcessed} files processing"
+            );
 
             Console.WriteLine("──────────────────────────────────────────────────────────────");
             Console.WriteLine();
@@ -417,8 +446,12 @@ namespace MeetingTranscriptProcessor
                     if (_isShuttingDown || _cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
-                    Console.WriteLine($"\n📄 Processing file: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})");
-                    Console.WriteLine("──────────────────────────────────────────────────────────────");
+                    Console.WriteLine(
+                        $"\n📄 Processing file: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})"
+                    );
+                    Console.WriteLine(
+                        "──────────────────────────────────────────────────────────────"
+                    );
 
                     // Process the transcript
                     var transcript = await _transcriptProcessor!.ProcessTranscriptAsync(filePath);
@@ -437,13 +470,21 @@ namespace MeetingTranscriptProcessor
                     lock (Console.Out)
                     {
                         DisplayProcessingResults(result);
-                        Console.WriteLine("──────────────────────────────────────────────────────────────");
-                        Console.WriteLine($"✅ File processed: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})");
+                        Console.WriteLine(
+                            "──────────────────────────────────────────────────────────────"
+                        );
+                        Console.WriteLine(
+                            $"✅ File processed: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})"
+                        );
                         Console.Write("> ");
                     }
 
                     // Archive the processed file
-                    ArchiveFile(filePath, result.Success ? "success" : "error", transcript.DetectedLanguage);
+                    ArchiveFile(
+                        filePath,
+                        result.Success ? "success" : "error",
+                        transcript.DetectedLanguage
+                    );
                 }
                 finally
                 {
@@ -523,7 +564,9 @@ namespace MeetingTranscriptProcessor
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
                 // Include language in filename if available
-                var languageInfo = string.IsNullOrEmpty(languageCode) ? "" : $"_{GetLanguageName(languageCode)}";
+                var languageInfo = string.IsNullOrEmpty(languageCode)
+                    ? ""
+                    : $"_{GetLanguageName(languageCode)}";
                 var archivedFileName = $"{timestamp}_{status}{languageInfo}_{fileName}";
                 var archivedPath = Path.Combine(ArchivePath, archivedFileName);
 
@@ -571,14 +614,26 @@ namespace MeetingTranscriptProcessor
             Console.WriteLine("   • Without configuration, uses rule-based extraction");
             Console.WriteLine();
             Console.WriteLine("🔍 AI/ML Validation Features:");
-            Console.WriteLine($"   • Validation: {(_enableValidation ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_VALIDATION)");
-            Console.WriteLine($"   • Hallucination Detection: {(_enableHallucinationDetection ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_HALLUCINATION_DETECTION)");
-            Console.WriteLine($"   • Consistency Management: {(_enableConsistencyManagement ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_CONSISTENCY_MANAGEMENT)");
-            Console.WriteLine($"   • Confidence Threshold: {_validationConfidenceThreshold:F1} (VALIDATION_CONFIDENCE_THRESHOLD)");
-            Console.WriteLine("   • Set these environment variables to false to temporarily disable features");
+            Console.WriteLine(
+                $"   • Validation: {(_enableValidation ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_VALIDATION)"
+            );
+            Console.WriteLine(
+                $"   • Hallucination Detection: {(_enableHallucinationDetection ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_HALLUCINATION_DETECTION)"
+            );
+            Console.WriteLine(
+                $"   • Consistency Management: {(_enableConsistencyManagement ? "✅ Enabled" : "⚠️  Disabled")} (ENABLE_CONSISTENCY_MANAGEMENT)"
+            );
+            Console.WriteLine(
+                $"   • Confidence Threshold: {_validationConfidenceThreshold:F1} (VALIDATION_CONFIDENCE_THRESHOLD)"
+            );
+            Console.WriteLine(
+                "   • Set these environment variables to false to temporarily disable features"
+            );
             Console.WriteLine();
             Console.WriteLine("⚡ Concurrency Features:");
-            Console.WriteLine($"   • Parallel processing of up to {_maxConcurrentFiles} files simultaneously");
+            Console.WriteLine(
+                $"   • Parallel processing of up to {_maxConcurrentFiles} files simultaneously"
+            );
             Console.WriteLine("   • Thread-safe console output with thread ID tracking");
             Console.WriteLine("   • Graceful shutdown waits for ongoing operations");
             Console.WriteLine("   • Duplicate file detection prevents double processing");
@@ -637,15 +692,22 @@ namespace MeetingTranscriptProcessor
 
                 // Wait for any ongoing file processing to complete (with timeout)
                 var waitStart = DateTime.UtcNow;
-                while (_processingFiles.Count > 0 && DateTime.UtcNow - waitStart < TimeSpan.FromSeconds(10))
+                while (
+                    _processingFiles.Count > 0
+                    && DateTime.UtcNow - waitStart < TimeSpan.FromSeconds(10)
+                )
                 {
-                    Console.WriteLine($"⏳ Waiting for {_processingFiles.Count} file(s) to finish processing...");
+                    Console.WriteLine(
+                        $"⏳ Waiting for {_processingFiles.Count} file(s) to finish processing..."
+                    );
                     await Task.Delay(500);
                 }
 
                 if (_processingFiles.Count > 0)
                 {
-                    Console.WriteLine($"⚠️  Force closing with {_processingFiles.Count} file(s) still processing");
+                    Console.WriteLine(
+                        $"⚠️  Force closing with {_processingFiles.Count} file(s) still processing"
+                    );
                 }
 
                 // Dispose concurrency resources
@@ -684,7 +746,9 @@ namespace MeetingTranscriptProcessor
                 Console.WriteLine("📊 Validation Metrics Summary:");
                 Console.WriteLine($"   Total validations: {metrics.TotalValidations}");
                 Console.WriteLine($"   Average confidence: {metrics.AverageConfidence:P}");
-                Console.WriteLine($"   Cross-validation score: {metrics.AverageCrossValidationScore:P}");
+                Console.WriteLine(
+                    $"   Cross-validation score: {metrics.AverageCrossValidationScore:P}"
+                );
                 Console.WriteLine($"   Context coherence: {metrics.AverageContextCoherence:P}");
                 Console.WriteLine($"   High confidence rate: {metrics.HighConfidenceRate:P}");
                 Console.WriteLine($"   Low confidence rate: {metrics.LowConfidenceRate:P}");
