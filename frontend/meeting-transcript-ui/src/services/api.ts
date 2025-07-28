@@ -94,18 +94,28 @@ export interface SystemStatusDto {
   currentTime: string;
 }
 
-export enum FolderType {
-  Archive = 0,
-  Incoming = 1,
-  Processing = 2,
-}
+export const FolderType = {
+  Archive: 0,
+  Incoming: 1,
+  Processing: 2,
+} as const;
 
-export enum TranscriptStatus {
-  New = 0,
-  Processing = 1,
-  Processed = 2,
-  Error = 3,
-  Archived = 4,
+export type FolderType = typeof FolderType[keyof typeof FolderType];
+
+export const TranscriptStatus = {
+  New: 0,
+  Processing: 1,
+  Processed: 2,
+  Error: 3,
+  Archived: 4,
+} as const;
+
+export type TranscriptStatus = typeof TranscriptStatus[keyof typeof TranscriptStatus];
+
+export interface AppSettings {
+  theme: 'light' | 'dark';
+  autoRefresh: boolean;
+  refreshInterval: number;
 }
 
 // API functions
@@ -207,16 +217,16 @@ export const localStorageService = {
     localStorage.setItem('recent-meetings', JSON.stringify(updated));
   },
 
-  getSettings: () => {
+  getSettings: (): AppSettings => {
     const settings = localStorage.getItem('app-settings');
     return settings ? JSON.parse(settings) : {
-      theme: 'light',
+      theme: 'light' as const,
       autoRefresh: true,
       refreshInterval: 30000,
     };
   },
 
-  saveSettings: (settings: any) => {
+  saveSettings: (settings: AppSettings) => {
     localStorage.setItem('app-settings', JSON.stringify(settings));
   },
 };
