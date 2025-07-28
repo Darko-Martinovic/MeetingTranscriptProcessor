@@ -87,25 +87,25 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
   };
 
   return (
-    <div className="border-b border-gray-200 bg-gray-50">
+    <div className="border-b border-gray-200 bg-white">
       {/* Filter Toggle Button */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-6 bg-slate-100">
         <button
           onClick={onToggleVisibility}
-          className={`flex items-center space-x-3 px-8 py-4 rounded-md font-semibold transition-all duration-200 text-lg min-w-[180px] ${
+          className={`flex items-center space-x-3 px-6 py-3 rounded-lg font-bold transition-all duration-200 text-base ${
             isVisible 
-              ? 'bg-red-600 hover:bg-red-700 text-white shadow-xl border-2 border-red-400 ring-2 ring-red-300' 
+              ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg border-2 border-red-300' 
               : hasActiveFilters()
-                ? 'bg-green-600 hover:bg-green-700 text-white shadow-xl border-2 border-green-400 ring-2 ring-green-300'
-                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xl border-2 border-blue-400 ring-2 ring-blue-300'
+                ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg border-2 border-green-300'
+                : 'bg-blue-500 hover:bg-blue-600 text-white shadow-lg border-2 border-blue-300'
           }`}
         >
-          <Filter size={22} className={isVisible ? 'animate-spin' : ''} />
+          <Filter size={20} />
           <span className="font-bold">
-            {isVisible ? 'Hide Filters' : hasActiveFilters() ? 'Filters Active' : 'Show Filters'}
+            {isVisible ? 'HIDE FILTERS' : hasActiveFilters() ? 'FILTERS ACTIVE' : 'SHOW FILTERS'}
           </span>
           {hasActiveFilters() && !isVisible && (
-            <span className="bg-yellow-400 text-black rounded-full w-7 h-7 text-sm flex items-center justify-center font-bold animate-pulse border border-yellow-600">
+            <span className="bg-orange-400 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center font-bold border border-orange-600">
               {/* Count active filters */}
               {(filter.status?.length || 0) + (filter.language?.length || 0) + (filter.participants?.length || 0) + 
                (filter.searchText ? 1 : 0) + (filter.dateFrom ? 1 : 0) + (filter.dateTo ? 1 : 0) + 
@@ -117,10 +117,10 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
         {hasActiveFilters() && (
           <button
             onClick={clearFilters}
-            className="flex items-center space-x-3 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold shadow-xl transition-all duration-200 border-2 border-red-400 ring-2 ring-red-300"
+            className="flex items-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-lg transition-all duration-200 border-2 border-red-300"
           >
-            <X size={18} />
-            <span className="font-bold">Clear All</span>
+            <X size={16} />
+            <span className="font-bold">CLEAR ALL</span>
           </button>
         )}
       </div>
