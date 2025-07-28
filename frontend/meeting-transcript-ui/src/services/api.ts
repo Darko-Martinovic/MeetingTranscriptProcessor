@@ -26,6 +26,11 @@ export interface MeetingInfo {
   lastModified: string;
   folderType: FolderType;
   status: string;
+  language?: string;
+  participants?: string[];
+  hasJiraTickets?: boolean;
+  actionItemCount?: number;
+  processingDate?: string;
 }
 
 export interface MeetingTranscript {
@@ -112,6 +117,18 @@ export const TranscriptStatus = {
 
 export type TranscriptStatus = typeof TranscriptStatus[keyof typeof TranscriptStatus];
 
+export interface MeetingFilter {
+  searchText?: string;
+  status?: string[];
+  language?: string[];
+  participants?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  hasJiraTickets?: boolean;
+  sortBy?: 'date' | 'title' | 'size' | 'status' | 'language' | 'participants';
+  sortOrder?: 'asc' | 'desc';
+}
+
 export interface AppSettings {
   theme: 'light' | 'dark';
   autoRefresh: boolean;
@@ -125,8 +142,23 @@ export const meetingApi = {
     return response.data;
   },
 
-  getMeetingsInFolder: async (folderType: FolderType): Promise<MeetingInfo[]> => {
-    const response = await api.get(`/meetings/folders/${folderType}/meetings`);
+  getMeetingsInFolder: async (folderType: FolderType, filter?: MeetingFilter): Promise<MeetingInfo[]> => {
+    const params = new URLSearchParams();
+    if (filter) {
+      if (filter.searchText) params.append('search', filter.searchText);
+      if (filter.status?.length) params.append('status', filter.status.join(','));
+      if (filter.language?.length) params.append('language', filter.language.join(','));
+      if (filter.participants?.length) params.append('participants', filter.participants.join(','));
+      if (filter.dateFrom) params.append('dateFrom', filter.dateFrom);
+      if (filter.dateTo) params.append('dateTo', filter.dateTo);
+      if (filter.hasJiraTickets !== undefined) params.append('hasJiraTickets', filter.hasJiraTickets.toString());
+      if (filter.sortBy) params.append('sortBy', filter.sortBy);
+      if (filter.sortOrder) params.append('sortOrder', filter.sortOrder);
+    }
+    
+    const queryString = params.toString();
+    const url = `/meetings/folders/${folderType}/meetings${queryString ? `?${queryString}` : ''}`;
+    const response = await api.get(url);
     return response.data;
   },
 

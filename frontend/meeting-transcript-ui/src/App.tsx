@@ -9,8 +9,10 @@ import {
   type MeetingInfo, 
   type MeetingTranscript, 
   type SystemStatusDto,
-  type ConfigurationDto
+  type ConfigurationDto,
+  type MeetingFilter
 } from './services/api';
+import MeetingFilterComponent from './components/MeetingFilter';
 import './App.css';
 
 const App: React.FC = () => {
@@ -25,6 +27,8 @@ const App: React.FC = () => {
   const [showUpload, setShowUpload] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentMeetings, setRecentMeetings] = useState<string[]>([]);
+  const [currentFilter, setCurrentFilter] = useState<MeetingFilter>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   const loadSystemStatus = useCallback(async () => {
     try {
@@ -35,10 +39,10 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const loadMeetingsInFolder = useCallback(async (folder: FolderInfo) => {
+  const loadMeetingsInFolder = useCallback(async (folder: FolderInfo, filter?: MeetingFilter) => {
     try {
       setLoading(true);
-      const meetingsData = await meetingApi.getMeetingsInFolder(folder.type);
+      const meetingsData = await meetingApi.getMeetingsInFolder(folder.type, filter);
       setMeetings(meetingsData);
       setSelectedFolder(folder);
       setSelectedMeeting(null);
@@ -49,6 +53,24 @@ const App: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  const handleFilterChange = useCallback((filter: MeetingFilter) => {
+    setCurrentFilter(filter);
+    if (selectedFolder) {
+      loadMeetingsInFolder(selectedFolder, filter);
+    }
+  }, [selectedFolder, loadMeetingsInFolder]);
+
+  const handleFolderSelect = useCallback(async (folder: FolderInfo) => {
+    // Reset filters when switching folders
+    const defaultFilter: MeetingFilter = {
+      sortBy: 'date',
+      sortOrder: 'desc'
+    };
+    setCurrentFilter(defaultFilter);
+    setShowFilters(false);
+    await loadMeetingsInFolder(folder, defaultFilter);
+  }, [loadMeetingsInFolder]);
 
   useEffect(() => {
     const loadFolders = async () => {
@@ -72,13 +94,13 @@ const App: React.FC = () => {
     // Auto refresh every 30 seconds
     const interval = setInterval(() => {
       if (selectedFolder) {
-        loadMeetingsInFolder(selectedFolder);
+        loadMeetingsInFolder(selectedFolder, currentFilter);
       }
       loadSystemStatus();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [selectedFolder, loadMeetingsInFolder, loadSystemStatus]);
+  }, [selectedFolder, loadMeetingsInFolder, loadSystemStatus, currentFilter]);
 
   const loadFolders = useCallback(async () => {
     try {
@@ -226,7 +248,7 @@ const App: React.FC = () => {
                 {folders.map((folder) => (
                   <button
                     key={folder.name}
-                    onClick={() => loadMeetingsInFolder(folder)}
+                    onClick={() => handleFolderSelect(folder)}
                     className={`w-full text-left p-3 rounded-md transition-colors ${
                       selectedFolder?.name === folder.name
                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -288,6 +310,17 @@ const App: React.FC = () => {
                     {selectedFolder.name} ({meetings.length} meetings)
                   </h2>
                 </div>
+                
+                {/* Show filter component only for Archive folder */}
+                {selectedFolder.type === FolderType.Archive && (
+                  <MeetingFilterComponent
+                    onFilterChange={handleFilterChange}
+                    meetings={meetings}
+                    isVisible={showFilters}
+                    onToggleVisibility={() => setShowFilters(!showFilters)}
+                  />
+                )}
+                
                 <div className="divide-y divide-gray-200">
                   {meetings.length === 0 ? (
                     <div className="p-8 text-center">

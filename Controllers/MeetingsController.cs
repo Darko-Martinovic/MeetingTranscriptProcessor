@@ -73,7 +73,17 @@ namespace MeetingTranscriptProcessor.Controllers
         }
 
         [HttpGet("folders/{folderType}/meetings")]
-        public async Task<ActionResult<List<MeetingInfo>>> GetMeetingsInFolder(FolderType folderType)
+        public async Task<ActionResult<List<MeetingInfo>>> GetMeetingsInFolder(
+            FolderType folderType,
+            [FromQuery] string? search = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? language = null,
+            [FromQuery] string? participants = null,
+            [FromQuery] DateTime? dateFrom = null,
+            [FromQuery] DateTime? dateTo = null,
+            [FromQuery] bool? hasJiraTickets = null,
+            [FromQuery] string sortBy = "date",
+            [FromQuery] string sortOrder = "desc")
         {
             try
             {
@@ -86,6 +96,13 @@ namespace MeetingTranscriptProcessor.Controllers
                 };
 
                 var meetings = await GetMeetingsFromFolder(folderPath, folderType);
+                
+                // Apply filters
+                meetings = ApplyFilters(meetings, search, status, language, participants, dateFrom, dateTo, hasJiraTickets);
+                
+                // Apply sorting
+                meetings = ApplySorting(meetings, sortBy, sortOrder);
+
                 return Ok(meetings);
             }
             catch (Exception ex)
@@ -230,8 +247,24 @@ namespace MeetingTranscriptProcessor.Controllers
                         FolderType = folderType,
                         Status = folderType == FolderType.Archive && parts.Length >= 3 
                             ? parts[2] 
-                            : "unknown"
+                            : "unknown",
+                        Language = folderType == FolderType.Archive && parts.Length >= 4
+                            ? parts[3].Split('.')[0] // Remove file extension if present
+                            : "unknown",
+                        ProcessingDate = fileInfo.CreationTime,
+                        Date = fileInfo.LastWriteTime
                     };
+
+                    // Parse processing date from filename if available
+                    if (folderType == FolderType.Archive && parts.Length >= 2)
+                    {
+                        if (DateTime.TryParseExact($"{parts[0]}_{parts[1]}", "yyyyMMdd_HHmmss", 
+                            null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+                        {
+                            meetingInfo.ProcessingDate = parsedDate;
+                            meetingInfo.Date = parsedDate;
+                        }
+                    }
 
                     // Try to extract basic info without full processing
                     try
@@ -247,6 +280,16 @@ namespace MeetingTranscriptProcessor.Controllers
                         
                         if (meetingInfo.Title.Length > 100)
                             meetingInfo.Title = meetingInfo.Title.Substring(0, 100) + "...";
+
+                        // Extract participants from content (basic pattern matching)
+                        meetingInfo.Participants = ExtractParticipants(content);
+                        
+                        // Check for Jira tickets
+                        meetingInfo.HasJiraTickets = content.Contains("JIRA") || content.Contains("Jira") || 
+                                                   content.Contains("jira") || content.Contains("ticket");
+                        
+                        // Count action items
+                        meetingInfo.ActionItemCount = CountActionItems(content);
                     }
                     catch
                     {
@@ -264,6 +307,134 @@ namespace MeetingTranscriptProcessor.Controllers
             }
 
             return meetings;
+        }
+
+        private List<string> ExtractParticipants(string content)
+        {
+            var participants = new List<string>();
+            var lines = content.Split('\n');
+            
+            // Look for patterns like "Participants:", "Attendees:", etc.
+            foreach (var line in lines)
+            {
+                var lowerLine = line.ToLower().Trim();
+                if (lowerLine.StartsWith("participants:") || lowerLine.StartsWith("attendees:") || 
+                    lowerLine.StartsWith("present:") || lowerLine.StartsWith("meeting participants:"))
+                {
+                    var participantsPart = line.Substring(line.IndexOf(':') + 1).Trim();
+                    var names = participantsPart.Split(new[] { ',', ';', '&' }, StringSplitOptions.RemoveEmptyEntries)
+                                              .Select(p => p.Trim())
+                                              .Where(p => !string.IsNullOrEmpty(p))
+                                              .ToList();
+                    participants.AddRange(names);
+                    break;
+                }
+            }
+            
+            return participants.Distinct().ToList();
+        }
+
+        private int CountActionItems(string content)
+        {
+            var actionItemPatterns = new[] { "action item", "action:", "todo:", "follow up", "next step" };
+            var lines = content.Split('\n');
+            int count = 0;
+            
+            foreach (var line in lines)
+            {
+                var lowerLine = line.ToLower();
+                if (actionItemPatterns.Any(pattern => lowerLine.Contains(pattern)))
+                {
+                    count++;
+                }
+            }
+            
+            return count;
+        }
+
+        private List<MeetingInfo> ApplyFilters(List<MeetingInfo> meetings, string? search, string? status, 
+            string? language, string? participants, DateTime? dateFrom, DateTime? dateTo, bool? hasJiraTickets)
+        {
+            var filtered = meetings.AsEnumerable();
+
+            // Search filter
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.ToLower();
+                filtered = filtered.Where(m => 
+                    m.Title.ToLower().Contains(searchLower) ||
+                    m.OriginalName.ToLower().Contains(searchLower) ||
+                    m.PreviewContent.ToLower().Contains(searchLower) ||
+                    m.Participants.Any(p => p.ToLower().Contains(searchLower)));
+            }
+
+            // Status filter
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var statusList = status.Split(',').Select(s => s.Trim().ToLower()).ToList();
+                filtered = filtered.Where(m => statusList.Contains(m.Status.ToLower()));
+            }
+
+            // Language filter
+            if (!string.IsNullOrWhiteSpace(language))
+            {
+                var languageList = language.Split(',').Select(l => l.Trim().ToLower()).ToList();
+                filtered = filtered.Where(m => languageList.Contains(m.Language.ToLower()));
+            }
+
+            // Participants filter
+            if (!string.IsNullOrWhiteSpace(participants))
+            {
+                var participantList = participants.Split(',').Select(p => p.Trim().ToLower()).ToList();
+                filtered = filtered.Where(m => 
+                    participantList.Any(p => m.Participants.Any(mp => mp.ToLower().Contains(p))));
+            }
+
+            // Date range filter
+            if (dateFrom.HasValue)
+            {
+                filtered = filtered.Where(m => m.Date >= dateFrom.Value);
+            }
+
+            if (dateTo.HasValue)
+            {
+                filtered = filtered.Where(m => m.Date <= dateTo.Value);
+            }
+
+            // Jira tickets filter
+            if (hasJiraTickets.HasValue)
+            {
+                filtered = filtered.Where(m => m.HasJiraTickets == hasJiraTickets.Value);
+            }
+
+            return filtered.ToList();
+        }
+
+        private List<MeetingInfo> ApplySorting(List<MeetingInfo> meetings, string sortBy, string sortOrder)
+        {
+            var isDescending = sortOrder.ToLower() == "desc";
+
+            return sortBy.ToLower() switch
+            {
+                "title" => isDescending 
+                    ? meetings.OrderByDescending(m => m.Title).ToList()
+                    : meetings.OrderBy(m => m.Title).ToList(),
+                "size" => isDescending 
+                    ? meetings.OrderByDescending(m => m.Size).ToList()
+                    : meetings.OrderBy(m => m.Size).ToList(),
+                "status" => isDescending 
+                    ? meetings.OrderByDescending(m => m.Status).ToList()
+                    : meetings.OrderBy(m => m.Status).ToList(),
+                "language" => isDescending 
+                    ? meetings.OrderByDescending(m => m.Language).ToList()
+                    : meetings.OrderBy(m => m.Language).ToList(),
+                "participants" => isDescending 
+                    ? meetings.OrderByDescending(m => m.Participants.Count).ToList()
+                    : meetings.OrderBy(m => m.Participants.Count).ToList(),
+                "date" or _ => isDescending 
+                    ? meetings.OrderByDescending(m => m.Date).ToList()
+                    : meetings.OrderBy(m => m.Date).ToList()
+            };
         }
     }
 
@@ -286,6 +457,12 @@ namespace MeetingTranscriptProcessor.Controllers
         public DateTime LastModified { get; set; }
         public FolderType FolderType { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string Language { get; set; } = string.Empty;
+        public List<string> Participants { get; set; } = new List<string>();
+        public bool HasJiraTickets { get; set; }
+        public int ActionItemCount { get; set; }
+        public DateTime ProcessingDate { get; set; }
+        public DateTime Date { get; set; }
     }
 
     public enum FolderType
