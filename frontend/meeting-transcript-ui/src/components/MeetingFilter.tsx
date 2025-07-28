@@ -92,20 +92,20 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
       <div className="flex items-center justify-between p-6 bg-slate-100">
         <button
           onClick={onToggleVisibility}
-          className={`flex items-center space-x-3 px-6 py-3 rounded-lg font-bold transition-all duration-200 text-base ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-md text-white ${
             isVisible 
-              ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg border-2 border-red-300' 
+              ? 'bg-red-600 hover:bg-red-700' 
               : hasActiveFilters()
-                ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg border-2 border-green-300'
-                : 'bg-blue-500 hover:bg-blue-600 text-white shadow-lg border-2 border-blue-300'
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
-          <Filter size={20} />
-          <span className="font-bold">
-            {isVisible ? 'HIDE FILTERS' : hasActiveFilters() ? 'FILTERS ACTIVE' : 'SHOW FILTERS'}
+          <Filter className="h-4 w-4" />
+          <span>
+            {isVisible ? 'Hide Filters' : hasActiveFilters() ? 'Filters Active' : 'Show Filters'}
           </span>
           {hasActiveFilters() && !isVisible && (
-            <span className="bg-orange-400 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center font-bold border border-orange-600">
+            <span className="bg-orange-400 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold ml-2">
               {/* Count active filters */}
               {(filter.status?.length || 0) + (filter.language?.length || 0) + (filter.participants?.length || 0) + 
                (filter.searchText ? 1 : 0) + (filter.dateFrom ? 1 : 0) + (filter.dateTo ? 1 : 0) + 
@@ -117,10 +117,10 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
         {hasActiveFilters() && (
           <button
             onClick={clearFilters}
-            className="flex items-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold shadow-lg transition-all duration-200 border-2 border-red-300"
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
           >
-            <X size={16} />
-            <span className="font-bold">CLEAR ALL</span>
+            <X className="h-4 w-4" />
+            <span>Clear All</span>
           </button>
         )}
       </div>
