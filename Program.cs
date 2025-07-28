@@ -42,6 +42,17 @@ namespace MeetingTranscriptProcessor
 
         static async Task Main(string[] args)
         {
+            // Check if should run as web API
+            bool runAsWebApi = args.Contains("--web") || args.Contains("--api") || 
+                              Environment.GetEnvironmentVariable("RUN_AS_WEB_API")?.ToLower() == "true";
+
+            if (runAsWebApi)
+            {
+                await HybridProgram.MainAsync(args);
+                return;
+            }
+
+            // Original console application logic
             try
             {
                 // Display application header
