@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { 
   FolderOpen, 
   File, 
@@ -25,6 +25,7 @@ import {
   type MeetingFilter
 } from './services/api';
 import MeetingFilterComponent from './components/MeetingFilter';
+import MeetingCard from './components/MeetingCard';
 import './App.css';
 
 const App: React.FC = () => {
@@ -185,6 +186,61 @@ const App: React.FC = () => {
     }
     setFavorites(localStorageService.getFavorites());
   };
+  const handleEditTitle = async (fileName: string, newTitle: string) => {
+    try {
+      // TODO: Implement API call to update meeting title
+      console.log('Editing title for', fileName, 'to', newTitle);
+      // For now, just refresh the current folder
+      if (selectedFolder) {
+        await loadMeetingsInFolder(selectedFolder, currentFilter);
+      }
+    } catch (err) {
+      setError('Failed to update meeting title');
+      console.error(err);
+    }
+  };
+
+  const handleMoveToArchive = async (fileName: string) => {
+    try {
+      // TODO: Implement API call to move meeting to archive
+      console.log('Moving to archive:', fileName);
+      // For now, just refresh the current folder
+      if (selectedFolder) {
+        await loadMeetingsInFolder(selectedFolder, currentFilter);
+      }
+    } catch (err) {
+      setError('Failed to move meeting to archive');
+      console.error(err);
+    }
+  };
+
+  const handleMoveToIncoming = async (fileName: string) => {
+    try {
+      // TODO: Implement API call to move meeting to incoming
+      console.log('Moving to incoming:', fileName);
+      // For now, just refresh the current folder
+      if (selectedFolder) {
+        await loadMeetingsInFolder(selectedFolder, currentFilter);
+      }
+    } catch (err) {
+      setError('Failed to move meeting to incoming');
+      console.error(err);
+    }
+  };
+
+  const handleDeleteMeeting = async (fileName: string) => {
+    try {
+      // TODO: Implement API call to delete meeting
+      console.log('Deleting meeting:', fileName);
+      // For now, just refresh the current folder
+      if (selectedFolder) {
+        await loadMeetingsInFolder(selectedFolder, currentFilter);
+      }
+    } catch (err) {
+      setError('Failed to delete meeting');
+      console.error(err);
+    }
+  };
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -309,7 +365,7 @@ const App: React.FC = () => {
               onClick={() => setError(null)}
               className="float-right text-red-500 hover:text-red-700"
             >
-              ×
+              Ă—
             </button>
           </div>
         )}
@@ -388,49 +444,7 @@ const App: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    meetings.map((meeting) => (
-                      <div
-                        key={meeting.fileName}
-                        className="p-4 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => loadMeeting(meeting)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center">
-                              <File className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {meeting.title}
-                              </p>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(meeting.fileName);
-                                }}
-                                className="ml-2 p-1 hover:bg-gray-200 rounded"
-                              >
-                                <Star 
-                                  className={`h-4 w-4 ${
-                                    favorites.includes(meeting.fileName) 
-                                      ? 'text-yellow-500 fill-current' 
-                                      : 'text-gray-400'
-                                  }`} 
-                                />
-                              </button>
-                            </div>
-                            <p className="text-sm text-gray-500 truncate mt-1">
-                              {meeting.previewContent}
-                            </p>
-                            <div className="flex items-center mt-2 text-xs text-gray-400 space-x-4">
-                              <span>{formatFileSize(meeting.size)}</span>
-                              <span>{formatDate(meeting.lastModified)}</span>
-                              <span className={getStatusColor(meeting.status)}>
-                                {meeting.status}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                    meetings.map((meeting) => (<MeetingCard key={meeting.fileName} meeting={meeting} onSelect={loadMeeting} onToggleFavorite={toggleFavorite} isFavorite={favorites.includes(meeting.fileName)} onEditTitle={handleEditTitle} onMoveToArchive={handleMoveToArchive} onMoveToIncoming={handleMoveToIncoming} onDelete={handleDeleteMeeting} currentFolder={selectedFolder?.name} />))
                   )}
                 </div>
               </div>
@@ -486,7 +500,7 @@ const MeetingDetails: React.FC<{
               onClick={onBack}
               className="mr-4 p-2 hover:bg-gray-100 rounded-md"
             >
-              ←
+              â†
             </button>
             <h2 className="text-lg font-medium text-gray-900">{meeting.title}</h2>
           </div>
@@ -631,7 +645,7 @@ const UploadModal: React.FC<{
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            ×
+            Ă—
           </button>
         </div>
 
@@ -682,7 +696,7 @@ const UploadModal: React.FC<{
                     className="text-red-500 hover:text-red-700 ml-2"
                     disabled={loading}
                   >
-                    ×
+                    Ă—
                   </button>
                 </div>
               ))}
@@ -803,7 +817,7 @@ const SettingsModal: React.FC<{
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
             >
-              ×
+              Ă—
             </button>
           </div>
 
@@ -1022,3 +1036,7 @@ const SettingsModal: React.FC<{
 };
 
 export default App;
+
+
+
+
