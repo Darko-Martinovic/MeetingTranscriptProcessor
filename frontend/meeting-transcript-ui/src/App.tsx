@@ -160,6 +160,25 @@ const App: React.FC = () => {
     }
   };
 
+  const handleMultipleFileUpload = async (files: File[]) => {
+    try {
+      setLoading(true);
+      const uploadPromises = files.map(file => meetingApi.uploadMeeting(file));
+      await Promise.all(uploadPromises);
+      setShowUpload(false);
+      // Refresh the incoming folder if it's selected
+      const incomingFolder = folders.find(f => f.type === FolderType.Incoming);
+      if (incomingFolder && selectedFolder?.type === FolderType.Incoming) {
+        await loadMeetingsInFolder(incomingFolder);
+      }
+    } catch (err) {
+      setError('Failed to upload one or more files');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleFavorite = (fileName: string) => {
     const isFavorite = favorites.includes(fileName);
     if (isFavorite) {
@@ -458,6 +477,7 @@ const App: React.FC = () => {
         <UploadModal 
           onClose={() => setShowUpload(false)}
           onUpload={handleFileUpload}
+          onMultipleUpload={handleMultipleFileUpload}
           loading={loading}
         />
       )}
@@ -576,39 +596,63 @@ const MeetingDetails: React.FC<{
 const UploadModal: React.FC<{
   onClose: () => void;
   onUpload: (file: File) => Promise<void>;
+  onMultipleUpload: (files: File[]) => Promise<void>;
   loading: boolean;
-}> = ({ onClose, onUpload, loading }) => {
+}> = ({ onClose, onUpload, onMultipleUpload, loading }) => {
   const [dragOver, setDragOver] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = (files: File[] | File) => {
     const allowedTypes = ['.txt', '.md', '.json', '.xml', '.docx', '.pdf'];
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    const filesToProcess = Array.isArray(files) ? files : [files];
     
-    if (!allowedTypes.includes(fileExtension)) {
-      alert('Please select a supported file type: ' + allowedTypes.join(', '));
+    const validFiles = filesToProcess.filter(file => {
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      return allowedTypes.includes(fileExtension);
+    });
+
+    if (validFiles.length !== filesToProcess.length) {
+      alert('Some files were skipped. Please select only supported file types: ' + allowedTypes.join(', '));
+    }
+
+    if (validFiles.length === 0) {
       return;
     }
+
+    setSelectedFiles(validFiles);
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) return;
     
-    onUpload(file);
+    if (selectedFiles.length === 1) {
+      await onUpload(selectedFiles[0]);
+    } else {
+      await onMultipleUpload(selectedFiles);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) handleFileSelect(files);
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) handleFileSelect(files);
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(files => files.filter((_, i) => i !== index));
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <div className="bg-white rounded-lg p-6 w-full max-w-lg">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Upload Meeting File</h3>
+          <h3 className="text-lg font-medium">Upload Meeting Files</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -627,10 +671,10 @@ const UploadModal: React.FC<{
         >
           <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 mb-2">
-            Drag and drop a file here, or click to select
+            Drag and drop files here, or click to select
           </p>
           <p className="text-sm text-gray-500 mb-4">
-            Supported: .txt, .md, .json, .xml, .docx, .pdf
+            Supported: .txt, .md, .json, .xml, .docx, .pdf (Multiple files allowed)
           </p>
           <input
             type="file"
@@ -639,14 +683,54 @@ const UploadModal: React.FC<{
             className="hidden"
             id="file-input"
             disabled={loading}
+            multiple
           />
           <label
             htmlFor="file-input"
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md cursor-pointer inline-block"
           >
-            {loading ? 'Uploading...' : 'Select File'}
+            {loading ? 'Uploading...' : 'Select Files'}
           </label>
         </div>
+
+        {/* Selected Files List */}
+        {selectedFiles.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Selected Files ({selectedFiles.length}):
+            </h4>
+            <div className="max-h-40 overflow-y-auto space-y-2">
+              {selectedFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                  <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                  <button
+                    onClick={() => removeFile(index)}
+                    className="text-red-500 hover:text-red-700 ml-2"
+                    disabled={loading}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex space-x-2">
+              <button
+                onClick={handleUpload}
+                disabled={loading || selectedFiles.length === 0}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md"
+              >
+                {loading ? 'Uploading...' : `Upload ${selectedFiles.length} File${selectedFiles.length > 1 ? 's' : ''}`}
+              </button>
+              <button
+                onClick={() => setSelectedFiles([])}
+                disabled={loading}
+                className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-md"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
