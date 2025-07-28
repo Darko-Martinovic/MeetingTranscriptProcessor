@@ -92,13 +92,13 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
       <div className="flex items-center justify-between p-6 bg-slate-100">
         <button
           onClick={onToggleVisibility}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-md text-white ${
+          className={
             isVisible 
-              ? 'bg-red-600 hover:bg-red-700' 
+              ? 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md flex items-center space-x-2'
               : hasActiveFilters()
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+                ? 'bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center space-x-2'
+                : 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2'
+          }
         >
           <Filter className="h-4 w-4" />
           <span>
