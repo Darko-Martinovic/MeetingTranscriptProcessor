@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FolderOpen, File, Settings, Upload, RefreshCw, Star, Clock } from 'lucide-react';
+import { 
+  FolderOpen, 
+  File, 
+  Settings, 
+  Upload, 
+  RefreshCw, 
+  Star, 
+  Clock,
+  Archive,
+  Inbox,
+  Clock3,
+  Folder
+} from 'lucide-react';
 import { 
   meetingApi, 
   configurationApi, 
@@ -179,6 +191,53 @@ const App: React.FC = () => {
     }
   };
 
+  const getFolderIcon = (folderName: string) => {
+    const iconClass = "h-4 w-4 mr-2";
+    switch (folderName.toLowerCase()) {
+      case 'archive':
+        return <Archive className={`${iconClass} text-emerald-600`} />;
+      case 'incoming':
+        return <Inbox className={`${iconClass} text-blue-600`} />;
+      case 'processing':
+        return <Clock3 className={`${iconClass} text-amber-600`} />;
+      case 'recent':
+        return <Clock className={`${iconClass} text-purple-600`} />;
+      default:
+        return <Folder className={`${iconClass} text-gray-600`} />;
+    }
+  };
+
+  const getFolderHeaderIcon = (folderName: string) => {
+    const iconClass = "h-8 w-8";
+    switch (folderName.toLowerCase()) {
+      case 'archive':
+        return <Archive className={`${iconClass} text-emerald-600`} />;
+      case 'incoming':
+        return <Inbox className={`${iconClass} text-blue-600`} />;
+      case 'processing':
+        return <Clock3 className={`${iconClass} text-amber-600`} />;
+      case 'recent':
+        return <Clock className={`${iconClass} text-purple-600`} />;
+      default:
+        return <FolderOpen className={`${iconClass} text-blue-600`} />;
+    }
+  };
+
+  const getFolderColor = (folderName: string): string => {
+    switch (folderName.toLowerCase()) {
+      case 'archive':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'incoming':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'processing':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'recent':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -186,7 +245,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <FolderOpen className="h-8 w-8 text-blue-600" />
+              {selectedFolder ? getFolderHeaderIcon(selectedFolder.name) : <FolderOpen className="h-8 w-8 text-blue-600" />}
               <h1 className="ml-3 text-xl font-semibold text-gray-900">
                 Meeting Transcript Processor
               </h1>
@@ -249,15 +308,15 @@ const App: React.FC = () => {
                   <button
                     key={folder.name}
                     onClick={() => handleFolderSelect(folder)}
-                    className={`w-full text-left p-3 rounded-md transition-colors ${
+                    className={`w-full text-left p-3 rounded-md transition-colors border ${
                       selectedFolder?.name === folder.name
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                        : 'hover:bg-gray-50 text-gray-700'
+                        ? getFolderColor(folder.name)
+                        : 'hover:bg-gray-50 text-gray-700 border-gray-200'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <FolderOpen className="h-4 w-4 mr-2" />
+                        {getFolderIcon(folder.name)}
                         <span className="font-medium">{folder.name}</span>
                       </div>
                       <span className="text-sm text-gray-500">
@@ -271,18 +330,21 @@ const App: React.FC = () => {
               {/* Recent Meetings */}
               {recentMeetings.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Recent
+                  <h3 className="text-md font-semibold text-gray-900 mb-3 flex items-center">
+                    <Clock className="h-4 w-4 mr-2 text-purple-600" />
+                    <span className="text-purple-700">Recent</span>
                   </h3>
                   <div className="space-y-1">
                     {recentMeetings.slice(0, 5).map((fileName) => (
                       <div 
                         key={fileName}
-                        className="text-sm text-gray-600 p-2 hover:bg-gray-50 rounded cursor-pointer truncate"
+                        className="text-sm text-gray-600 p-3 hover:bg-purple-50 hover:text-purple-700 rounded-lg cursor-pointer truncate transition-colors border border-transparent hover:border-purple-200"
                         title={fileName}
                       >
-                        {fileName}
+                        <div className="flex items-center">
+                          <File className="h-3 w-3 mr-2 text-purple-500" />
+                          {fileName}
+                        </div>
                       </div>
                     ))}
                   </div>
