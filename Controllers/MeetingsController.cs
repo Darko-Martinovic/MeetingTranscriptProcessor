@@ -61,6 +61,13 @@ namespace MeetingTranscriptProcessor.Controllers
                         Path = _processingPath, 
                         Type = FolderType.Processing,
                         MeetingCount = await GetMeetingCountInFolder(_processingPath)
+                    },
+                    new FolderInfo 
+                    { 
+                        Name = "Recent", 
+                        Path = "", // Recent is virtual, no physical path
+                        Type = FolderType.Recent,
+                        MeetingCount = await GetRecentMeetingCount()
                     }
                 };
 
@@ -87,15 +94,24 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             try
             {
-                var folderPath = folderType switch
-                {
-                    FolderType.Archive => _archivePath,
-                    FolderType.Incoming => _incomingPath,
-                    FolderType.Processing => _processingPath,
-                    _ => throw new ArgumentException("Invalid folder type")
-                };
+                List<MeetingInfo> meetings;
 
-                var meetings = await GetMeetingsFromFolder(folderPath, folderType);
+                if (folderType == FolderType.Recent)
+                {
+                    meetings = await GetRecentMeetings();
+                }
+                else
+                {
+                    var folderPath = folderType switch
+                    {
+                        FolderType.Archive => _archivePath,
+                        FolderType.Incoming => _incomingPath,
+                        FolderType.Processing => _processingPath,
+                        _ => throw new ArgumentException("Invalid folder type")
+                    };
+
+                    meetings = await GetMeetingsFromFolder(folderPath, folderType);
+                }
                 
                 // Apply filters
                 meetings = ApplyFilters(meetings, search, status, language, participants, dateFrom, dateTo, hasJiraTickets);
@@ -309,6 +325,33 @@ namespace MeetingTranscriptProcessor.Controllers
             return meetings;
         }
 
+        private async Task<List<MeetingInfo>> GetRecentMeetings()
+        {
+            var allMeetings = new List<MeetingInfo>();
+
+            // Get meetings from all folders
+            var archiveMeetings = await GetMeetingsFromFolder(_archivePath, FolderType.Archive);
+            var incomingMeetings = await GetMeetingsFromFolder(_incomingPath, FolderType.Incoming);
+            var processingMeetings = await GetMeetingsFromFolder(_processingPath, FolderType.Processing);
+
+            allMeetings.AddRange(archiveMeetings);
+            allMeetings.AddRange(incomingMeetings);
+            allMeetings.AddRange(processingMeetings);
+
+            // Sort by LastModified date (most recent first) and take top 5
+            return allMeetings
+                .OrderByDescending(m => m.LastModified)
+                .Take(5)
+                .ToList();
+        }
+
+        private async Task<int> GetRecentMeetingCount()
+        {
+            // Recent folder always shows max 5 meetings
+            var recentMeetings = await GetRecentMeetings();
+            return recentMeetings.Count;
+        }
+
         private List<string> ExtractParticipants(string content)
         {
             var participants = new List<string>();
@@ -469,6 +512,7 @@ namespace MeetingTranscriptProcessor.Controllers
     {
         Archive,
         Incoming,
-        Processing
+        Processing,
+        Recent
     }
 }

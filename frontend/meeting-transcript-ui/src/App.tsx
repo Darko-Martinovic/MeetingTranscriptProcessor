@@ -38,7 +38,6 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [recentMeetings, setRecentMeetings] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<MeetingFilter>({});
   const [showFilters, setShowFilters] = useState(false);
 
@@ -101,7 +100,6 @@ const App: React.FC = () => {
     loadFolders();
     loadSystemStatus();
     setFavorites(localStorageService.getFavorites());
-    setRecentMeetings(localStorageService.getRecentMeetings());
 
     // Auto refresh every 30 seconds
     const interval = setInterval(() => {
@@ -133,7 +131,6 @@ const App: React.FC = () => {
       const meeting = await meetingApi.getMeeting(meetingInfo.fileName);
       setSelectedMeeting(meeting);
       localStorageService.addRecentMeeting(meetingInfo.fileName);
-      setRecentMeetings(localStorageService.getRecentMeetings());
     } catch (err) {
       setError('Failed to load meeting details');
       console.error(err);
@@ -346,29 +343,6 @@ const App: React.FC = () => {
                 ))}
               </div>
 
-              {/* Recent Meetings */}
-              {recentMeetings.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                    <Clock className="h-4 w-4 mr-2 text-purple-600" />
-                    <span className="text-purple-700">Recent</span>
-                  </h3>
-                  <div className="space-y-1">
-                    {recentMeetings.slice(0, 5).map((fileName) => (
-                      <div 
-                        key={fileName}
-                        className="text-sm text-gray-600 p-3 hover:bg-purple-50 hover:text-purple-700 rounded-lg cursor-pointer truncate transition-colors border border-transparent hover:border-purple-200"
-                        title={fileName}
-                      >
-                        <div className="flex items-center">
-                          <File className="h-3 w-3 mr-2 text-purple-500" />
-                          {fileName}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

@@ -103,6 +103,7 @@ export const FolderType = {
   Archive: 0,
   Incoming: 1,
   Processing: 2,
+  Recent: 3,
 } as const;
 
 export type FolderType = typeof FolderType[keyof typeof FolderType];
