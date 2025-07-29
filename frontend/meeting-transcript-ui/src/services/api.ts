@@ -1,11 +1,11 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -106,7 +106,7 @@ export const FolderType = {
   Recent: 3,
 } as const;
 
-export type FolderType = typeof FolderType[keyof typeof FolderType];
+export type FolderType = (typeof FolderType)[keyof typeof FolderType];
 
 export const TranscriptStatus = {
   New: 0,
@@ -116,7 +116,8 @@ export const TranscriptStatus = {
   Archived: 4,
 } as const;
 
-export type TranscriptStatus = typeof TranscriptStatus[keyof typeof TranscriptStatus];
+export type TranscriptStatus =
+  (typeof TranscriptStatus)[keyof typeof TranscriptStatus];
 
 export interface MeetingFilter {
   searchText?: string;
@@ -126,12 +127,12 @@ export interface MeetingFilter {
   dateFrom?: string;
   dateTo?: string;
   hasJiraTickets?: boolean;
-  sortBy?: 'date' | 'title' | 'size' | 'status' | 'language' | 'participants';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "date" | "title" | "size" | "status" | "language" | "participants";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface AppSettings {
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
   autoRefresh: boolean;
   refreshInterval: number;
 }
@@ -139,60 +140,90 @@ export interface AppSettings {
 // API functions
 export const meetingApi = {
   getFolders: async (): Promise<FolderInfo[]> => {
-    const response = await api.get('/meetings/folders');
+    const response = await api.get("/meetings/folders");
     return response.data;
   },
 
-  getMeetingsInFolder: async (folderType: FolderType, filter?: MeetingFilter): Promise<MeetingInfo[]> => {
+  getMeetingsInFolder: async (
+    folderType: FolderType,
+    filter?: MeetingFilter
+  ): Promise<MeetingInfo[]> => {
     const params = new URLSearchParams();
     if (filter) {
-      if (filter.searchText) params.append('search', filter.searchText);
-      if (filter.status?.length) params.append('status', filter.status.join(','));
-      if (filter.language?.length) params.append('language', filter.language.join(','));
-      if (filter.participants?.length) params.append('participants', filter.participants.join(','));
-      if (filter.dateFrom) params.append('dateFrom', filter.dateFrom);
-      if (filter.dateTo) params.append('dateTo', filter.dateTo);
-      if (filter.hasJiraTickets !== undefined) params.append('hasJiraTickets', filter.hasJiraTickets.toString());
-      if (filter.sortBy) params.append('sortBy', filter.sortBy);
-      if (filter.sortOrder) params.append('sortOrder', filter.sortOrder);
+      if (filter.searchText) params.append("search", filter.searchText);
+      if (filter.status?.length)
+        params.append("status", filter.status.join(","));
+      if (filter.language?.length)
+        params.append("language", filter.language.join(","));
+      if (filter.participants?.length)
+        params.append("participants", filter.participants.join(","));
+      if (filter.dateFrom) params.append("dateFrom", filter.dateFrom);
+      if (filter.dateTo) params.append("dateTo", filter.dateTo);
+      if (filter.hasJiraTickets !== undefined)
+        params.append("hasJiraTickets", filter.hasJiraTickets.toString());
+      if (filter.sortBy) params.append("sortBy", filter.sortBy);
+      if (filter.sortOrder) params.append("sortOrder", filter.sortOrder);
     }
-    
+
     const queryString = params.toString();
-    const url = `/meetings/folders/${folderType}/meetings${queryString ? `?${queryString}` : ''}`;
+    const url = `/meetings/folders/${folderType}/meetings${
+      queryString ? `?${queryString}` : ""
+    }`;
     const response = await api.get(url);
     return response.data;
   },
 
   getMeeting: async (fileName: string): Promise<MeetingTranscript> => {
-    const response = await api.get(`/meetings/meeting/${encodeURIComponent(fileName)}`);
+    const response = await api.get(
+      `/meetings/meeting/${encodeURIComponent(fileName)}`
+    );
     return response.data;
   },
 
-  uploadMeeting: async (file: File): Promise<{message: string; fileName: string}> => {
+  uploadMeeting: async (
+    file: File
+  ): Promise<{ message: string; fileName: string }> => {
     const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/meetings/upload', formData, {
+    formData.append("file", file);
+    const response = await api.post("/meetings/upload", formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     });
     return response.data;
   },
 
-  deleteMeeting: async (fileName: string): Promise<{message: string}> => {
-    const response = await api.delete(`/meetings/meeting/${encodeURIComponent(fileName)}`);
+  deleteMeeting: async (fileName: string): Promise<{ message: string }> => {
+    const response = await api.delete(
+      `/meetings/meeting/${encodeURIComponent(fileName)}`
+    );
+    return response.data;
+  },
+
+  updateMeetingTitle: async (
+    fileName: string,
+    title: string
+  ): Promise<{ message: string; title: string }> => {
+    const response = await api.put(
+      `/meetings/meeting/${encodeURIComponent(fileName)}/title`,
+      { title }
+    );
     return response.data;
   },
 };
 
 export const configurationApi = {
   getConfiguration: async (): Promise<ConfigurationDto> => {
-    const response = await api.get('/configuration');
+    const response = await api.get("/configuration");
     return response.data;
   },
 
-  updateAzureOpenAI: async (config: {endpoint?: string; apiKey?: string; deploymentName?: string}) => {
-    const response = await api.put('/configuration/azure-openai', config);
+  updateAzureOpenAI: async (config: {
+    endpoint?: string;
+    apiKey?: string;
+    deploymentName?: string;
+  }) => {
+    const response = await api.put("/configuration/azure-openai", config);
     return response.data;
   },
 
@@ -203,17 +234,22 @@ export const configurationApi = {
     enableHallucinationDetection?: boolean;
     enableConsistencyManagement?: boolean;
   }) => {
-    const response = await api.put('/configuration/extraction', config);
+    const response = await api.put("/configuration/extraction", config);
     return response.data;
   },
 
-  updateJira: async (config: {url?: string; email?: string; apiToken?: string; defaultProject?: string}) => {
-    const response = await api.put('/configuration/jira', config);
+  updateJira: async (config: {
+    url?: string;
+    email?: string;
+    apiToken?: string;
+    defaultProject?: string;
+  }) => {
+    const response = await api.put("/configuration/jira", config);
     return response.data;
   },
 
   getSystemStatus: async (): Promise<SystemStatusDto> => {
-    const response = await api.get('/configuration/system-status');
+    const response = await api.get("/configuration/system-status");
     return response.data;
   },
 };
@@ -221,7 +257,7 @@ export const configurationApi = {
 // Local storage utilities
 export const localStorageService = {
   getFavorites: (): string[] => {
-    const favorites = localStorage.getItem('meeting-favorites');
+    const favorites = localStorage.getItem("meeting-favorites");
     return favorites ? JSON.parse(favorites) : [];
   },
 
@@ -229,37 +265,42 @@ export const localStorageService = {
     const favorites = localStorageService.getFavorites();
     if (!favorites.includes(fileName)) {
       favorites.push(fileName);
-      localStorage.setItem('meeting-favorites', JSON.stringify(favorites));
+      localStorage.setItem("meeting-favorites", JSON.stringify(favorites));
     }
   },
 
   removeFavorite: (fileName: string): void => {
     const favorites = localStorageService.getFavorites();
-    const updated = favorites.filter(f => f !== fileName);
-    localStorage.setItem('meeting-favorites', JSON.stringify(updated));
+    const updated = favorites.filter((f) => f !== fileName);
+    localStorage.setItem("meeting-favorites", JSON.stringify(updated));
   },
 
   getRecentMeetings: (): string[] => {
-    const recent = localStorage.getItem('recent-meetings');
+    const recent = localStorage.getItem("recent-meetings");
     return recent ? JSON.parse(recent) : [];
   },
 
   addRecentMeeting: (fileName: string): void => {
     const recent = localStorageService.getRecentMeetings();
-    const updated = [fileName, ...recent.filter(f => f !== fileName)].slice(0, 10);
-    localStorage.setItem('recent-meetings', JSON.stringify(updated));
+    const updated = [fileName, ...recent.filter((f) => f !== fileName)].slice(
+      0,
+      10
+    );
+    localStorage.setItem("recent-meetings", JSON.stringify(updated));
   },
 
   getSettings: (): AppSettings => {
-    const settings = localStorage.getItem('app-settings');
-    return settings ? JSON.parse(settings) : {
-      theme: 'light' as const,
-      autoRefresh: true,
-      refreshInterval: 30000,
-    };
+    const settings = localStorage.getItem("app-settings");
+    return settings
+      ? JSON.parse(settings)
+      : {
+          theme: "light" as const,
+          autoRefresh: true,
+          refreshInterval: 30000,
+        };
   },
 
   saveSettings: (settings: AppSettings) => {
-    localStorage.setItem('app-settings', JSON.stringify(settings));
+    localStorage.setItem("app-settings", JSON.stringify(settings));
   },
 };

@@ -149,13 +149,25 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
     }, []);
 
     const handleSaveTitle = useCallback(() => {
-      if (
+      const trimmedTitle = editedTitle.trim();
+
+      // Validate title length
+      if (trimmedTitle.length > 200) {
+        // Automatically truncate if too long
+        const truncatedTitle = trimmedTitle.substring(0, 200);
+        setEditedTitle(truncatedTitle);
+
+        if (onEditTitle && truncatedTitle !== meeting.title) {
+          onEditTitle(meeting.fileName, truncatedTitle);
+        }
+      } else if (
         onEditTitle &&
-        editedTitle.trim() !== meeting.title &&
-        editedTitle.trim()
+        trimmedTitle !== meeting.title &&
+        trimmedTitle
       ) {
-        onEditTitle(meeting.fileName, editedTitle.trim());
+        onEditTitle(meeting.fileName, trimmedTitle);
       }
+
       setIsEditing(false);
     }, [onEditTitle, editedTitle, meeting.title, meeting.fileName]);
 

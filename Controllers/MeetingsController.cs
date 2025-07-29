@@ -227,6 +227,95 @@ namespace MeetingTranscriptProcessor.Controllers
             }
         }
 
+        [HttpPut("meeting/{fileName}/title")]
+        public async Task<ActionResult> UpdateMeetingTitle(string fileName, [FromBody] UpdateMeetingTitleDto request)
+        {
+            try
+            {
+                // Validate model state
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(new { error = "Validation failed", details = errors });
+                }
+
+                // Additional server-side validation
+                if (string.IsNullOrWhiteSpace(request.Title))
+                {
+                    return BadRequest(new { error = "Title cannot be empty" });
+                }
+
+                // Trim and sanitize the title
+                var sanitizedTitle = request.Title.Trim();
+                if (sanitizedTitle.Length > 200)
+                {
+                    sanitizedTitle = sanitizedTitle.Substring(0, 200);
+                }
+
+                var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
+
+                foreach (var path in allPaths)
+                {
+                    var filePath = Path.Combine(path, fileName);
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        // Read the current file content
+                        var content = await System.IO.File.ReadAllTextAsync(filePath);
+
+                        // Update the title in the content
+                        // For most text files, we'll prepend/update the first line as the title
+                        var lines = content.Split('\n');
+
+                        // If the file has content, replace the first line with the new title
+                        if (lines.Length > 0)
+                        {
+                            // Check if the first line looks like a title (not too long, not starting with specific patterns)
+                            var firstLine = lines[0].Trim();
+                            bool firstLineIsLikelyTitle = !string.IsNullOrEmpty(firstLine) &&
+                                                        firstLine.Length <= 200 &&
+                                                        !firstLine.StartsWith("Date:") &&
+                                                        !firstLine.StartsWith("Time:") &&
+                                                        !firstLine.StartsWith("Participants:") &&
+                                                        !firstLine.StartsWith("Meeting ID:");
+
+                            if (firstLineIsLikelyTitle)
+                            {
+                                lines[0] = sanitizedTitle;
+                            }
+                            else
+                            {
+                                // Prepend the title as the first line
+                                var newLines = new string[lines.Length + 1];
+                                newLines[0] = sanitizedTitle;
+                                Array.Copy(lines, 0, newLines, 1, lines.Length);
+                                lines = newLines;
+                            }
+                        }
+                        else
+                        {
+                            // Empty file, just add the title
+                            lines = new[] { sanitizedTitle };
+                        }
+
+                        // Write the updated content back to the file
+                        var updatedContent = string.Join('\n', lines);
+                        await System.IO.File.WriteAllTextAsync(filePath, updatedContent);
+
+                        return Ok(new { message = "Meeting title updated successfully", title = sanitizedTitle });
+                    }
+                }
+
+                return NotFound(new { error = "Meeting file not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         private async Task<int> GetMeetingCountInFolder(string folderPath)
         {
             try

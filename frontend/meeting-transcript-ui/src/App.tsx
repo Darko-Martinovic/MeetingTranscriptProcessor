@@ -210,15 +210,31 @@ const App: React.FC = () => {
   };
   const handleEditTitle = async (fileName: string, newTitle: string) => {
     try {
-      // TODO: Implement API call to update meeting title
-      console.log("Editing title for", fileName, "to", newTitle);
-      // For now, just refresh the current folder
+      // Call the API to update meeting title
+      const response = await meetingApi.updateMeetingTitle(fileName, newTitle);
+
+      // Refresh the current folder to show updated title
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
+
+      // Clear any existing errors
+      setError(null);
+      console.log("Meeting title updated successfully:", response.title);
     } catch (err) {
-      setError("Failed to update meeting title");
-      console.error(err);
+      const errorMessage =
+        err instanceof Error &&
+        "response" in err &&
+        typeof err.response === "object" &&
+        err.response &&
+        "data" in err.response &&
+        typeof err.response.data === "object" &&
+        err.response.data &&
+        "error" in err.response.data
+          ? String(err.response.data.error)
+          : "Failed to update meeting title";
+      setError(errorMessage);
+      console.error("Error updating meeting title:", err);
     }
   };
 
