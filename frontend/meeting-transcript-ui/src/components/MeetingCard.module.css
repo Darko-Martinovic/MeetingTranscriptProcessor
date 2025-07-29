@@ -6,7 +6,6 @@
   border-radius: 0.5rem;
   padding: 1.5rem;
   transition: all 0.2s ease;
-  cursor: pointer;
 }
 
 .card:hover {
@@ -148,6 +147,14 @@
 
 .favoriteButton:hover {
   background-color: #f3f4f6;
+}
+
+.detailsButton {
+  color: #3b82f6;
+}
+
+.detailsButton:hover {
+  background-color: #eff6ff;
 }
 
 .favoriteIcon {

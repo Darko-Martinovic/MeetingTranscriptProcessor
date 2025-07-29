@@ -10,6 +10,7 @@ import {
   Archive,
   Inbox,
   Trash2,
+  Eye,
 } from "lucide-react";
 import type { MeetingInfo } from "../services/api";
 import styles from "./MeetingCard.module.css";
@@ -135,10 +136,6 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
     }, []);
 
     // Event handlers
-    const handleCardClick = useCallback(() => {
-      onSelect(meeting);
-    }, [onSelect, meeting]);
-
     const handleToggleFavorite = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -256,7 +253,7 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
     }, []);
 
     return (
-      <div className={styles.card} onClick={handleCardClick}>
+      <div className={styles.card}>
         {/* Header with title and action buttons */}
         <div className={styles.header}>
           <div className={styles.titleSection}>
@@ -309,6 +306,18 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
           </div>
 
           <div className={styles.actionButtons}>
+            {/* Details button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(meeting);
+              }}
+              className={`${styles.iconButton} ${styles.detailsButton}`}
+              title="View details"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+
             {/* Folder move buttons */}
             {folderState.isInArchive && onMoveToIncoming && (
               <button
