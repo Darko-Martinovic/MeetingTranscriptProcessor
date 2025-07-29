@@ -636,7 +636,7 @@ namespace MeetingTranscriptProcessor.Controllers
 
                         var meetings = await GetMeetingsFromFolder(path, folderType);
                         var meeting = meetings.FirstOrDefault(m => m.FileName == fileName);
-                        
+
                         if (meeting != null)
                         {
                             favoriteMeetings.Add(meeting);

@@ -133,14 +133,16 @@ const App: React.FC = () => {
     try {
       setLoading(true);
       const foldersData = await meetingApi.getFolders();
-      
+
       // Update the Favorites folder count with the actual number from localStorage
-      const favoritesFolder = foldersData.find(f => f.type === FolderType.Favorites);
+      const favoritesFolder = foldersData.find(
+        (f) => f.type === FolderType.Favorites
+      );
       if (favoritesFolder) {
         const currentFavorites = localStorageService.getFavorites();
         favoritesFolder.meetingCount = currentFavorites.length;
       }
-      
+
       setFolders(foldersData);
     } catch (err) {
       setError("Failed to load folders");
@@ -214,15 +216,15 @@ const App: React.FC = () => {
     } else {
       localStorageService.addFavorite(fileName);
     }
-    
+
     const newFavorites = localStorageService.getFavorites();
     setFavorites(newFavorites);
-    
+
     // If we're currently viewing the Favorites folder, refresh it
     if (selectedFolder?.type === FolderType.Favorites) {
       await loadMeetingsInFolder(selectedFolder, currentFilter);
     }
-    
+
     // Refresh folder counts (especially for Favorites folder)
     await loadFolders();
   };
