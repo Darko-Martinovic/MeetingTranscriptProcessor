@@ -1,0 +1,471 @@
+/* MeetingFilter CSS Module */
+
+/* Main container */
+.container {
+  border-bottom: 1px solid #e5e7eb;
+  background-color: white;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Filter toggle section */
+.toggleSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Toggle button styles */
+.toggleButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggleButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.toggleButtonVisible {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.toggleButtonActive {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.toggleButtonInactive {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+}
+
+/* Active filter count badge */
+.filterCountBadge {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border-radius: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin-left: 0.5rem;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+/* Clear all button */
+.clearButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.clearButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Filter panel */
+.filterPanel {
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e0f2fe 100%);
+  border-top: 1px solid #e2e8f0;
+  gap: 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Search section */
+.searchSection {
+  position: relative;
+  width: 100%;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 1rem 1rem 1rem 3rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 1rem;
+  background-color: white;
+  font-size: 0.875rem;
+  color: #334155;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+.searchInput::placeholder {
+  color: #94a3b8;
+}
+
+/* Filter grid */
+.filterGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .filterGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .filterGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Filter card */
+.filterCard {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease-in-out;
+}
+
+.filterCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Filter card header */
+.filterCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+/* Status indicator dot */
+.statusDot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+/* Icon styles for different categories */
+.iconLanguage {
+  color: #8b5cf6;
+}
+
+.iconParticipants {
+  color: #10b981;
+}
+
+.iconCalendar {
+  color: #3b82f6;
+}
+
+.iconJira {
+  color: #059669;
+}
+
+/* Filter options container */
+.filterOptions {
+  max-height: 8rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filterOptions::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filterOptions::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 2px;
+}
+
+.filterOptions::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.filterOptions::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Filter option item */
+.filterOption {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.filterOption:hover {
+  background-color: rgba(99, 102, 241, 0.05);
+  transform: translateX(2px);
+}
+
+/* Checkbox styles */
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #d1d5db;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.checkbox:checked {
+  background-color: #6366f1;
+  border-color: #6366f1;
+}
+
+.checkbox:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Status-specific checkbox colors */
+.checkboxStatus:checked {
+  background-color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.checkboxLanguage:checked {
+  background-color: #8b5cf6;
+  border-color: #8b5cf6;
+}
+
+.checkboxParticipants:checked {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+/* Filter option label */
+.filterOptionLabel {
+  font-size: 0.875rem;
+  color: #475569;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Participants overflow indicator */
+.participantsOverflow {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-style: italic;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+}
+
+/* Date and special filters section */
+.dateSpecialSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Date range section */
+.dateRangeSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dateInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dateLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dateInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #334155;
+  background-color: white;
+  transition: all 0.2s ease-in-out;
+}
+
+.dateInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Jira section */
+.jiraSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.jiraSelect {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #334155;
+  background-color: white;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.jiraSelect:focus {
+  outline: none;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+
+/* Sorting section */
+.sortingSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border-top: 2px solid #e2e8f0;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sortingGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sortingLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sortingSelect {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  background-color: white;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.sortingSelect:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .toggleSection {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .sortingSection {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .filterGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Animation classes */
+.fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Focus styles for accessibility */
+.toggleButton:focus,
+.clearButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+}
+
+.filterOption:focus-within {
+  background-color: rgba(99, 102, 241, 0.05);
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}

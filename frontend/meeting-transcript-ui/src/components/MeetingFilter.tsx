@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Search,
   Filter,
@@ -9,6 +9,7 @@ import {
   Languages,
 } from "lucide-react";
 import type { MeetingFilter, MeetingInfo } from "../services/api";
+import styles from "./MeetingFilter.module.css";
 
 interface MeetingFilterProps {
   onFilterChange: (filter: MeetingFilter) => void;
@@ -17,7 +18,7 @@ interface MeetingFilterProps {
   onToggleVisibility: () => void;
 }
 
-const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
+const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(({
   onFilterChange,
   meetings,
   isVisible,
@@ -35,14 +36,8 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
     sortOrder: "desc",
   });
 
-  const [availableFilters, setAvailableFilters] = useState({
-    statuses: [] as string[],
-    languages: [] as string[],
-    participants: [] as string[],
-  });
-
-  useEffect(() => {
-    // Extract unique values for filter options
+  // Memoized available filters
+  const availableFilters = useMemo(() => {
     const statuses = [
       ...new Set(
         meetings.map((m) => m.status).filter((s) => s && s !== "unknown")
@@ -57,25 +52,51 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
       ...new Set(meetings.flatMap((m) => m.participants || [])),
     ];
 
-    setAvailableFilters({
+    return {
       statuses: statuses.sort(),
       languages: languages.filter((l) => l !== undefined).sort(),
       participants: participants.sort(),
-    });
+    };
   }, [meetings]);
+
+  // Memoized active filters check
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filter.searchText ||
+      (filter.status && filter.status.length > 0) ||
+      (filter.language && filter.language.length > 0) ||
+      (filter.participants && filter.participants.length > 0) ||
+      filter.dateFrom ||
+      filter.dateTo ||
+      filter.hasJiraTickets !== undefined
+    );
+  }, [filter]);
+
+  // Memoized active filter count
+  const activeFilterCount = useMemo(() => {
+    return (
+      (filter.status?.length || 0) +
+      (filter.language?.length || 0) +
+      (filter.participants?.length || 0) +
+      (filter.searchText ? 1 : 0) +
+      (filter.dateFrom ? 1 : 0) +
+      (filter.dateTo ? 1 : 0) +
+      (filter.hasJiraTickets !== undefined ? 1 : 0)
+    );
+  }, [filter]);
 
   useEffect(() => {
     onFilterChange(filter);
   }, [filter, onFilterChange]);
 
-  const updateFilter = <K extends keyof MeetingFilter>(
+  const updateFilter = useCallback(<K extends keyof MeetingFilter>(
     key: K,
     value: MeetingFilter[K]
   ) => {
     setFilter((prev) => ({ ...prev, [key]: value }));
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilter({
       searchText: "",
       status: [],
@@ -87,9 +108,9 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
       sortBy: "date",
       sortOrder: "desc",
     });
-  };
+  }, []);
 
-  const toggleArrayFilter = <T extends string>(
+  const toggleArrayFilter = useCallback(<T extends string>(
     key: "status" | "language" | "participants",
     value: T
   ) => {
@@ -98,61 +119,41 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
       ? currentArray.filter((item) => item !== value)
       : [...currentArray, value];
     updateFilter(key, newArray);
-  };
-
-  const hasActiveFilters = () => {
-    return (
-      filter.searchText ||
-      (filter.status && filter.status.length > 0) ||
-      (filter.language && filter.language.length > 0) ||
-      (filter.participants && filter.participants.length > 0) ||
-      filter.dateFrom ||
-      filter.dateTo ||
-      filter.hasJiraTickets !== undefined
-    );
-  };
+  }, [filter, updateFilter]);
 
   return (
-    <div className="border-b border-gray-200 bg-white">
+    <div className={styles.container}>
       {/* Filter Toggle Button */}
-      <div className="flex items-center justify-between p-6 bg-slate-100">
+      <div className={styles.toggleSection}>
         <button
           onClick={onToggleVisibility}
           className={
-            // Make both Show and Hide Filters use the same blue style for visibility
             isVisible
-              ? "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
-              : hasActiveFilters()
-              ? "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
-              : "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
+              ? styles.toggleButtonVisible
+              : hasActiveFilters
+              ? styles.toggleButtonActive
+              : styles.toggleButtonInactive
           }
         >
           <Filter className="h-4 w-4" />
           <span>
             {isVisible
               ? "Hide Filters"
-              : hasActiveFilters()
+              : hasActiveFilters
               ? "Filters Active"
               : "Show Filters"}
           </span>
-          {hasActiveFilters() && !isVisible && (
-            <span className="bg-orange-400 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold ml-2">
-              {/* Count active filters */}
-              {(filter.status?.length || 0) +
-                (filter.language?.length || 0) +
-                (filter.participants?.length || 0) +
-                (filter.searchText ? 1 : 0) +
-                (filter.dateFrom ? 1 : 0) +
-                (filter.dateTo ? 1 : 0) +
-                (filter.hasJiraTickets !== undefined ? 1 : 0)}
+          {hasActiveFilters && !isVisible && (
+            <span className={styles.filterCountBadge}>
+              {activeFilterCount}
             </span>
           )}
         </button>
 
-        {hasActiveFilters() && (
+        {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
+            className={styles.clearButton}
           >
             <X className="h-4 w-4" />
             <span>Clear All</span>
@@ -162,42 +163,39 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
 
       {/* Filter Panel */}
       {isVisible && (
-        <div className="p-6 space-y-6 border-t border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className={`${styles.filterPanel} ${styles.fadeIn}`}>
           {/* Search */}
-          <div className="relative">
-            <Search
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"
-              size={20}
-            />
+          <div className={styles.searchSection}>
+            <Search className={styles.searchIcon} size={20} />
             <input
               type="text"
               placeholder="Search meetings, participants, content..."
               value={filter.searchText}
               onChange={(e) => updateFilter("searchText", e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white shadow-sm text-slate-700 placeholder-slate-400"
+              className={styles.searchInput}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className={styles.filterGrid}>
             {/* Status Filter */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
-                <div className="w-3 h-3 bg-amber-400 rounded-full"></div>
+            <div className={styles.filterCard}>
+              <div className={styles.filterCardHeader}>
+                <div className={styles.statusDot}></div>
                 <span>Status</span>
-              </label>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
+              </div>
+              <div className={styles.filterOptions}>
                 {availableFilters.statuses.map((status) => (
                   <label
                     key={status}
-                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                    className={styles.filterOption}
                   >
                     <input
                       type="checkbox"
                       checked={filter.status?.includes(status) || false}
                       onChange={() => toggleArrayFilter("status", status)}
-                      className="rounded border-slate-300 text-amber-500 focus:ring-amber-500 focus:ring-2"
+                      className={`${styles.checkbox} ${styles.checkboxStatus}`}
                     />
-                    <span className="text-sm text-slate-700 capitalize font-medium">
+                    <span className={styles.filterOptionLabel}>
                       {status}
                     </span>
                   </label>
@@ -206,24 +204,24 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
             </div>
 
             {/* Language Filter */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
-                <Languages size={16} className="text-purple-500" />
+            <div className={styles.filterCard}>
+              <div className={styles.filterCardHeader}>
+                <Languages size={16} className={styles.iconLanguage} />
                 <span>Language</span>
-              </label>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
+              </div>
+              <div className={styles.filterOptions}>
                 {availableFilters.languages.map((language) => (
                   <label
                     key={language}
-                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                    className={styles.filterOption}
                   >
                     <input
                       type="checkbox"
                       checked={filter.language?.includes(language) || false}
                       onChange={() => toggleArrayFilter("language", language)}
-                      className="rounded border-slate-300 text-purple-500 focus:ring-purple-500 focus:ring-2"
+                      className={`${styles.checkbox} ${styles.checkboxLanguage}`}
                     />
-                    <span className="text-sm text-slate-700 capitalize font-medium">
+                    <span className={styles.filterOptionLabel}>
                       {language}
                     </span>
                   </label>
@@ -232,18 +230,18 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
             </div>
 
             {/* Participants Filter */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
-                <Users size={16} className="text-emerald-500" />
+            <div className={styles.filterCard}>
+              <div className={styles.filterCardHeader}>
+                <Users size={16} className={styles.iconParticipants} />
                 <span>Participants</span>
-              </label>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
+              </div>
+              <div className={styles.filterOptions}>
                 {availableFilters.participants
                   .slice(0, 10)
                   .map((participant) => (
                     <label
                       key={participant}
-                      className="flex items-center space-x-3 p-2 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
+                      className={styles.filterOption}
                     >
                       <input
                         type="checkbox"
@@ -253,15 +251,15 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
                         onChange={() =>
                           toggleArrayFilter("participants", participant)
                         }
-                        className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-500 focus:ring-2"
+                        className={`${styles.checkbox} ${styles.checkboxParticipants}`}
                       />
-                      <span className="text-sm text-slate-700 font-medium">
+                      <span className={styles.filterOptionLabel}>
                         {participant}
                       </span>
                     </label>
                   ))}
                 {availableFilters.participants.length > 10 && (
-                  <div className="text-xs text-slate-500 italic px-2">
+                  <div className={styles.participantsOverflow}>
                     +{availableFilters.participants.length - 10} more
                     participants
                   </div>
@@ -270,73 +268,69 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
             </div>
 
             {/* Date Range and Special Filters */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-4">
-              {/* Date Range */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
-                  <Calendar size={16} className="text-blue-500" />
-                  <span>Date Range</span>
-                </label>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">
-                      From
-                    </label>
+            <div className={styles.filterCard}>
+              <div className={styles.dateSpecialSection}>
+                {/* Date Range */}
+                <div className={styles.dateRangeSection}>
+                  <div className={styles.filterCardHeader}>
+                    <Calendar size={16} className={styles.iconCalendar} />
+                    <span>Date Range</span>
+                  </div>
+                  <div className={styles.dateInputGroup}>
+                    <label className={styles.dateLabel}>From</label>
                     <input
                       type="date"
                       value={filter.dateFrom}
                       onChange={(e) => updateFilter("dateFrom", e.target.value)}
-                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className={styles.dateInput}
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">
-                      To
-                    </label>
+                  <div className={styles.dateInputGroup}>
+                    <label className={styles.dateLabel}>To</label>
                     <input
                       type="date"
                       value={filter.dateTo}
                       onChange={(e) => updateFilter("dateTo", e.target.value)}
-                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className={styles.dateInput}
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Jira Tickets Filter */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
-                  <CheckSquare size={16} className="text-green-500" />
-                  <span>Jira Tickets</span>
-                </label>
-                <select
-                  value={
-                    filter.hasJiraTickets === undefined
-                      ? ""
-                      : filter.hasJiraTickets.toString()
-                  }
-                  onChange={(e) =>
-                    updateFilter(
-                      "hasJiraTickets",
-                      e.target.value === ""
-                        ? undefined
-                        : e.target.value === "true"
-                    )
-                  }
-                  className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white"
-                >
-                  <option value="">All Meetings</option>
-                  <option value="true">✅ Has Jira Tickets</option>
-                  <option value="false">❌ No Jira Tickets</option>
-                </select>
+                {/* Jira Tickets Filter */}
+                <div className={styles.jiraSection}>
+                  <div className={styles.filterCardHeader}>
+                    <CheckSquare size={16} className={styles.iconJira} />
+                    <span>Jira Tickets</span>
+                  </div>
+                  <select
+                    value={
+                      filter.hasJiraTickets === undefined
+                        ? ""
+                        : filter.hasJiraTickets.toString()
+                    }
+                    onChange={(e) =>
+                      updateFilter(
+                        "hasJiraTickets",
+                        e.target.value === ""
+                          ? undefined
+                          : e.target.value === "true"
+                      )
+                    }
+                    className={styles.jiraSelect}
+                  >
+                    <option value="">All Meetings</option>
+                    <option value="true">✅ Has Jira Tickets</option>
+                    <option value="false">❌ No Jira Tickets</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Sorting */}
-          <div className="flex items-center justify-center space-x-6 pt-4 border-t-2 border-slate-200 bg-white rounded-xl p-4 shadow-sm">
-            <div className="flex items-center space-x-3">
-              <label className="block text-sm font-semibold text-slate-700">
+          <div className={styles.sortingSection}>
+            <div className={styles.sortingGroup}>
+              <label className={styles.sortingLabel}>
                 🔄 Sort By
               </label>
               <select
@@ -353,7 +347,7 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
                       | "participants"
                   )
                 }
-                className="px-4 py-2 border-2 border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white"
+                className={styles.sortingSelect}
               >
                 <option value="date">📅 Date</option>
                 <option value="title">📝 Title</option>
@@ -363,8 +357,8 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
                 <option value="participants">👥 Participants Count</option>
               </select>
             </div>
-            <div className="flex items-center space-x-3">
-              <label className="block text-sm font-semibold text-slate-700">
+            <div className={styles.sortingGroup}>
+              <label className={styles.sortingLabel}>
                 📊 Order
               </label>
               <select
@@ -372,7 +366,7 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
                 onChange={(e) =>
                   updateFilter("sortOrder", e.target.value as "asc" | "desc")
                 }
-                className="px-4 py-2 border-2 border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white"
+                className={styles.sortingSelect}
               >
                 <option value="desc">⬇️ Descending</option>
                 <option value="asc">⬆️ Ascending</option>
@@ -383,6 +377,9 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = ({
       )}
     </div>
   );
-};
+});
+
+// Set display name for debugging
+MeetingFilterComponent.displayName = 'MeetingFilterComponent';
 
 export default MeetingFilterComponent;
