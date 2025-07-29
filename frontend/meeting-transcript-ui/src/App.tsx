@@ -132,16 +132,22 @@ const App: React.FC = () => {
     loadSystemStatus();
     setFavorites(localStorageService.getFavorites());
 
-    // Auto refresh every 30 seconds
+    // Auto refresh every 30 seconds - but skip meeting list refresh when viewing details
     const interval = setInterval(() => {
-      if (selectedFolder) {
+      if (selectedFolder && !selectedMeeting) {
         loadMeetingsInFolder(selectedFolder, currentFilter);
       }
       loadSystemStatus();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [selectedFolder, loadMeetingsInFolder, loadSystemStatus, currentFilter]);
+  }, [
+    selectedFolder,
+    selectedMeeting,
+    loadMeetingsInFolder,
+    loadSystemStatus,
+    currentFilter,
+  ]);
 
   // Update Favorites count when folders are loaded
   useEffect(() => {
