@@ -41,6 +41,10 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
     const [isEditing, setIsEditing] = useState(false);
     const [editedTitle, setEditedTitle] = useState(meeting.title);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showMoveToArchiveConfirm, setShowMoveToArchiveConfirm] =
+      useState(false);
+    const [showMoveToIncomingConfirm, setShowMoveToIncomingConfirm] =
+      useState(false);
 
     // Memoized status badge component
     const statusBadge = useMemo(() => {
@@ -211,25 +215,45 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
       setShowDeleteConfirm(false);
     }, []);
 
-    const handleMoveToArchive = useCallback(
+    const handleShowMoveToArchiveConfirm = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (onMoveToArchive) {
-          onMoveToArchive(meeting.fileName);
-        }
+        setShowMoveToArchiveConfirm(true);
       },
-      [onMoveToArchive, meeting.fileName]
+      []
     );
 
-    const handleMoveToIncoming = useCallback(
+    const handleMoveToArchive = useCallback(() => {
+      if (onMoveToArchive) {
+        onMoveToArchive(meeting.fileName);
+      }
+      setShowMoveToArchiveConfirm(false);
+    }, [onMoveToArchive, meeting.fileName]);
+
+    const handleCancelMoveToArchive = useCallback((e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowMoveToArchiveConfirm(false);
+    }, []);
+
+    const handleShowMoveToIncomingConfirm = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (onMoveToIncoming) {
-          onMoveToIncoming(meeting.fileName);
-        }
+        setShowMoveToIncomingConfirm(true);
       },
-      [onMoveToIncoming, meeting.fileName]
+      []
     );
+
+    const handleMoveToIncoming = useCallback(() => {
+      if (onMoveToIncoming) {
+        onMoveToIncoming(meeting.fileName);
+      }
+      setShowMoveToIncomingConfirm(false);
+    }, [onMoveToIncoming, meeting.fileName]);
+
+    const handleCancelMoveToIncoming = useCallback((e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowMoveToIncomingConfirm(false);
+    }, []);
 
     return (
       <div className={styles.card} onClick={handleCardClick}>
@@ -288,7 +312,7 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
             {/* Folder move buttons */}
             {folderState.isInArchive && onMoveToIncoming && (
               <button
-                onClick={handleMoveToIncoming}
+                onClick={handleShowMoveToIncomingConfirm}
                 className={`${styles.iconButton} ${styles.moveToIncomingButton}`}
                 title="Move to Incoming"
               >
@@ -298,7 +322,7 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
 
             {folderState.isInIncoming && onMoveToArchive && (
               <button
-                onClick={handleMoveToArchive}
+                onClick={handleShowMoveToArchiveConfirm}
                 className={`${styles.iconButton} ${styles.moveToArchiveButton}`}
                 title="Move to Archive"
               >
@@ -392,6 +416,72 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
                   className={`${styles.modalButton} ${styles.modalButtonDanger}`}
                 >
                   Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Move to Archive Confirmation Modal */}
+        {showMoveToArchiveConfirm && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <Archive className={styles.modalIcon} />
+                <h3 className={styles.modalTitle}>Move to Archive</h3>
+              </div>
+              <p className={styles.modalContent}>
+                Are you sure you want to move "{meeting.title}" to the Archive
+                folder?
+              </p>
+              <div className={styles.modalActions}>
+                <button
+                  onClick={handleCancelMoveToArchive}
+                  className={`${styles.modalButton} ${styles.modalButtonSecondary}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMoveToArchive();
+                  }}
+                  className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
+                >
+                  Move to Archive
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Move to Incoming Confirmation Modal */}
+        {showMoveToIncomingConfirm && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <Inbox className={styles.modalIcon} />
+                <h3 className={styles.modalTitle}>Move to Incoming</h3>
+              </div>
+              <p className={styles.modalContent}>
+                Are you sure you want to move "{meeting.title}" to the Incoming
+                folder?
+              </p>
+              <div className={styles.modalActions}>
+                <button
+                  onClick={handleCancelMoveToIncoming}
+                  className={`${styles.modalButton} ${styles.modalButtonSecondary}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMoveToIncoming();
+                  }}
+                  className={`${styles.modalButton} ${styles.modalButtonPrimary}`}
+                >
+                  Move to Incoming
                 </button>
               </div>
             </div>

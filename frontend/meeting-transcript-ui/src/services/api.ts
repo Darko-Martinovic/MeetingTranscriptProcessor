@@ -210,6 +210,21 @@ export const meetingApi = {
     );
     return response.data;
   },
+
+  moveMeeting: async (
+    fileName: string,
+    targetFolderType: FolderType
+  ): Promise<{
+    message: string;
+    fileName: string;
+    targetFolder: FolderType;
+  }> => {
+    const response = await api.put(
+      `/meetings/meeting/${encodeURIComponent(fileName)}/move`,
+      { targetFolderType }
+    );
+    return response.data;
+  },
 };
 
 export const configurationApi = {

@@ -240,29 +240,73 @@ const App: React.FC = () => {
 
   const handleMoveToArchive = async (fileName: string) => {
     try {
-      // TODO: Implement API call to move meeting to archive
-      console.log("Moving to archive:", fileName);
-      // For now, just refresh the current folder
+      // Call the API to move meeting to archive
+      const response = await meetingApi.moveMeeting(
+        fileName,
+        FolderType.Archive
+      );
+
+      // Refresh the current folder to reflect the change
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
+
+      // Also refresh the folder counts
+      await loadFolders();
+
+      // Clear any existing errors
+      setError(null);
+      console.log("Meeting moved to archive successfully:", response.fileName);
     } catch (err) {
-      setError("Failed to move meeting to archive");
-      console.error(err);
+      const errorMessage =
+        err instanceof Error &&
+        "response" in err &&
+        typeof err.response === "object" &&
+        err.response &&
+        "data" in err.response &&
+        typeof err.response.data === "object" &&
+        err.response.data &&
+        "error" in err.response.data
+          ? String(err.response.data.error)
+          : "Failed to move meeting to archive";
+      setError(errorMessage);
+      console.error("Error moving meeting to archive:", err);
     }
   };
 
   const handleMoveToIncoming = async (fileName: string) => {
     try {
-      // TODO: Implement API call to move meeting to incoming
-      console.log("Moving to incoming:", fileName);
-      // For now, just refresh the current folder
+      // Call the API to move meeting to incoming
+      const response = await meetingApi.moveMeeting(
+        fileName,
+        FolderType.Incoming
+      );
+
+      // Refresh the current folder to reflect the change
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
+
+      // Also refresh the folder counts
+      await loadFolders();
+
+      // Clear any existing errors
+      setError(null);
+      console.log("Meeting moved to incoming successfully:", response.fileName);
     } catch (err) {
-      setError("Failed to move meeting to incoming");
-      console.error(err);
+      const errorMessage =
+        err instanceof Error &&
+        "response" in err &&
+        typeof err.response === "object" &&
+        err.response &&
+        "data" in err.response &&
+        typeof err.response.data === "object" &&
+        err.response.data &&
+        "error" in err.response.data
+          ? String(err.response.data.error)
+          : "Failed to move meeting to incoming";
+      setError(errorMessage);
+      console.error("Error moving meeting to incoming:", err);
     }
   };
 

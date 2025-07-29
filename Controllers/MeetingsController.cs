@@ -316,6 +316,102 @@ namespace MeetingTranscriptProcessor.Controllers
             }
         }
 
+        [HttpPut("meeting/{fileName}/move")]
+        public ActionResult MoveMeeting(string fileName, [FromBody] MoveMeetingDto request)
+        {
+            try
+            {
+                // Validate model state
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(new { error = "Validation failed", details = errors });
+                }
+
+                // Get source and target folder paths
+                var sourcePaths = new[] { _archivePath, _incomingPath, _processingPath };
+                var targetPath = GetFolderPath(request.TargetFolderType);
+
+                if (string.IsNullOrEmpty(targetPath))
+                {
+                    return BadRequest(new { error = "Invalid target folder type" });
+                }
+
+                // Validate target folder type (Recent is virtual, Processing is typically system-managed)
+                if (request.TargetFolderType == FolderType.Recent)
+                {
+                    return BadRequest(new { error = "Cannot move meetings to Recent folder (it's virtual)" });
+                }
+
+                if (request.TargetFolderType == FolderType.Processing)
+                {
+                    return BadRequest(new { error = "Cannot move meetings to Processing folder (it's system-managed)" });
+                }
+
+                // Ensure target directory exists
+                Directory.CreateDirectory(targetPath);
+
+                string? sourceFilePath = null;
+                string? sourceFolderName = null;
+
+                // Find the source file
+                foreach (var path in sourcePaths)
+                {
+                    var filePath = Path.Combine(path, fileName);
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        sourceFilePath = filePath;
+                        sourceFolderName = Path.GetFileName(path);
+                        break;
+                    }
+                }
+
+                if (sourceFilePath == null)
+                {
+                    return NotFound(new { error = "Meeting file not found" });
+                }
+
+                // Check if the file is already in the target folder
+                if (sourceFilePath.StartsWith(targetPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new { error = "Meeting is already in the target folder" });
+                }
+
+                // Create target file path
+                var targetFilePath = Path.Combine(targetPath, fileName);
+
+                // Handle duplicate names in target folder
+                var counter = 1;
+                while (System.IO.File.Exists(targetFilePath))
+                {
+                    var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                    var extension = Path.GetExtension(fileName);
+                    var newFileName = $"{nameWithoutExt}_{counter}{extension}";
+                    targetFilePath = Path.Combine(targetPath, newFileName);
+                    fileName = newFileName; // Update fileName for response
+                    counter++;
+                }
+
+                // Move the file
+                System.IO.File.Move(sourceFilePath, targetFilePath);
+
+                var targetFolderName = Path.GetFileName(targetPath);
+                return Ok(new
+                {
+                    message = $"Meeting moved successfully from {sourceFolderName} to {targetFolderName}",
+                    fileName = fileName,
+                    targetFolder = request.TargetFolderType
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
         private async Task<int> GetMeetingCountInFolder(string folderPath)
         {
             try
@@ -642,6 +738,20 @@ namespace MeetingTranscriptProcessor.Controllers
                     => isDescending
                         ? meetings.OrderByDescending(m => m.Date).ToList()
                         : meetings.OrderBy(m => m.Date).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Gets the folder path for a given folder type
+        /// </summary>
+        private string? GetFolderPath(FolderType folderType)
+        {
+            return folderType switch
+            {
+                FolderType.Archive => _archivePath,
+                FolderType.Incoming => _incomingPath,
+                FolderType.Processing => _processingPath,
+                _ => null
             };
         }
     }
