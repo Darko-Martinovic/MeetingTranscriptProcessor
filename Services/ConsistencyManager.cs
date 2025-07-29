@@ -80,10 +80,8 @@ public class ConsistencyManager : IConsistencyManager
         new()
         {
             ["en"] = new() { "the", "and", "action", "item", "task", "should", "will", "need" },
-            ["es"] = new() { "el", "la", "y", "acción", "tarea", "debe", "necesita", "hacer" },
             ["fr"] = new() { "le", "la", "et", "action", "tâche", "doit", "besoin", "faire" },
-            ["de"] = new() { "der", "die", "und", "aktion", "aufgabe", "soll", "muss", "braucht" },
-            ["pt"] = new() { "o", "a", "e", "ação", "tarefa", "deve", "precisa", "fazer" }
+            ["nl"] = new() { "de", "het", "en", "actie", "taak", "moet", "zal", "nodig" }
         };
 
     public ConsistencyManager(ILogger? logger = null)
@@ -198,14 +196,10 @@ Always respond in valid JSON format with the exact structure specified.";
     {
         return language switch
         {
-            "es"
-                => "Eres un asistente experto que analiza transcripciones de reuniones y extrae elementos de acción. Respondes en formato JSON válido.",
             "fr"
                 => "Vous êtes un assistant expert qui analyse les transcriptions de réunions et extrait les éléments d'action. Vous répondez en format JSON valide.",
-            "de"
-                => "Sie sind ein Experte, der Besprechungstranskripte analysiert und Aktionselemente extrahiert. Sie antworten im gültigen JSON-Format.",
-            "pt"
-                => "Você é um assistente especialista que analisa transcrições de reuniões e extrai itens de ação. Você responde em formato JSON válido.",
+            "nl"
+                => "U bent een expert assistent die vergadertranscripties analyseert en actie-items extraheert. U antwoordt in geldig JSON-formaat.",
             _
                 => "You are an expert assistant that analyzes meeting transcripts and extracts actionable items. You respond in valid JSON format."
         };
@@ -222,59 +216,47 @@ Always respond in valid JSON format with the exact structure specified.";
                 => new
                 {
                     en = "Focus on: blockers to resolve, tasks to complete today, updates needed. Ignore status reports unless they require action.",
-                    es = "Enfócate en: bloqueos para resolver, tareas para completar hoy, actualizaciones necesarias.",
                     fr = "Concentrez-vous sur: les blocages à résoudre, les tâches à accomplir aujourd'hui, les mises à jour nécessaires.",
-                    de = "Konzentrieren Sie sich auf: zu lösende Blockaden, heute zu erledigende Aufgaben, erforderliche Updates.",
-                    pt = "Foque em: bloqueios para resolver, tarefas para completar hoje, atualizações necessárias."
+                    nl = "Focus op: blokkades om op te lossen, taken voor vandaag, benodigde updates. Negeer statusrapporten tenzij actie vereist."
                 },
 
             MeetingType.Sprint
                 => new
                 {
                     en = "Focus on: story assignments, sprint commitments, backlog refinements, impediment removal. Look for specific deliverables and deadlines.",
-                    es = "Enfócate en: asignaciones de historias, compromisos del sprint, refinamiento del backlog.",
                     fr = "Concentrez-vous sur: les affectations d'histoires, les engagements de sprint, les raffinements de backlog.",
-                    de = "Konzentrieren Sie sich auf: Story-Zuweisungen, Sprint-Verpflichtungen, Backlog-Verfeinerungen.",
-                    pt = "Foque em: atribuições de história, compromissos do sprint, refinamentos do backlog."
+                    nl = "Focus op: story toewijzingen, sprint verplichtingen, backlog verfijningen, impediment verwijdering."
                 },
 
             MeetingType.Architecture
                 => new
                 {
                     en = "Focus on: design decisions requiring implementation, technical debt items, architectural changes, documentation updates.",
-                    es = "Enfócate en: decisiones de diseño que requieren implementación, elementos de deuda técnica.",
                     fr = "Concentrez-vous sur: les décisions de conception nécessitant une implémentation, les éléments de dette technique.",
-                    de = "Konzentrieren Sie sich auf: Designentscheidungen, die eine Implementierung erfordern, technische Schulden.",
-                    pt = "Foque em: decisões de design que requerem implementação, itens de dívida técnica."
+                    nl = "Focus op: ontwerpbeslissingen die implementatie vereisen, technische schuld items, architecturale wijzigingen."
                 },
 
             MeetingType.Incident
                 => new
                 {
                     en = "Focus on: immediate fixes, investigation tasks, preventive measures, follow-up actions. Prioritize by urgency.",
-                    es = "Enfócate en: correcciones inmediatas, tareas de investigación, medidas preventivas.",
                     fr = "Concentrez-vous sur: les corrections immédiates, les tâches d'enquête, les mesures préventives.",
-                    de = "Konzentrieren Sie sich auf: sofortige Korrekturen, Untersuchungsaufgaben, Präventivmaßnahmen.",
-                    pt = "Foque em: correções imediatas, tarefas de investigação, medidas preventivas."
+                    nl = "Focus op: onmiddellijke oplossingen, onderzoekstaken, preventieve maatregelen, follow-up acties."
                 },
 
             _
                 => new
                 {
                     en = "Focus on clear, actionable items with specific owners and deadlines. Ignore general discussion unless it leads to concrete actions.",
-                    es = "Enfócate en elementos claros y accionables con propietarios específicos y fechas límite.",
                     fr = "Concentrez-vous sur des éléments clairs et exploitables avec des propriétaires spécifiques.",
-                    de = "Konzentrieren Sie sich auf klare, umsetzbare Elemente mit spezifischen Eigentümern.",
-                    pt = "Foque em itens claros e acionáveis com proprietários específicos e prazos."
+                    nl = "Focus op duidelijke, uitvoerbare items met specifieke eigenaren en deadlines."
                 }
         };
 
         return language switch
         {
-            "es" => guidance.es,
             "fr" => guidance.fr,
-            "de" => guidance.de,
-            "pt" => guidance.pt,
+            "nl" => guidance.nl,
             _ => guidance.en
         };
     }
@@ -286,13 +268,6 @@ Always respond in valid JSON format with the exact structure specified.";
     {
         return language switch
         {
-            "es"
-                => @"Reglas de consistencia:
-- Extraer solo elementos que requieren acción específica
-- Incluir el contexto original en español
-- Mantener nombres propios en su idioma original
-- Usar fechas en formato ISO (YYYY-MM-DD)",
-
             "fr"
                 => @"Règles de cohérence:
 - Extraire uniquement les éléments nécessitant une action spécifique
@@ -300,19 +275,12 @@ Always respond in valid JSON format with the exact structure specified.";
 - Conserver les noms propres dans leur langue d'origine
 - Utiliser les dates au format ISO (YYYY-MM-DD)",
 
-            "de"
-                => @"Konsistenzregeln:
-- Nur Elemente extrahieren, die spezifische Maßnahmen erfordern
-- Ursprünglichen Kontext auf Deutsch einschließen
-- Eigennamen in ihrer ursprünglichen Sprache beibehalten
-- Daten im ISO-Format verwenden (YYYY-MM-DD)",
-
-            "pt"
-                => @"Regras de consistência:
-- Extrair apenas itens que requerem ação específica
-- Incluir contexto original em português
-- Manter nomes próprios em sua língua original
-- Usar datas no formato ISO (YYYY-MM-DD)",
+            "nl"
+                => @"Consistentieregels:
+- Alleen items extraheren die specifieke actie vereisen
+- Originele context in het Nederlands opnemen
+- Eigennamen in hun oorspronkelijke taal behouden
+- Datums in ISO-formaat gebruiken (YYYY-MM-DD)",
 
             _
                 => @"Consistency rules:
@@ -384,18 +352,6 @@ Always respond in valid JSON format with the exact structure specified.";
         // Language-specific action verbs
         rules.ActionVerbs = language switch
         {
-            "es"
-                => new[]
-                {
-                    "implementar",
-                    "crear",
-                    "arreglar",
-                    "revisar",
-                    "actualizar",
-                    "investigar",
-                    "analizar",
-                    "configurar"
-                },
             "fr"
                 => new[]
                 {
@@ -408,29 +364,17 @@ Always respond in valid JSON format with the exact structure specified.";
                     "analyser",
                     "configurer"
                 },
-            "de"
+            "nl"
                 => new[]
                 {
-                    "implementieren",
-                    "erstellen",
-                    "beheben",
-                    "überprüfen",
-                    "aktualisieren",
-                    "untersuchen",
-                    "analysieren",
-                    "konfigurieren"
-                },
-            "pt"
-                => new[]
-                {
-                    "implementar",
-                    "criar",
-                    "corrigir",
-                    "revisar",
-                    "atualizar",
-                    "investigar",
-                    "analisar",
-                    "configurar"
+                    "implementeren",
+                    "creëren",
+                    "corrigeren",
+                    "herzien",
+                    "bijwerken",
+                    "onderzoeken",
+                    "analyseren",
+                    "configureren"
                 },
             _
                 => new[]
