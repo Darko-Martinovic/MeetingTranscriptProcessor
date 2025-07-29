@@ -25,6 +25,7 @@ import {
 import MeetingFilterComponent from "./components/MeetingFilter";
 import MeetingCard from "./components/MeetingCard";
 import MeetingDetails from "./components/MeetingDetails";
+import MeetingListHeader from "./components/MeetingListHeader";
 import UploadModal from "./components/UploadModal";
 import SettingsModal from "./components/SettingsModal";
 import styles from "./App.module.css";
@@ -567,11 +568,13 @@ const App: React.FC = () => {
             ) : !selectedMeeting ? (
               <div className={styles.contentArea}>
                 <div className={styles.meetingList}>
-                  <div className={styles.meetingListHeader}>
-                    <h2 className={styles.meetingListTitle}>
-                      {selectedFolder.name} ({meetings.length} meetings)
-                    </h2>
-                  </div>
+                  <MeetingListHeader
+                    selectedFolder={selectedFolder}
+                    meetingCount={meetings.length}
+                    showFilters={showFilters}
+                    onToggleFilters={() => setShowFilters(!showFilters)}
+                    currentFilter={currentFilter}
+                  />
 
                   {/* Show filter component only for Archive folder */}
                   {selectedFolder.type === FolderType.Archive && (
@@ -579,7 +582,6 @@ const App: React.FC = () => {
                       onFilterChange={handleFilterChange}
                       meetings={meetings}
                       isVisible={showFilters}
-                      onToggleVisibility={() => setShowFilters(!showFilters)}
                     />
                   )}
 

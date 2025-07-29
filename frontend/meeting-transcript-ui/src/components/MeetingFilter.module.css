@@ -22,19 +22,27 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.5rem;
   font-weight: 600;
   font-size: 0.875rem;
   transition: all 0.2s ease-in-out;
   border: none;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-height: 2.75rem;
+  position: relative;
+  overflow: hidden;
 }
 
 .toggleButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toggleButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .toggleButtonVisible {
@@ -48,8 +56,22 @@
 }
 
 .toggleButtonInactive {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
+  border: 1px solid #1d4ed8;
+}
+
+.toggleButtonInactive:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  border-color: #1e40af;
+}
+
+.toggleButtonVisible:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+
+.toggleButtonActive:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
 }
 
 /* Active filter count badge */
@@ -102,8 +124,11 @@
 
 /* Search section */
 .searchSection {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
+  position: relative;
 }
 
 .searchIcon {
@@ -116,7 +141,7 @@
 }
 
 .searchInput {
-  width: 100%;
+  flex: 1;
   padding: 0.75rem 0.75rem 0.75rem 2.5rem;
   border: 1px solid #d1d5db;
   border-radius: 0.5rem;

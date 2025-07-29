@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Search,
-  Filter,
-  X,
   Calendar,
   Users,
   CheckSquare,
   Languages,
+  X,
 } from "lucide-react";
 import type { MeetingFilter, MeetingInfo } from "../services/api";
 import styles from "./MeetingFilter.module.css";
@@ -15,11 +14,10 @@ interface MeetingFilterProps {
   onFilterChange: (filter: MeetingFilter) => void;
   meetings: MeetingInfo[];
   isVisible: boolean;
-  onToggleVisibility: () => void;
 }
 
 const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
-  ({ onFilterChange, meetings, isVisible, onToggleVisibility }) => {
+  ({ onFilterChange, meetings, isVisible }) => {
     const [filter, setFilter] = useState<MeetingFilter>({
       searchText: "",
       status: [],
@@ -54,32 +52,6 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
         participants: participants.sort(),
       };
     }, [meetings]);
-
-    // Memoized active filters check
-    const hasActiveFilters = useMemo(() => {
-      return (
-        filter.searchText ||
-        (filter.status && filter.status.length > 0) ||
-        (filter.language && filter.language.length > 0) ||
-        (filter.participants && filter.participants.length > 0) ||
-        filter.dateFrom ||
-        filter.dateTo ||
-        filter.hasJiraTickets !== undefined
-      );
-    }, [filter]);
-
-    // Memoized active filter count
-    const activeFilterCount = useMemo(() => {
-      return (
-        (filter.status?.length || 0) +
-        (filter.language?.length || 0) +
-        (filter.participants?.length || 0) +
-        (filter.searchText ? 1 : 0) +
-        (filter.dateFrom ? 1 : 0) +
-        (filter.dateTo ? 1 : 0) +
-        (filter.hasJiraTickets !== undefined ? 1 : 0)
-      );
-    }, [filter]);
 
     useEffect(() => {
       onFilterChange(filter);
@@ -122,41 +94,6 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
 
     return (
       <div className={styles.container}>
-        {/* Filter Toggle Button */}
-        <div className={styles.toggleSection}>
-          <button
-            onClick={onToggleVisibility}
-            className={
-              isVisible
-                ? styles.toggleButtonVisible
-                : hasActiveFilters
-                ? styles.toggleButtonActive
-                : styles.toggleButtonInactive
-            }
-          >
-            <Filter className="h-4 w-4" />
-            <span>
-              {isVisible
-                ? "Hide Filters"
-                : hasActiveFilters
-                ? "Filters Active"
-                : "Show Filters"}
-            </span>
-            {hasActiveFilters && !isVisible && (
-              <span className={styles.filterCountBadge}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          {hasActiveFilters && (
-            <button onClick={clearFilters} className={styles.clearButton}>
-              <X className="h-4 w-4" />
-              <span>Clear All</span>
-            </button>
-          )}
-        </div>
-
         {/* Filter Panel */}
         {isVisible && (
           <div className={`${styles.filterPanel} ${styles.fadeIn}`}>
@@ -170,6 +107,10 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
                 onChange={(e) => updateFilter("searchText", e.target.value)}
                 className={styles.searchInput}
               />
+              <button onClick={clearFilters} className={styles.clearButton}>
+                <X className="h-4 w-4" />
+                <span>Clear All</span>
+              </button>
             </div>
 
             {/* Compact Filter Sections */}
