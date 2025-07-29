@@ -430,12 +430,12 @@
     gap: 1rem;
     align-items: stretch;
   }
-  
+
   .sortingSection {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .filterGrid {
     grid-template-columns: 1fr;
   }
