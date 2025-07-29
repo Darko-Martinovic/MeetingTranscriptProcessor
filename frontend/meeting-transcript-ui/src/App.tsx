@@ -100,6 +100,20 @@ const App: React.FC = () => {
     [loadMeetingsInFolder]
   );
 
+  const updateFavoritesCount = useCallback(() => {
+    setFolders((prevFolders) => {
+      const updatedFolders = [...prevFolders];
+      const favoritesFolder = updatedFolders.find(
+        (f) => f.type === FolderType.Favorites
+      );
+      if (favoritesFolder) {
+        const currentFavorites = localStorageService.getFavorites();
+        favoritesFolder.meetingCount = currentFavorites.length;
+      }
+      return updatedFolders;
+    });
+  }, []);
+
   useEffect(() => {
     const loadFolders = async () => {
       try {
@@ -128,6 +142,13 @@ const App: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [selectedFolder, loadMeetingsInFolder, loadSystemStatus, currentFilter]);
+
+  // Update Favorites count when folders are loaded
+  useEffect(() => {
+    if (folders.length > 0) {
+      updateFavoritesCount();
+    }
+  }, [folders.length, updateFavoritesCount]);
 
   const loadFolders = useCallback(async () => {
     try {
@@ -220,13 +241,13 @@ const App: React.FC = () => {
     const newFavorites = localStorageService.getFavorites();
     setFavorites(newFavorites);
 
+    // Update the Favorites folder count immediately
+    updateFavoritesCount();
+
     // If we're currently viewing the Favorites folder, refresh it
     if (selectedFolder?.type === FolderType.Favorites) {
       await loadMeetingsInFolder(selectedFolder, currentFilter);
     }
-
-    // Refresh folder counts (especially for Favorites folder)
-    await loadFolders();
   };
   const handleEditTitle = async (fileName: string, newTitle: string) => {
     try {
