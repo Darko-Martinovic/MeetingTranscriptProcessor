@@ -1,6 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
-    // DTOs for API responses
+    /// <summary>
+    /// DTO for API responses representing folder information
+    /// </summary>
     public class FolderInfo
     {
         public string Name { get; set; } = string.Empty;

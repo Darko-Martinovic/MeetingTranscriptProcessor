@@ -1,5 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
+    /// <summary>
+    /// DTO for updating Jira configuration
+    /// </summary>
     public class JiraUpdateDto
     {
         public string? Url { get; set; }

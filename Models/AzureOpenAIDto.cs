@@ -1,5 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
+    /// <summary>
+    /// DTO for Azure OpenAI configuration
+    /// </summary>
     public class AzureOpenAIDto
     {
         public string Endpoint { get; set; } = string.Empty;

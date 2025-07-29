@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
 
 namespace MeetingTranscriptProcessor.Controllers

@@ -1,6 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
-    // DTOs for configuration
+    /// <summary>
+    /// DTO for complete configuration
+    /// </summary>
     public class ConfigurationDto
     {
         public AzureOpenAIDto AzureOpenAI { get; set; } = new();

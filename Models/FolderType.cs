@@ -1,4 +1,4 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
     public enum FolderType
     {

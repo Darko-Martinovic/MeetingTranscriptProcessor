@@ -1,5 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
+    /// <summary>
+    /// DTO for environment configuration
+    /// </summary>
     public class EnvironmentDto
     {
         public string? IncomingDirectory { get; set; }

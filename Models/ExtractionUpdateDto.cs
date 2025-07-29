@@ -1,5 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
+    /// <summary>
+    /// DTO for updating extraction configuration
+    /// </summary>
     public class ExtractionUpdateDto
     {
         public int? MaxConcurrentFiles { get; set; }

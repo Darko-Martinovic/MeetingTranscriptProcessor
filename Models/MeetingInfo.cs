@@ -1,5 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
+    /// <summary>
+    /// DTO representing meeting information for list views
+    /// </summary>
     public class MeetingInfo
     {
         public string FileName { get; set; } = string.Empty;

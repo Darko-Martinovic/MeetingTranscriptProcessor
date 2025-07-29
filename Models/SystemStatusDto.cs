@@ -1,5 +1,8 @@
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Models
 {
+    /// <summary>
+    /// DTO for system status information
+    /// </summary>
     public class SystemStatusDto
     {
         public bool IsRunning { get; set; }
