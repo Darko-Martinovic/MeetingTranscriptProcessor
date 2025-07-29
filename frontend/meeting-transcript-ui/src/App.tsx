@@ -1,39 +1,42 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  FolderOpen, 
-  File, 
-  Settings, 
-  Upload, 
-  RefreshCw, 
-  Star, 
+﻿import React, { useState, useEffect, useCallback } from "react";
+import {
+  FolderOpen,
+  File,
+  Settings,
+  Upload,
+  RefreshCw,
+  Star,
   Clock,
   Archive,
   Inbox,
   Clock3,
-  Folder
-} from 'lucide-react';
-import { 
-  meetingApi, 
-  configurationApi, 
-  localStorageService, 
+  Folder,
+} from "lucide-react";
+import {
+  meetingApi,
+  configurationApi,
+  localStorageService,
   FolderType,
-  type FolderInfo, 
-  type MeetingInfo, 
-  type MeetingTranscript, 
+  type FolderInfo,
+  type MeetingInfo,
+  type MeetingTranscript,
   type SystemStatusDto,
   type ConfigurationDto,
-  type MeetingFilter
-} from './services/api';
-import MeetingFilterComponent from './components/MeetingFilter';
-import MeetingCard from './components/MeetingCard';
-import './App.css';
+  type MeetingFilter,
+} from "./services/api";
+import MeetingFilterComponent from "./components/MeetingFilter";
+import MeetingCard from "./components/MeetingCard";
+import "./App.css";
 
 const App: React.FC = () => {
   const [folders, setFolders] = useState<FolderInfo[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<FolderInfo | null>(null);
   const [meetings, setMeetings] = useState<MeetingInfo[]>([]);
-  const [selectedMeeting, setSelectedMeeting] = useState<MeetingTranscript | null>(null);
-  const [systemStatus, setSystemStatus] = useState<SystemStatusDto | null>(null);
+  const [selectedMeeting, setSelectedMeeting] =
+    useState<MeetingTranscript | null>(null);
+  const [systemStatus, setSystemStatus] = useState<SystemStatusDto | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -47,42 +50,54 @@ const App: React.FC = () => {
       const status = await configurationApi.getSystemStatus();
       setSystemStatus(status);
     } catch (err) {
-      console.error('Failed to load system status:', err);
+      console.error("Failed to load system status:", err);
     }
   }, []);
 
-  const loadMeetingsInFolder = useCallback(async (folder: FolderInfo, filter?: MeetingFilter) => {
-    try {
-      setLoading(true);
-      const meetingsData = await meetingApi.getMeetingsInFolder(folder.type, filter);
-      setMeetings(meetingsData);
-      setSelectedFolder(folder);
-      setSelectedMeeting(null);
-    } catch (err) {
-      setError('Failed to load meetings');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadMeetingsInFolder = useCallback(
+    async (folder: FolderInfo, filter?: MeetingFilter) => {
+      try {
+        setLoading(true);
+        const meetingsData = await meetingApi.getMeetingsInFolder(
+          folder.type,
+          filter
+        );
+        setMeetings(meetingsData);
+        setSelectedFolder(folder);
+        setSelectedMeeting(null);
+      } catch (err) {
+        setError("Failed to load meetings");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
-  const handleFilterChange = useCallback((filter: MeetingFilter) => {
-    setCurrentFilter(filter);
-    if (selectedFolder) {
-      loadMeetingsInFolder(selectedFolder, filter);
-    }
-  }, [selectedFolder, loadMeetingsInFolder]);
+  const handleFilterChange = useCallback(
+    (filter: MeetingFilter) => {
+      setCurrentFilter(filter);
+      if (selectedFolder) {
+        loadMeetingsInFolder(selectedFolder, filter);
+      }
+    },
+    [selectedFolder, loadMeetingsInFolder]
+  );
 
-  const handleFolderSelect = useCallback(async (folder: FolderInfo) => {
-    // Reset filters when switching folders
-    const defaultFilter: MeetingFilter = {
-      sortBy: 'date',
-      sortOrder: 'desc'
-    };
-    setCurrentFilter(defaultFilter);
-    setShowFilters(false);
-    await loadMeetingsInFolder(folder, defaultFilter);
-  }, [loadMeetingsInFolder]);
+  const handleFolderSelect = useCallback(
+    async (folder: FolderInfo) => {
+      // Reset filters when switching folders
+      const defaultFilter: MeetingFilter = {
+        sortBy: "date",
+        sortOrder: "desc",
+      };
+      setCurrentFilter(defaultFilter);
+      setShowFilters(false);
+      await loadMeetingsInFolder(folder, defaultFilter);
+    },
+    [loadMeetingsInFolder]
+  );
 
   useEffect(() => {
     const loadFolders = async () => {
@@ -91,7 +106,7 @@ const App: React.FC = () => {
         const foldersData = await meetingApi.getFolders();
         setFolders(foldersData);
       } catch (err) {
-        setError('Failed to load folders');
+        setError("Failed to load folders");
         console.error(err);
       } finally {
         setLoading(false);
@@ -119,7 +134,7 @@ const App: React.FC = () => {
       const foldersData = await meetingApi.getFolders();
       setFolders(foldersData);
     } catch (err) {
-      setError('Failed to load folders');
+      setError("Failed to load folders");
       console.error(err);
     } finally {
       setLoading(false);
@@ -133,7 +148,7 @@ const App: React.FC = () => {
       setSelectedMeeting(meeting);
       localStorageService.addRecentMeeting(meetingInfo.fileName);
     } catch (err) {
-      setError('Failed to load meeting details');
+      setError("Failed to load meeting details");
       console.error(err);
     } finally {
       setLoading(false);
@@ -146,12 +161,14 @@ const App: React.FC = () => {
       await meetingApi.uploadMeeting(file);
       setShowUpload(false);
       // Refresh the incoming folder if it's selected
-      const incomingFolder = folders.find(f => f.type === FolderType.Incoming);
+      const incomingFolder = folders.find(
+        (f) => f.type === FolderType.Incoming
+      );
       if (incomingFolder && selectedFolder?.type === FolderType.Incoming) {
         await loadMeetingsInFolder(incomingFolder);
       }
     } catch (err) {
-      setError('Failed to upload file');
+      setError("Failed to upload file");
       console.error(err);
     } finally {
       setLoading(false);
@@ -161,16 +178,20 @@ const App: React.FC = () => {
   const handleMultipleFileUpload = async (files: File[]) => {
     try {
       setLoading(true);
-      const uploadPromises = files.map(file => meetingApi.uploadMeeting(file));
+      const uploadPromises = files.map((file) =>
+        meetingApi.uploadMeeting(file)
+      );
       await Promise.all(uploadPromises);
       setShowUpload(false);
       // Refresh the incoming folder if it's selected
-      const incomingFolder = folders.find(f => f.type === FolderType.Incoming);
+      const incomingFolder = folders.find(
+        (f) => f.type === FolderType.Incoming
+      );
       if (incomingFolder && selectedFolder?.type === FolderType.Incoming) {
         await loadMeetingsInFolder(incomingFolder);
       }
     } catch (err) {
-      setError('Failed to upload one or more files');
+      setError("Failed to upload one or more files");
       console.error(err);
     } finally {
       setLoading(false);
@@ -189,13 +210,13 @@ const App: React.FC = () => {
   const handleEditTitle = async (fileName: string, newTitle: string) => {
     try {
       // TODO: Implement API call to update meeting title
-      console.log('Editing title for', fileName, 'to', newTitle);
+      console.log("Editing title for", fileName, "to", newTitle);
       // For now, just refresh the current folder
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
     } catch (err) {
-      setError('Failed to update meeting title');
+      setError("Failed to update meeting title");
       console.error(err);
     }
   };
@@ -203,13 +224,13 @@ const App: React.FC = () => {
   const handleMoveToArchive = async (fileName: string) => {
     try {
       // TODO: Implement API call to move meeting to archive
-      console.log('Moving to archive:', fileName);
+      console.log("Moving to archive:", fileName);
       // For now, just refresh the current folder
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
     } catch (err) {
-      setError('Failed to move meeting to archive');
+      setError("Failed to move meeting to archive");
       console.error(err);
     }
   };
@@ -217,13 +238,13 @@ const App: React.FC = () => {
   const handleMoveToIncoming = async (fileName: string) => {
     try {
       // TODO: Implement API call to move meeting to incoming
-      console.log('Moving to incoming:', fileName);
+      console.log("Moving to incoming:", fileName);
       // For now, just refresh the current folder
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
     } catch (err) {
-      setError('Failed to move meeting to incoming');
+      setError("Failed to move meeting to incoming");
       console.error(err);
     }
   };
@@ -231,48 +252,27 @@ const App: React.FC = () => {
   const handleDeleteMeeting = async (fileName: string) => {
     try {
       // TODO: Implement API call to delete meeting
-      console.log('Deleting meeting:', fileName);
+      console.log("Deleting meeting:", fileName);
       // For now, just refresh the current folder
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
     } catch (err) {
-      setError('Failed to delete meeting');
+      setError("Failed to delete meeting");
       console.error(err);
-    }
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const getStatusColor = (status: string): string => {
-    switch (status.toLowerCase()) {
-      case 'success': return 'text-green-600';
-      case 'error': return 'text-red-600';
-      case 'processing': return 'text-yellow-600';
-      default: return 'text-gray-600';
     }
   };
 
   const getFolderIcon = (folderName: string) => {
     const iconClass = "h-4 w-4 mr-2";
     switch (folderName.toLowerCase()) {
-      case 'archive':
+      case "archive":
         return <Archive className={`${iconClass} text-emerald-600`} />;
-      case 'incoming':
+      case "incoming":
         return <Inbox className={`${iconClass} text-blue-600`} />;
-      case 'processing':
+      case "processing":
         return <Clock3 className={`${iconClass} text-amber-600`} />;
-      case 'recent':
+      case "recent":
         return <Clock className={`${iconClass} text-purple-600`} />;
       default:
         return <Folder className={`${iconClass} text-gray-600`} />;
@@ -282,13 +282,13 @@ const App: React.FC = () => {
   const getFolderHeaderIcon = (folderName: string) => {
     const iconClass = "h-8 w-8";
     switch (folderName.toLowerCase()) {
-      case 'archive':
+      case "archive":
         return <Archive className={`${iconClass} text-emerald-600`} />;
-      case 'incoming':
+      case "incoming":
         return <Inbox className={`${iconClass} text-blue-600`} />;
-      case 'processing':
+      case "processing":
         return <Clock3 className={`${iconClass} text-amber-600`} />;
-      case 'recent':
+      case "recent":
         return <Clock className={`${iconClass} text-purple-600`} />;
       default:
         return <FolderOpen className={`${iconClass} text-blue-600`} />;
@@ -297,16 +297,16 @@ const App: React.FC = () => {
 
   const getFolderColor = (folderName: string): string => {
     switch (folderName.toLowerCase()) {
-      case 'archive':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'incoming':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'processing':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'recent':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case "archive":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "incoming":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "processing":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "recent":
+        return "bg-purple-50 text-purple-700 border-purple-200";
       default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+        return "bg-gray-50 text-gray-700 border-gray-200";
     }
   };
 
@@ -317,7 +317,11 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              {selectedFolder ? getFolderHeaderIcon(selectedFolder.name) : <FolderOpen className="h-8 w-8 text-blue-600" />}
+              {selectedFolder ? (
+                getFolderHeaderIcon(selectedFolder.name)
+              ) : (
+                <FolderOpen className="h-8 w-8 text-blue-600" />
+              )}
               <h1 className="ml-3 text-xl font-semibold text-gray-900">
                 Meeting Transcript Processor
               </h1>
@@ -325,9 +329,13 @@ const App: React.FC = () => {
             <div className="flex items-center space-x-4">
               {systemStatus && (
                 <div className="flex items-center space-x-2 text-sm">
-                  <div className={`h-2 w-2 rounded-full ${systemStatus.isRunning ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <div
+                    className={`h-2 w-2 rounded-full ${
+                      systemStatus.isRunning ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  ></div>
                   <span className="text-gray-600">
-                    {systemStatus.isRunning ? 'Running' : 'Offline'}
+                    {systemStatus.isRunning ? "Running" : "Offline"}
                   </span>
                 </div>
               )}
@@ -349,7 +357,9 @@ const App: React.FC = () => {
                 className="p-2 text-gray-400 hover:text-gray-600 rounded-md"
                 disabled={loading}
               >
-                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-5 w-5 ${loading ? "animate-spin" : ""}`}
+                />
               </button>
             </div>
           </div>
@@ -361,7 +371,7 @@ const App: React.FC = () => {
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
             {error}
-            <button 
+            <button
               onClick={() => setError(null)}
               className="float-right text-red-500 hover:text-red-700"
             >
@@ -374,7 +384,9 @@ const App: React.FC = () => {
           {/* Sidebar - Folders */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Folders</h2>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Folders
+              </h2>
               <div className="space-y-2">
                 {folders.map((folder) => (
                   <button
@@ -383,7 +395,7 @@ const App: React.FC = () => {
                     className={`w-full text-left p-3 rounded-md transition-colors border ${
                       selectedFolder?.name === folder.name
                         ? getFolderColor(folder.name)
-                        : 'hover:bg-gray-50 text-gray-700 border-gray-200'
+                        : "hover:bg-gray-50 text-gray-700 border-gray-200"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -398,7 +410,6 @@ const App: React.FC = () => {
                   </button>
                 ))}
               </div>
-
             </div>
           </div>
 
@@ -411,7 +422,8 @@ const App: React.FC = () => {
                   Select a folder to view meetings
                 </h3>
                 <p className="text-gray-500">
-                  Choose a folder from the sidebar to see all processed meetings.
+                  Choose a folder from the sidebar to see all processed
+                  meetings.
                 </p>
               </div>
             ) : !selectedMeeting ? (
@@ -421,7 +433,7 @@ const App: React.FC = () => {
                     {selectedFolder.name} ({meetings.length} meetings)
                   </h2>
                 </div>
-                
+
                 {/* Show filter component only for Archive folder */}
                 {selectedFolder.type === FolderType.Archive && (
                   <MeetingFilterComponent
@@ -431,7 +443,7 @@ const App: React.FC = () => {
                     onToggleVisibility={() => setShowFilters(!showFilters)}
                   />
                 )}
-                
+
                 <div className="divide-y divide-gray-200">
                   {meetings.length === 0 ? (
                     <div className="p-8 text-center">
@@ -444,15 +456,30 @@ const App: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    meetings.map((meeting) => (<MeetingCard key={meeting.fileName} meeting={meeting} onSelect={loadMeeting} onToggleFavorite={toggleFavorite} isFavorite={favorites.includes(meeting.fileName)} onEditTitle={handleEditTitle} onMoveToArchive={handleMoveToArchive} onMoveToIncoming={handleMoveToIncoming} onDelete={handleDeleteMeeting} currentFolder={selectedFolder?.name} />))
+                    meetings.map((meeting) => (
+                      <MeetingCard
+                        key={meeting.fileName}
+                        meeting={meeting}
+                        onSelect={loadMeeting}
+                        onToggleFavorite={toggleFavorite}
+                        isFavorite={favorites.includes(meeting.fileName)}
+                        onEditTitle={handleEditTitle}
+                        onMoveToArchive={handleMoveToArchive}
+                        onMoveToIncoming={handleMoveToIncoming}
+                        onDelete={handleDeleteMeeting}
+                        currentFolder={selectedFolder?.name}
+                      />
+                    ))
                   )}
                 </div>
               </div>
             ) : (
-              <MeetingDetails 
-                meeting={selectedMeeting} 
+              <MeetingDetails
+                meeting={selectedMeeting}
                 onBack={() => setSelectedMeeting(null)}
-                onToggleFavorite={() => toggleFavorite(selectedMeeting.fileName)}
+                onToggleFavorite={() =>
+                  toggleFavorite(selectedMeeting.fileName)
+                }
                 isFavorite={favorites.includes(selectedMeeting.fileName)}
               />
             )}
@@ -462,7 +489,7 @@ const App: React.FC = () => {
 
       {/* Upload Modal */}
       {showUpload && (
-        <UploadModal 
+        <UploadModal
           onClose={() => setShowUpload(false)}
           onUpload={handleFileUpload}
           onMultipleUpload={handleMultipleFileUpload}
@@ -471,11 +498,7 @@ const App: React.FC = () => {
       )}
 
       {/* Settings Modal */}
-      {showSettings && (
-        <SettingsModal 
-          onClose={() => setShowSettings(false)}
-        />
-      )}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   );
 };
@@ -502,16 +525,18 @@ const MeetingDetails: React.FC<{
             >
               â†
             </button>
-            <h2 className="text-lg font-medium text-gray-900">{meeting.title}</h2>
+            <h2 className="text-lg font-medium text-gray-900">
+              {meeting.title}
+            </h2>
           </div>
           <button
             onClick={onToggleFavorite}
             className="p-2 hover:bg-gray-100 rounded-md"
           >
-            <Star 
+            <Star
               className={`h-5 w-5 ${
-                isFavorite ? 'text-yellow-500 fill-current' : 'text-gray-400'
-              }`} 
+                isFavorite ? "text-yellow-500 fill-current" : "text-gray-400"
+              }`}
             />
           </button>
         </div>
@@ -526,10 +551,12 @@ const MeetingDetails: React.FC<{
         {/* Participants */}
         {meeting.participants.length > 0 && (
           <div>
-            <h3 className="text-md font-medium text-gray-900 mb-2">Participants</h3>
+            <h3 className="text-md font-medium text-gray-900 mb-2">
+              Participants
+            </h3>
             <div className="flex flex-wrap gap-2">
               {meeting.participants.map((participant, index) => (
-                <span 
+                <span
                   key={index}
                   className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md"
                 >
@@ -548,13 +575,22 @@ const MeetingDetails: React.FC<{
             </h3>
             <div className="space-y-3">
               {meeting.actionItems.map((item) => (
-                <div key={item.id} className="border border-gray-200 rounded-md p-4">
+                <div
+                  key={item.id}
+                  className="border border-gray-200 rounded-md p-4"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-sm text-gray-900">{item.description}</p>
+                      <p className="text-sm text-gray-900">
+                        {item.description}
+                      </p>
                       <div className="mt-2 text-xs text-gray-500 space-x-4">
-                        {item.assignee && <span>Assignee: {item.assignee}</span>}
-                        {item.dueDate && <span>Due: {formatDate(item.dueDate)}</span>}
+                        {item.assignee && (
+                          <span>Assignee: {item.assignee}</span>
+                        )}
+                        {item.dueDate && (
+                          <span>Due: {formatDate(item.dueDate)}</span>
+                        )}
                         <span>Priority: {item.priority}</span>
                         <span>Status: {item.status}</span>
                       </div>
@@ -568,7 +604,9 @@ const MeetingDetails: React.FC<{
 
         {/* Content */}
         <div>
-          <h3 className="text-md font-medium text-gray-900 mb-3">Meeting Content</h3>
+          <h3 className="text-md font-medium text-gray-900 mb-3">
+            Meeting Content
+          </h3>
           <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-y-auto">
             <pre className="text-sm text-gray-700 whitespace-pre-wrap">
               {meeting.content}
@@ -591,16 +629,19 @@ const UploadModal: React.FC<{
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const handleFileSelect = (files: File[] | File) => {
-    const allowedTypes = ['.txt', '.md', '.json', '.xml', '.docx', '.pdf'];
+    const allowedTypes = [".txt", ".md", ".json", ".xml", ".docx", ".pdf"];
     const filesToProcess = Array.isArray(files) ? files : [files];
-    
-    const validFiles = filesToProcess.filter(file => {
-      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+
+    const validFiles = filesToProcess.filter((file) => {
+      const fileExtension = "." + file.name.split(".").pop()?.toLowerCase();
       return allowedTypes.includes(fileExtension);
     });
 
     if (validFiles.length !== filesToProcess.length) {
-      alert('Some files were skipped. Please select only supported file types: ' + allowedTypes.join(', '));
+      alert(
+        "Some files were skipped. Please select only supported file types: " +
+          allowedTypes.join(", ")
+      );
     }
 
     if (validFiles.length === 0) {
@@ -612,7 +653,7 @@ const UploadModal: React.FC<{
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
-    
+
     if (selectedFiles.length === 1) {
       await onUpload(selectedFiles[0]);
     } else {
@@ -633,7 +674,7 @@ const UploadModal: React.FC<{
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(files => files.filter((_, i) => i !== index));
+    setSelectedFiles((files) => files.filter((_, i) => i !== index));
   };
 
   return (
@@ -651,9 +692,12 @@ const UploadModal: React.FC<{
 
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
+            dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300"
           }`}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
@@ -662,7 +706,8 @@ const UploadModal: React.FC<{
             Drag and drop files here, or click to select
           </p>
           <p className="text-sm text-gray-500 mb-4">
-            Supported: .txt, .md, .json, .xml, .docx, .pdf (Multiple files allowed)
+            Supported: .txt, .md, .json, .xml, .docx, .pdf (Multiple files
+            allowed)
           </p>
           <input
             type="file"
@@ -677,7 +722,7 @@ const UploadModal: React.FC<{
             htmlFor="file-input"
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md cursor-pointer inline-block"
           >
-            {loading ? 'Uploading...' : 'Select Files'}
+            {loading ? "Uploading..." : "Select Files"}
           </label>
         </div>
 
@@ -689,8 +734,13 @@ const UploadModal: React.FC<{
             </h4>
             <div className="max-h-40 overflow-y-auto space-y-2">
               {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                  <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                <div
+                  key={index}
+                  className="flex items-center justify-between bg-gray-50 p-2 rounded"
+                >
+                  <span className="text-sm text-gray-700 truncate">
+                    {file.name}
+                  </span>
                   <button
                     onClick={() => removeFile(index)}
                     className="text-red-500 hover:text-red-700 ml-2"
@@ -707,7 +757,11 @@ const UploadModal: React.FC<{
                 disabled={loading || selectedFiles.length === 0}
                 className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md"
               >
-                {loading ? 'Uploading...' : `Upload ${selectedFiles.length} File${selectedFiles.length > 1 ? 's' : ''}`}
+                {loading
+                  ? "Uploading..."
+                  : `Upload ${selectedFiles.length} File${
+                      selectedFiles.length > 1 ? "s" : ""
+                    }`}
               </button>
               <button
                 onClick={() => setSelectedFiles([])}
@@ -728,7 +782,7 @@ const UploadModal: React.FC<{
 const SettingsModal: React.FC<{
   onClose: () => void;
 }> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState('azure');
+  const [activeTab, setActiveTab] = useState("azure");
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<ConfigurationDto | null>(null);
 
@@ -741,22 +795,26 @@ const SettingsModal: React.FC<{
       const configData = await configurationApi.getConfiguration();
       setConfig(configData);
     } catch (err) {
-      console.error('Failed to load configuration:', err);
+      console.error("Failed to load configuration:", err);
     }
   };
 
   const updateAzureOpenAI = async (formData: FormData) => {
     try {
       setLoading(true);
-      const endpoint = formData.get('endpoint') as string;
-      const apiKey = formData.get('apiKey') as string;
-      const deploymentName = formData.get('deploymentName') as string;
-      
-      await configurationApi.updateAzureOpenAI({ endpoint, apiKey, deploymentName });
+      const endpoint = formData.get("endpoint") as string;
+      const apiKey = formData.get("apiKey") as string;
+      const deploymentName = formData.get("deploymentName") as string;
+
+      await configurationApi.updateAzureOpenAI({
+        endpoint,
+        apiKey,
+        deploymentName,
+      });
       await loadConfiguration();
-      alert('Azure OpenAI configuration updated successfully!');
+      alert("Azure OpenAI configuration updated successfully!");
     } catch {
-      alert('Failed to update Azure OpenAI configuration');
+      alert("Failed to update Azure OpenAI configuration");
     } finally {
       setLoading(false);
     }
@@ -765,23 +823,29 @@ const SettingsModal: React.FC<{
   const updateExtraction = async (formData: FormData) => {
     try {
       setLoading(true);
-      const maxConcurrentFiles = parseInt(formData.get('maxConcurrentFiles') as string);
-      const validationConfidenceThreshold = parseFloat(formData.get('validationConfidenceThreshold') as string);
-      const enableValidation = formData.get('enableValidation') === 'on';
-      const enableHallucinationDetection = formData.get('enableHallucinationDetection') === 'on';
-      const enableConsistencyManagement = formData.get('enableConsistencyManagement') === 'on';
-      
+      const maxConcurrentFiles = parseInt(
+        formData.get("maxConcurrentFiles") as string
+      );
+      const validationConfidenceThreshold = parseFloat(
+        formData.get("validationConfidenceThreshold") as string
+      );
+      const enableValidation = formData.get("enableValidation") === "on";
+      const enableHallucinationDetection =
+        formData.get("enableHallucinationDetection") === "on";
+      const enableConsistencyManagement =
+        formData.get("enableConsistencyManagement") === "on";
+
       await configurationApi.updateExtraction({
         maxConcurrentFiles,
         validationConfidenceThreshold,
         enableValidation,
         enableHallucinationDetection,
-        enableConsistencyManagement
+        enableConsistencyManagement,
       });
       await loadConfiguration();
-      alert('Extraction configuration updated successfully!');
+      alert("Extraction configuration updated successfully!");
     } catch {
-      alert('Failed to update extraction configuration');
+      alert("Failed to update extraction configuration");
     } finally {
       setLoading(false);
     }
@@ -790,16 +854,21 @@ const SettingsModal: React.FC<{
   const updateJira = async (formData: FormData) => {
     try {
       setLoading(true);
-      const url = formData.get('url') as string;
-      const email = formData.get('email') as string;
-      const apiToken = formData.get('apiToken') as string;
-      const defaultProject = formData.get('defaultProject') as string;
-      
-      await configurationApi.updateJira({ url, email, apiToken, defaultProject });
+      const url = formData.get("url") as string;
+      const email = formData.get("email") as string;
+      const apiToken = formData.get("apiToken") as string;
+      const defaultProject = formData.get("defaultProject") as string;
+
+      await configurationApi.updateJira({
+        url,
+        email,
+        apiToken,
+        defaultProject,
+      });
       await loadConfiguration();
-      alert('Jira configuration updated successfully!');
+      alert("Jira configuration updated successfully!");
     } catch {
-      alert('Failed to update Jira configuration');
+      alert("Failed to update Jira configuration");
     } finally {
       setLoading(false);
     }
@@ -823,25 +892,31 @@ const SettingsModal: React.FC<{
 
           <div className="mt-4 flex space-x-4">
             <button
-              onClick={() => setActiveTab('azure')}
+              onClick={() => setActiveTab("azure")}
               className={`px-4 py-2 rounded-md ${
-                activeTab === 'azure' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-800'
+                activeTab === "azure"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-600 hover:text-gray-800"
               }`}
             >
               Azure OpenAI
             </button>
             <button
-              onClick={() => setActiveTab('extraction')}
+              onClick={() => setActiveTab("extraction")}
               className={`px-4 py-2 rounded-md ${
-                activeTab === 'extraction' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-800'
+                activeTab === "extraction"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-600 hover:text-gray-800"
               }`}
             >
               Extraction
             </button>
             <button
-              onClick={() => setActiveTab('jira')}
+              onClick={() => setActiveTab("jira")}
               className={`px-4 py-2 rounded-md ${
-                activeTab === 'jira' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-800'
+                activeTab === "jira"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-600 hover:text-gray-800"
               }`}
             >
               Jira
@@ -850,8 +925,13 @@ const SettingsModal: React.FC<{
         </div>
 
         <div className="p-6">
-          {activeTab === 'azure' && (
-            <form onSubmit={(e) => { e.preventDefault(); updateAzureOpenAI(new FormData(e.currentTarget)); }}>
+          {activeTab === "azure" && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateAzureOpenAI(new FormData(e.currentTarget));
+              }}
+            >
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -893,14 +973,19 @@ const SettingsModal: React.FC<{
                   disabled={loading}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md disabled:opacity-50"
                 >
-                  {loading ? 'Updating...' : 'Update Azure OpenAI Settings'}
+                  {loading ? "Updating..." : "Update Azure OpenAI Settings"}
                 </button>
               </div>
             </form>
           )}
 
-          {activeTab === 'extraction' && (
-            <form onSubmit={(e) => { e.preventDefault(); updateExtraction(new FormData(e.currentTarget)); }}>
+          {activeTab === "extraction" && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateExtraction(new FormData(e.currentTarget));
+              }}
+            >
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -925,7 +1010,9 @@ const SettingsModal: React.FC<{
                     min="0"
                     max="1"
                     step="0.1"
-                    defaultValue={config.extraction.validationConfidenceThreshold}
+                    defaultValue={
+                      config.extraction.validationConfidenceThreshold
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                   />
                 </div>
@@ -943,7 +1030,9 @@ const SettingsModal: React.FC<{
                     <input
                       type="checkbox"
                       name="enableHallucinationDetection"
-                      defaultChecked={config.extraction.enableHallucinationDetection}
+                      defaultChecked={
+                        config.extraction.enableHallucinationDetection
+                      }
                       className="mr-2"
                     />
                     Enable Hallucination Detection
@@ -952,7 +1041,9 @@ const SettingsModal: React.FC<{
                     <input
                       type="checkbox"
                       name="enableConsistencyManagement"
-                      defaultChecked={config.extraction.enableConsistencyManagement}
+                      defaultChecked={
+                        config.extraction.enableConsistencyManagement
+                      }
                       className="mr-2"
                     />
                     Enable Consistency Management
@@ -963,14 +1054,19 @@ const SettingsModal: React.FC<{
                   disabled={loading}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md disabled:opacity-50"
                 >
-                  {loading ? 'Updating...' : 'Update Extraction Settings'}
+                  {loading ? "Updating..." : "Update Extraction Settings"}
                 </button>
               </div>
             </form>
           )}
 
-          {activeTab === 'jira' && (
-            <form onSubmit={(e) => { e.preventDefault(); updateJira(new FormData(e.currentTarget)); }}>
+          {activeTab === "jira" && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateJira(new FormData(e.currentTarget));
+              }}
+            >
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1024,7 +1120,7 @@ const SettingsModal: React.FC<{
                   disabled={loading}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md disabled:opacity-50"
                 >
-                  {loading ? 'Updating...' : 'Update Jira Settings'}
+                  {loading ? "Updating..." : "Update Jira Settings"}
                 </button>
               </div>
             </form>
@@ -1036,7 +1132,3 @@ const SettingsModal: React.FC<{
 };
 
 export default App;
-
-
-
-

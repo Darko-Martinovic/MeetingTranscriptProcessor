@@ -17,21 +17,26 @@ namespace MeetingTranscriptProcessor.Controllers
 
         public MeetingsController(
             ITranscriptProcessorService transcriptProcessor,
-            IConfigurationService configurationService)
+            IConfigurationService configurationService
+        )
         {
             _transcriptProcessor = transcriptProcessor;
             _configurationService = configurationService;
-            
+
             // Get paths from environment or use defaults
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var projectRoot = Directory.GetParent(baseDir)?.Parent?.Parent?.Parent?.FullName ?? baseDir;
-            
-            _archivePath = Environment.GetEnvironmentVariable("ARCHIVE_DIRECTORY") ?? 
-                          Path.Combine(projectRoot, "Data", "Archive");
-            _incomingPath = Environment.GetEnvironmentVariable("INCOMING_DIRECTORY") ?? 
-                           Path.Combine(projectRoot, "Data", "Incoming");
-            _processingPath = Environment.GetEnvironmentVariable("PROCESSING_DIRECTORY") ?? 
-                             Path.Combine(projectRoot, "Data", "Processing");
+            var projectRoot =
+                Directory.GetParent(baseDir)?.Parent?.Parent?.Parent?.FullName ?? baseDir;
+
+            _archivePath =
+                Environment.GetEnvironmentVariable("ARCHIVE_DIRECTORY")
+                ?? Path.Combine(projectRoot, "Data", "Archive");
+            _incomingPath =
+                Environment.GetEnvironmentVariable("INCOMING_DIRECTORY")
+                ?? Path.Combine(projectRoot, "Data", "Incoming");
+            _processingPath =
+                Environment.GetEnvironmentVariable("PROCESSING_DIRECTORY")
+                ?? Path.Combine(projectRoot, "Data", "Processing");
         }
 
         [HttpGet("folders")]
@@ -41,30 +46,30 @@ namespace MeetingTranscriptProcessor.Controllers
             {
                 var folders = new List<FolderInfo>
                 {
-                    new FolderInfo 
-                    { 
-                        Name = "Archive", 
-                        Path = _archivePath, 
+                    new FolderInfo
+                    {
+                        Name = "Archive",
+                        Path = _archivePath,
                         Type = FolderType.Archive,
                         MeetingCount = await GetMeetingCountInFolder(_archivePath)
                     },
-                    new FolderInfo 
-                    { 
-                        Name = "Incoming", 
-                        Path = _incomingPath, 
+                    new FolderInfo
+                    {
+                        Name = "Incoming",
+                        Path = _incomingPath,
                         Type = FolderType.Incoming,
                         MeetingCount = await GetMeetingCountInFolder(_incomingPath)
                     },
-                    new FolderInfo 
-                    { 
-                        Name = "Processing", 
-                        Path = _processingPath, 
+                    new FolderInfo
+                    {
+                        Name = "Processing",
+                        Path = _processingPath,
                         Type = FolderType.Processing,
                         MeetingCount = await GetMeetingCountInFolder(_processingPath)
                     },
-                    new FolderInfo 
-                    { 
-                        Name = "Recent", 
+                    new FolderInfo
+                    {
+                        Name = "Recent",
                         Path = "", // Recent is virtual, no physical path
                         Type = FolderType.Recent,
                         MeetingCount = await GetRecentMeetingCount()
@@ -90,7 +95,8 @@ namespace MeetingTranscriptProcessor.Controllers
             [FromQuery] DateTime? dateTo = null,
             [FromQuery] bool? hasJiraTickets = null,
             [FromQuery] string sortBy = "date",
-            [FromQuery] string sortOrder = "desc")
+            [FromQuery] string sortOrder = "desc"
+        )
         {
             try
             {
@@ -112,10 +118,19 @@ namespace MeetingTranscriptProcessor.Controllers
 
                     meetings = await GetMeetingsFromFolder(folderPath, folderType);
                 }
-                
+
                 // Apply filters
-                meetings = ApplyFilters(meetings, search, status, language, participants, dateFrom, dateTo, hasJiraTickets);
-                
+                meetings = ApplyFilters(
+                    meetings,
+                    search,
+                    status,
+                    language,
+                    participants,
+                    dateFrom,
+                    dateTo,
+                    hasJiraTickets
+                );
+
                 // Apply sorting
                 meetings = ApplySorting(meetings, sortBy, sortOrder);
 
@@ -134,13 +149,15 @@ namespace MeetingTranscriptProcessor.Controllers
             {
                 // Search in all directories
                 var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
-                
+
                 foreach (var path in allPaths)
                 {
                     var filePath = Path.Combine(path, fileName);
                     if (System.IO.File.Exists(filePath))
                     {
-                        var transcript = await _transcriptProcessor.ProcessTranscriptAsync(filePath);
+                        var transcript = await _transcriptProcessor.ProcessTranscriptAsync(
+                            filePath
+                        );
                         return Ok(transcript);
                     }
                 }
@@ -163,7 +180,7 @@ namespace MeetingTranscriptProcessor.Controllers
 
                 var allowedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf" };
                 var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
-                
+
                 if (!allowedExtensions.Contains(fileExtension))
                     return BadRequest(new { error = "File type not supported" });
 
@@ -191,7 +208,7 @@ namespace MeetingTranscriptProcessor.Controllers
             try
             {
                 var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
-                
+
                 foreach (var path in allPaths)
                 {
                     var filePath = Path.Combine(path, fileName);
@@ -218,8 +235,11 @@ namespace MeetingTranscriptProcessor.Controllers
                     return 0;
 
                 var supportedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf" };
-                var files = Directory.GetFiles(folderPath)
-                    .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                var files = Directory
+                    .GetFiles(folderPath)
+                    .Where(
+                        f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())
+                    )
                     .ToList();
 
                 return await Task.FromResult(files.Count);
@@ -230,7 +250,10 @@ namespace MeetingTranscriptProcessor.Controllers
             }
         }
 
-        private async Task<List<MeetingInfo>> GetMeetingsFromFolder(string folderPath, FolderType folderType)
+        private async Task<List<MeetingInfo>> GetMeetingsFromFolder(
+            string folderPath,
+            FolderType folderType
+        )
         {
             var meetings = new List<MeetingInfo>();
 
@@ -240,8 +263,11 @@ namespace MeetingTranscriptProcessor.Controllers
                     return meetings;
 
                 var supportedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf" };
-                var files = Directory.GetFiles(folderPath)
-                    .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                var files = Directory
+                    .GetFiles(folderPath)
+                    .Where(
+                        f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())
+                    )
                     .OrderByDescending(f => new FileInfo(f).LastWriteTime)
                     .ToList();
 
@@ -249,24 +275,27 @@ namespace MeetingTranscriptProcessor.Controllers
                 {
                     var fileInfo = new FileInfo(file);
                     var fileName = Path.GetFileName(file);
-                    
+
                     // Parse archive filename format: yyyyMMdd_HHmmss_status_language_originalname
                     var parts = fileName.Split('_');
                     var meetingInfo = new MeetingInfo
                     {
                         FileName = fileName,
-                        OriginalName = folderType == FolderType.Archive && parts.Length >= 4 
-                            ? string.Join("_", parts.Skip(3)) 
-                            : fileName,
+                        OriginalName =
+                            folderType == FolderType.Archive && parts.Length >= 4
+                                ? string.Join("_", parts.Skip(3))
+                                : fileName,
                         Size = fileInfo.Length,
                         LastModified = fileInfo.LastWriteTime,
                         FolderType = folderType,
-                        Status = folderType == FolderType.Archive && parts.Length >= 3 
-                            ? parts[2] 
-                            : "unknown",
-                        Language = folderType == FolderType.Archive && parts.Length >= 4
-                            ? parts[3].Split('.')[0] // Remove file extension if present
-                            : "unknown",
+                        Status =
+                            folderType == FolderType.Archive && parts.Length >= 3
+                                ? parts[2]
+                                : "unknown",
+                        Language =
+                            folderType == FolderType.Archive && parts.Length >= 4
+                                ? parts[3].Split('.')[0] // Remove file extension if present
+                                : "unknown",
                         ProcessingDate = fileInfo.CreationTime,
                         Date = fileInfo.LastWriteTime
                     };
@@ -274,8 +303,15 @@ namespace MeetingTranscriptProcessor.Controllers
                     // Parse processing date from filename if available
                     if (folderType == FolderType.Archive && parts.Length >= 2)
                     {
-                        if (DateTime.TryParseExact($"{parts[0]}_{parts[1]}", "yyyyMMdd_HHmmss", 
-                            null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+                        if (
+                            DateTime.TryParseExact(
+                                $"{parts[0]}_{parts[1]}",
+                                "yyyyMMdd_HHmmss",
+                                null,
+                                System.Globalization.DateTimeStyles.None,
+                                out var parsedDate
+                            )
+                        )
                         {
                             meetingInfo.ProcessingDate = parsedDate;
                             meetingInfo.Date = parsedDate;
@@ -286,24 +322,26 @@ namespace MeetingTranscriptProcessor.Controllers
                     try
                     {
                         var content = await System.IO.File.ReadAllTextAsync(file);
-                        meetingInfo.PreviewContent = content.Length > 200 
-                            ? content.Substring(0, 200) + "..."
-                            : content;
-                        
+                        meetingInfo.PreviewContent =
+                            content.Length > 200 ? content.Substring(0, 200) + "..." : content;
+
                         // Try to detect meeting title from first few lines
                         var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                         meetingInfo.Title = lines.FirstOrDefault()?.Trim() ?? "Untitled Meeting";
-                        
+
                         if (meetingInfo.Title.Length > 100)
                             meetingInfo.Title = meetingInfo.Title.Substring(0, 100) + "...";
 
                         // Extract participants from content (basic pattern matching)
                         meetingInfo.Participants = ExtractParticipants(content);
-                        
+
                         // Check for Jira tickets
-                        meetingInfo.HasJiraTickets = content.Contains("JIRA") || content.Contains("Jira") || 
-                                                   content.Contains("jira") || content.Contains("ticket");
-                        
+                        meetingInfo.HasJiraTickets =
+                            content.Contains("JIRA")
+                            || content.Contains("Jira")
+                            || content.Contains("jira")
+                            || content.Contains("ticket");
+
                         // Count action items
                         meetingInfo.ActionItemCount = CountActionItems(content);
                     }
@@ -332,17 +370,17 @@ namespace MeetingTranscriptProcessor.Controllers
             // Get meetings from all folders
             var archiveMeetings = await GetMeetingsFromFolder(_archivePath, FolderType.Archive);
             var incomingMeetings = await GetMeetingsFromFolder(_incomingPath, FolderType.Incoming);
-            var processingMeetings = await GetMeetingsFromFolder(_processingPath, FolderType.Processing);
+            var processingMeetings = await GetMeetingsFromFolder(
+                _processingPath,
+                FolderType.Processing
+            );
 
             allMeetings.AddRange(archiveMeetings);
             allMeetings.AddRange(incomingMeetings);
             allMeetings.AddRange(processingMeetings);
 
             // Sort by LastModified date (most recent first) and take top 5
-            return allMeetings
-                .OrderByDescending(m => m.LastModified)
-                .Take(5)
-                .ToList();
+            return allMeetings.OrderByDescending(m => m.LastModified).Take(5).ToList();
         }
 
         private async Task<int> GetRecentMeetingCount()
@@ -356,33 +394,45 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             var participants = new List<string>();
             var lines = content.Split('\n');
-            
+
             // Look for patterns like "Participants:", "Attendees:", etc.
             foreach (var line in lines)
             {
                 var lowerLine = line.ToLower().Trim();
-                if (lowerLine.StartsWith("participants:") || lowerLine.StartsWith("attendees:") || 
-                    lowerLine.StartsWith("present:") || lowerLine.StartsWith("meeting participants:"))
+                if (
+                    lowerLine.StartsWith("participants:")
+                    || lowerLine.StartsWith("attendees:")
+                    || lowerLine.StartsWith("present:")
+                    || lowerLine.StartsWith("meeting participants:")
+                )
                 {
                     var participantsPart = line.Substring(line.IndexOf(':') + 1).Trim();
-                    var names = participantsPart.Split(new[] { ',', ';', '&' }, StringSplitOptions.RemoveEmptyEntries)
-                                              .Select(p => p.Trim())
-                                              .Where(p => !string.IsNullOrEmpty(p))
-                                              .ToList();
+                    var names = participantsPart
+                        .Split(new[] { ',', ';', '&' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p.Trim())
+                        .Where(p => !string.IsNullOrEmpty(p))
+                        .ToList();
                     participants.AddRange(names);
                     break;
                 }
             }
-            
+
             return participants.Distinct().ToList();
         }
 
         private int CountActionItems(string content)
         {
-            var actionItemPatterns = new[] { "action item", "action:", "todo:", "follow up", "next step" };
+            var actionItemPatterns = new[]
+            {
+                "action item",
+                "action:",
+                "todo:",
+                "follow up",
+                "next step"
+            };
             var lines = content.Split('\n');
             int count = 0;
-            
+
             foreach (var line in lines)
             {
                 var lowerLine = line.ToLower();
@@ -391,12 +441,20 @@ namespace MeetingTranscriptProcessor.Controllers
                     count++;
                 }
             }
-            
+
             return count;
         }
 
-        private List<MeetingInfo> ApplyFilters(List<MeetingInfo> meetings, string? search, string? status, 
-            string? language, string? participants, DateTime? dateFrom, DateTime? dateTo, bool? hasJiraTickets)
+        private List<MeetingInfo> ApplyFilters(
+            List<MeetingInfo> meetings,
+            string? search,
+            string? status,
+            string? language,
+            string? participants,
+            DateTime? dateFrom,
+            DateTime? dateTo,
+            bool? hasJiraTickets
+        )
         {
             var filtered = meetings.AsEnumerable();
 
@@ -404,11 +462,13 @@ namespace MeetingTranscriptProcessor.Controllers
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var searchLower = search.ToLower();
-                filtered = filtered.Where(m => 
-                    m.Title.ToLower().Contains(searchLower) ||
-                    m.OriginalName.ToLower().Contains(searchLower) ||
-                    m.PreviewContent.ToLower().Contains(searchLower) ||
-                    m.Participants.Any(p => p.ToLower().Contains(searchLower)));
+                filtered = filtered.Where(
+                    m =>
+                        m.Title.ToLower().Contains(searchLower)
+                        || m.OriginalName.ToLower().Contains(searchLower)
+                        || m.PreviewContent.ToLower().Contains(searchLower)
+                        || m.Participants.Any(p => p.ToLower().Contains(searchLower))
+                );
             }
 
             // Status filter
@@ -428,9 +488,14 @@ namespace MeetingTranscriptProcessor.Controllers
             // Participants filter
             if (!string.IsNullOrWhiteSpace(participants))
             {
-                var participantList = participants.Split(',').Select(p => p.Trim().ToLower()).ToList();
-                filtered = filtered.Where(m => 
-                    participantList.Any(p => m.Participants.Any(mp => mp.ToLower().Contains(p))));
+                var participantList = participants
+                    .Split(',')
+                    .Select(p => p.Trim().ToLower())
+                    .ToList();
+                filtered = filtered.Where(
+                    m =>
+                        participantList.Any(p => m.Participants.Any(mp => mp.ToLower().Contains(p)))
+                );
             }
 
             // Date range filter
@@ -453,30 +518,41 @@ namespace MeetingTranscriptProcessor.Controllers
             return filtered.ToList();
         }
 
-        private List<MeetingInfo> ApplySorting(List<MeetingInfo> meetings, string sortBy, string sortOrder)
+        private List<MeetingInfo> ApplySorting(
+            List<MeetingInfo> meetings,
+            string sortBy,
+            string sortOrder
+        )
         {
             var isDescending = sortOrder.ToLower() == "desc";
 
             return sortBy.ToLower() switch
             {
-                "title" => isDescending 
-                    ? meetings.OrderByDescending(m => m.Title).ToList()
-                    : meetings.OrderBy(m => m.Title).ToList(),
-                "size" => isDescending 
-                    ? meetings.OrderByDescending(m => m.Size).ToList()
-                    : meetings.OrderBy(m => m.Size).ToList(),
-                "status" => isDescending 
-                    ? meetings.OrderByDescending(m => m.Status).ToList()
-                    : meetings.OrderBy(m => m.Status).ToList(),
-                "language" => isDescending 
-                    ? meetings.OrderByDescending(m => m.Language).ToList()
-                    : meetings.OrderBy(m => m.Language).ToList(),
-                "participants" => isDescending 
-                    ? meetings.OrderByDescending(m => m.Participants.Count).ToList()
-                    : meetings.OrderBy(m => m.Participants.Count).ToList(),
-                "date" or _ => isDescending 
-                    ? meetings.OrderByDescending(m => m.Date).ToList()
-                    : meetings.OrderBy(m => m.Date).ToList()
+                "title"
+                    => isDescending
+                        ? meetings.OrderByDescending(m => m.Title).ToList()
+                        : meetings.OrderBy(m => m.Title).ToList(),
+                "size"
+                    => isDescending
+                        ? meetings.OrderByDescending(m => m.Size).ToList()
+                        : meetings.OrderBy(m => m.Size).ToList(),
+                "status"
+                    => isDescending
+                        ? meetings.OrderByDescending(m => m.Status).ToList()
+                        : meetings.OrderBy(m => m.Status).ToList(),
+                "language"
+                    => isDescending
+                        ? meetings.OrderByDescending(m => m.Language).ToList()
+                        : meetings.OrderBy(m => m.Language).ToList(),
+                "participants"
+                    => isDescending
+                        ? meetings.OrderByDescending(m => m.Participants.Count).ToList()
+                        : meetings.OrderBy(m => m.Participants.Count).ToList(),
+                "date"
+                or _
+                    => isDescending
+                        ? meetings.OrderByDescending(m => m.Date).ToList()
+                        : meetings.OrderBy(m => m.Date).ToList()
             };
         }
     }

@@ -1,6 +1,18 @@
-﻿import React, { useState } from 'react';
-import { Star, CheckCircle, XCircle, Clock, Edit2, Save, X, Archive, Inbox, Trash2 } from 'lucide-react';
-import type { MeetingInfo } from '../services/api';
+﻿import React, { useState, useCallback, useMemo } from "react";
+import {
+  Star,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Edit2,
+  Save,
+  X,
+  Archive,
+  Inbox,
+  Trash2,
+} from "lucide-react";
+import type { MeetingInfo } from "../services/api";
+import styles from "./MeetingCard.module.css";
 
 interface MeetingCardProps {
   meeting: MeetingInfo;
@@ -14,307 +26,371 @@ interface MeetingCardProps {
   currentFolder?: string;
 }
 
-const MeetingCard: React.FC<MeetingCardProps> = ({ 
-  meeting, 
-  onSelect, 
-  onToggleFavorite, 
-  isFavorite,
-  onEditTitle,
-  onMoveToArchive,
-  onMoveToIncoming,
-  onDelete,
-  currentFolder
-}) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(meeting.title);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+const MeetingCard: React.FC<MeetingCardProps> = React.memo(
+  ({
+    meeting,
+    onSelect,
+    onToggleFavorite,
+    isFavorite,
+    onEditTitle,
+    onMoveToArchive,
+    onMoveToIncoming,
+    onDelete,
+    currentFolder,
+  }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedTitle, setEditedTitle] = useState(meeting.title);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'success':
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200">
-            <CheckCircle className="w-4 h-4 mr-1" />
-            Success
-          </span>
-        );
-      case 'error':
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
-            <XCircle className="w-4 h-4 mr-1" />
-            Error
-          </span>
-        );
-      case 'processing':
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-            <Clock className="w-4 h-4 mr-1 animate-pulse" />
-            Processing
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-200">
-            <Clock className="w-4 h-4 mr-1" />
-            Unknown
-          </span>
-        );
-    }
-  };
+    // Memoized status badge component
+    const statusBadge = useMemo(() => {
+      const getStatusBadgeClasses = (status: string) => {
+        switch (status.toLowerCase()) {
+          case "success":
+            return {
+              containerClass: `${styles.statusBadge} ${styles.statusBadgeSuccess}`,
+              icon: <CheckCircle className={styles.statusIcon} />,
+              text: "Success",
+            };
+          case "error":
+            return {
+              containerClass: `${styles.statusBadge} ${styles.statusBadgeError}`,
+              icon: <XCircle className={styles.statusIcon} />,
+              text: "Error",
+            };
+          case "processing":
+            return {
+              containerClass: `${styles.statusBadge} ${styles.statusBadgeProcessing}`,
+              icon: (
+                <Clock
+                  className={`${styles.statusIcon} ${styles.statusIconProcessing}`}
+                />
+              ),
+              text: "Processing",
+            };
+          default:
+            return {
+              containerClass: `${styles.statusBadge} ${styles.statusBadgeUnknown}`,
+              icon: <Clock className={styles.statusIcon} />,
+              text: "Unknown",
+            };
+        }
+      };
 
-  const extractParticipants = (content: string): string[] => {
-    const participantMatch = content.match(/Participants?:\s*([^\n]+)/i);
-    if (participantMatch) {
-      return participantMatch[1]
-        .split(',')
-        .map(p => p.trim())
-        .filter(p => p.length > 0)
-        .slice(0, 5);
-    }
-    return [];
-  };
+      const { containerClass, icon, text } = getStatusBadgeClasses(
+        meeting.status
+      );
+      return (
+        <span className={containerClass}>
+          {icon}
+          {text}
+        </span>
+      );
+    }, [meeting.status]);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+    // Memoized participants extraction
+    const participants = useMemo(() => {
+      const participantMatch = meeting.previewContent.match(
+        /Participants?:\s*([^\n]+)/i
+      );
+      if (participantMatch) {
+        return participantMatch[1]
+          .split(",")
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0)
+          .slice(0, 5);
+      }
+      return [];
+    }, [meeting.previewContent]);
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+    // Memoized folder state
+    const folderState = useMemo(
+      () => ({
+        isInArchive: currentFolder?.toLowerCase() === "archive",
+        isInIncoming: currentFolder?.toLowerCase() === "incoming",
+      }),
+      [currentFolder]
+    );
 
-  const participants = extractParticipants(meeting.previewContent);
+    // Utility functions
+    const formatFileSize = useCallback((bytes: number): string => {
+      if (bytes === 0) return "0 Bytes";
+      const k = 1024;
+      const sizes = ["Bytes", "KB", "MB", "GB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    }, []);
 
-  const handleSaveTitle = () => {
-    if (onEditTitle && editedTitle.trim() !== meeting.title) {
-      onEditTitle(meeting.fileName, editedTitle.trim());
-    }
-    setIsEditing(false);
-  };
+    const formatDate = useCallback((dateString: string): string => {
+      const date = new Date(dateString);
+      return (
+        date.toLocaleDateString() +
+        " " +
+        date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      );
+    }, []);
 
-  const handleCancelEdit = () => {
-    setEditedTitle(meeting.title);
-    setIsEditing(false);
-  };
+    // Event handlers
+    const handleCardClick = useCallback(() => {
+      onSelect(meeting);
+    }, [onSelect, meeting]);
 
-  const handleDelete = () => {
-    if (onDelete) {
-      onDelete(meeting.fileName);
-    }
-    setShowDeleteConfirm(false);
-  };
+    const handleToggleFavorite = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onToggleFavorite(meeting.fileName);
+      },
+      [onToggleFavorite, meeting.fileName]
+    );
 
-  const handleMoveToArchive = () => {
-    if (onMoveToArchive) {
-      onMoveToArchive(meeting.fileName);
-    }
-  };
+    const handleStartEdit = useCallback((e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsEditing(true);
+    }, []);
 
-  const handleMoveToIncoming = () => {
-    if (onMoveToIncoming) {
-      onMoveToIncoming(meeting.fileName);
-    }
-  };
+    const handleSaveTitle = useCallback(() => {
+      if (
+        onEditTitle &&
+        editedTitle.trim() !== meeting.title &&
+        editedTitle.trim()
+      ) {
+        onEditTitle(meeting.fileName, editedTitle.trim());
+      }
+      setIsEditing(false);
+    }, [onEditTitle, editedTitle, meeting.title, meeting.fileName]);
 
-  const isInArchive = currentFolder?.toLowerCase() === 'archive';
-  const isInIncoming = currentFolder?.toLowerCase() === 'incoming';
+    const handleCancelEdit = useCallback(() => {
+      setEditedTitle(meeting.title);
+      setIsEditing(false);
+    }, [meeting.title]);
 
-  return (
-    <div 
-      className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all duration-200 cursor-pointer hover:border-blue-300"
-      onClick={() => onSelect(meeting)}
-    >
-      {/* Header with title and action buttons */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1 mr-3">
-          {isEditing ? (
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveTitle();
-                  if (e.key === 'Escape') handleCancelEdit();
-                }}
-                autoFocus
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSaveTitle();
-                }}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors"
-                title="Save title"
-              >
-                <Save className="h-4 w-4" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCancelEdit();
-                }}
-                className="p-2 text-gray-600 hover:bg-gray-50 rounded-full transition-colors"
-                title="Cancel editing"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <h3 className="text-lg font-semibold text-gray-900 truncate leading-tight">
-                {meeting.title}
-              </h3>
-              {onEditTitle && (
+    const handleTitleInputChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEditedTitle(e.target.value);
+      },
+      []
+    );
+
+    const handleTitleKeyDown = useCallback(
+      (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+          handleSaveTitle();
+        } else if (e.key === "Escape") {
+          handleCancelEdit();
+        }
+      },
+      [handleSaveTitle, handleCancelEdit]
+    );
+
+    const handleDelete = useCallback(() => {
+      if (onDelete) {
+        onDelete(meeting.fileName);
+      }
+      setShowDeleteConfirm(false);
+    }, [onDelete, meeting.fileName]);
+
+    const handleShowDeleteConfirm = useCallback((e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowDeleteConfirm(true);
+    }, []);
+
+    const handleCancelDelete = useCallback((e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowDeleteConfirm(false);
+    }, []);
+
+    const handleMoveToArchive = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onMoveToArchive) {
+          onMoveToArchive(meeting.fileName);
+        }
+      },
+      [onMoveToArchive, meeting.fileName]
+    );
+
+    const handleMoveToIncoming = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onMoveToIncoming) {
+          onMoveToIncoming(meeting.fileName);
+        }
+      },
+      [onMoveToIncoming, meeting.fileName]
+    );
+
+    return (
+      <div className={styles.card} onClick={handleCardClick}>
+        {/* Header with title and action buttons */}
+        <div className={styles.header}>
+          <div className={styles.titleSection}>
+            {isEditing ? (
+              <div className={styles.titleEditContainer}>
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={handleTitleInputChange}
+                  className={styles.titleInput}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={handleTitleKeyDown}
+                  autoFocus
+                />
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsEditing(true);
+                    handleSaveTitle();
                   }}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded transition-colors"
-                  title="Edit title"
+                  className={`${styles.iconButton} ${styles.saveButton}`}
+                  title="Save title"
                 >
-                  <Edit2 className="h-4 w-4" />
+                  <Save className="h-4 w-4" />
                 </button>
-              )}
-            </div>
-          )}
-        </div>
-        
-        <div className="flex items-center space-x-1 flex-shrink-0">
-          {/* Folder move buttons */}
-          {isInArchive && onMoveToIncoming && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMoveToIncoming();
-              }}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-              title="Move to Incoming"
-            >
-              <Inbox className="h-4 w-4" />
-            </button>
-          )}
-          
-          {isInIncoming && onMoveToArchive && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMoveToArchive();
-              }}
-              className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors"
-              title="Move to Archive"
-            >
-              <Archive className="h-4 w-4" />
-            </button>
-          )}
-          
-          {/* Delete button */}
-          {onDelete && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDeleteConfirm(true);
-              }}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-              title="Delete meeting"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-          
-          {/* Favorite button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite(meeting.fileName);
-            }}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-          >
-            <Star 
-              className={`h-5 w-5 ${
-                isFavorite 
-                  ? 'text-yellow-500 fill-current' 
-                  : 'text-gray-400 hover:text-yellow-400'
-              }`} 
-            />
-          </button>
-        </div>
-      </div>
-
-      {/* Participants row */}
-      {participants.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Participants:</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCancelEdit();
+                  }}
+                  className={`${styles.iconButton} ${styles.cancelButton}`}
+                  title="Cancel editing"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className={styles.titleDisplay}>
+                <h3 className={styles.title}>{meeting.title}</h3>
+                {onEditTitle && (
+                  <button
+                    onClick={handleStartEdit}
+                    className={`${styles.iconButtonSmall} ${styles.editButton}`}
+                    title="Edit title"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {participants.map((participant, index) => (
-              <span 
-                key={index}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200"
+
+          <div className={styles.actionButtons}>
+            {/* Folder move buttons */}
+            {folderState.isInArchive && onMoveToIncoming && (
+              <button
+                onClick={handleMoveToIncoming}
+                className={`${styles.iconButton} ${styles.moveToIncomingButton}`}
+                title="Move to Incoming"
               >
-                {participant}
+                <Inbox className="h-4 w-4" />
+              </button>
+            )}
+
+            {folderState.isInIncoming && onMoveToArchive && (
+              <button
+                onClick={handleMoveToArchive}
+                className={`${styles.iconButton} ${styles.moveToArchiveButton}`}
+                title="Move to Archive"
+              >
+                <Archive className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Delete button */}
+            {onDelete && (
+              <button
+                onClick={handleShowDeleteConfirm}
+                className={`${styles.iconButton} ${styles.deleteButton}`}
+                title="Delete meeting"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Favorite button */}
+            <button
+              onClick={handleToggleFavorite}
+              className={`${styles.iconButton} ${styles.favoriteButton}`}
+              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Star
+                className={`${styles.favoriteIcon} ${
+                  isFavorite
+                    ? styles.favoriteIconActive
+                    : styles.favoriteIconInactive
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Participants row */}
+        {participants.length > 0 && (
+          <div className={styles.participantsSection}>
+            <div className={styles.participantsLabel}>
+              <span className={styles.participantsLabelText}>
+                Participants:
               </span>
-            ))}
+            </div>
+            <div className={styles.participantsList}>
+              {participants.map((participant, index) => (
+                <span key={index} className={styles.participantBadge}>
+                  {participant}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Status and metadata row */}
+        <div className={styles.statusSection}>
+          <div className={styles.statusMetadata}>
+            {statusBadge}
+            <span className={styles.fileSize}>
+              {formatFileSize(meeting.size)}
+            </span>
+          </div>
+          <div className={styles.dateText}>
+            {formatDate(meeting.lastModified)}
           </div>
         </div>
-      )}
 
-      {/* Status and metadata row */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-        <div className="flex items-center space-x-4">
-          {getStatusBadge(meeting.status)}
-          <span className="text-sm text-gray-500 font-medium">{formatFileSize(meeting.size)}</span>
-        </div>
-        <div className="text-sm text-gray-500">
-          {formatDate(meeting.lastModified)}
-        </div>
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <Trash2 className={styles.modalIcon} />
+                <h3 className={styles.modalTitle}>Delete Meeting</h3>
+              </div>
+              <p className={styles.modalContent}>
+                Are you sure you want to delete "{meeting.title}"? This action
+                cannot be undone.
+              </p>
+              <div className={styles.modalActions}>
+                <button
+                  onClick={handleCancelDelete}
+                  className={`${styles.modalButton} ${styles.modalButtonSecondary}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete();
+                  }}
+                  className={`${styles.modalButton} ${styles.modalButtonDanger}`}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+    );
+  }
+);
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <Trash2 className="h-6 w-6 text-red-600 mr-3" />
-              <h3 className="text-lg font-semibold text-gray-900">Delete Meeting</h3>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "{meeting.title}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteConfirm(false);
-                }}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+// Set display name for debugging
+MeetingCard.displayName = "MeetingCard";
 
 export default MeetingCard;
