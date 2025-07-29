@@ -1,0 +1,44 @@
+/* Error Alert Styles */
+.errorAlert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.errorCloseButton {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 1.25rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 1rem;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.errorCloseButton:hover {
+  opacity: 1;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .errorAlert {
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .errorCloseButton {
+    margin-left: 0.75rem;
+  }
+}

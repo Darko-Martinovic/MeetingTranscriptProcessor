@@ -196,27 +196,27 @@
 .layoutGrid {
   display: grid;
   grid-template-columns: 1fr;
+  grid-template-areas:
+    "sidebar"
+    "content";
   gap: 1.5rem;
 }
 
 @media (min-width: 1024px) {
   .layoutGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: 280px 1fr;
+    grid-template-areas: "sidebar content";
   }
 }
 
 .sidebarColumn {
-  grid-column: span 1;
+  grid-area: sidebar;
+  min-width: 0; /* Prevent grid overflow */
 }
 
 .contentColumn {
-  grid-column: span 1;
-}
-
-@media (min-width: 1024px) {
-  .contentColumn {
-    grid-column: span 3;
-  }
+  grid-area: content;
+  min-width: 0; /* Prevent grid overflow */
 }
 
 /* Sidebar styles */
@@ -727,6 +727,9 @@
 
   .layoutGrid {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "sidebar"
+      "content";
   }
 
   .meetingGrid {

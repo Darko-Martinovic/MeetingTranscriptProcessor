@@ -1,0 +1,117 @@
+/* Folder Sidebar Styles */
+
+.sidebar {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  height: fit-content;
+  position: sticky;
+  top: 5rem;
+  width: 100%;
+  max-width: 280px;
+  min-width: 200px;
+}
+
+.sidebarTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+}
+
+.folderList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.folderContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.folderInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.folderName {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: inherit;
+}
+
+.folderCount {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 9999px;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* Folder Icon Styles */
+.folderIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.folderIconArchive {
+  color: #dc2626;
+}
+
+.folderIconIncoming {
+  color: #2563eb;
+}
+
+.folderIconProcessing {
+  color: #d97706;
+}
+
+.folderIconOutgoing {
+  color: #059669;
+}
+
+.folderIconGeneral {
+  color: #6b7280;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .sidebar {
+    padding: 1rem;
+  }
+
+  .sidebarTitle {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebarColumn {
+    grid-area: auto;
+  }
+
+  .sidebar {
+    position: static;
+    margin-bottom: 1rem;
+  }
+
+  .folderList {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .folderList button {
+    flex: 1;
+    min-width: 120px;
+  }
+}

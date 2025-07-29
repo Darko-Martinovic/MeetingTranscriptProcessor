@@ -1,16 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  FolderOpen,
-  File,
-  Settings,
-  Upload,
-  RefreshCw,
-  Clock,
-  Archive,
-  Inbox,
-  Clock3,
-  Folder,
-} from "lucide-react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import {
   meetingApi,
   configurationApi,
@@ -22,12 +10,13 @@ import {
   type SystemStatusDto,
   type MeetingFilter,
 } from "./services/api";
-import MeetingFilterComponent from "./components/MeetingFilter";
-import MeetingCard from "./components/MeetingCard";
-import MeetingDetails from "./components/MeetingDetails";
-import MeetingListHeader from "./components/MeetingListHeader";
+import AppHeader from "./components/AppHeader";
+import FolderSidebar from "./components/FolderSidebar";
+import MainContentArea from "./components/MainContentArea";
+import ErrorAlert from "./components/ErrorAlert";
 import UploadModal from "./components/UploadModal";
 import SettingsModal from "./components/SettingsModal";
+import { useFolderIcons } from "./hooks/useFolderIcons";
 import styles from "./App.module.css";
 
 const App: React.FC = () => {
@@ -46,6 +35,10 @@ const App: React.FC = () => {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<MeetingFilter>({});
   const [showFilters, setShowFilters] = useState(false);
+
+  // Use the folder icons hook
+  const { getFolderIcon, getFolderHeaderIcon, getFolderButtonClass } =
+    useFolderIcons();
 
   const loadSystemStatus = useCallback(async () => {
     try {
@@ -372,258 +365,47 @@ const App: React.FC = () => {
     }
   };
 
-  // Memoized folder icon functions
-  const getFolderIcon = useCallback((folderName: string) => {
-    switch (folderName.toLowerCase()) {
-      case "archive":
-        return (
-          <Archive
-            className={`${styles.folderIcon} ${styles.folderIconArchive}`}
-          />
-        );
-      case "incoming":
-        return (
-          <Inbox
-            className={`${styles.folderIcon} ${styles.folderIconIncoming}`}
-          />
-        );
-      case "processing":
-        return (
-          <Clock3
-            className={`${styles.folderIcon} ${styles.folderIconProcessing}`}
-          />
-        );
-      case "recent":
-        return (
-          <Clock
-            className={`${styles.folderIcon} ${styles.folderIconOutgoing}`}
-          />
-        );
-      default:
-        return (
-          <Folder
-            className={`${styles.folderIcon} ${styles.folderIconGeneral}`}
-          />
-        );
-    }
-  }, []);
-
-  const getFolderHeaderIcon = useCallback((folderName: string) => {
-    switch (folderName.toLowerCase()) {
-      case "archive":
-        return (
-          <Archive
-            className={`${styles.appIcon} ${styles.folderIconArchive}`}
-          />
-        );
-      case "incoming":
-        return (
-          <Inbox className={`${styles.appIcon} ${styles.folderIconIncoming}`} />
-        );
-      case "processing":
-        return (
-          <Clock3
-            className={`${styles.appIcon} ${styles.folderIconProcessing}`}
-          />
-        );
-      case "recent":
-        return (
-          <Clock className={`${styles.appIcon} ${styles.folderIconOutgoing}`} />
-        );
-      default:
-        return (
-          <FolderOpen
-            className={`${styles.appIcon} ${styles.folderIconIncoming}`}
-          />
-        );
-    }
-  }, []);
-
-  // Memoized status dot class
-  const statusDotClass = useMemo(() => {
-    return `${styles.statusDot} ${
-      systemStatus?.isRunning ? styles.statusDotOnline : styles.statusDotOffline
-    }`;
-  }, [systemStatus?.isRunning]);
-
-  // Memoized folder button class function
-  const getFolderButtonClass = useCallback(
-    (_folder: FolderInfo, isSelected: boolean) => {
-      return `${styles.folderButton} ${
-        isSelected ? styles.folderButtonActive : styles.folderButtonInactive
-      }`;
-    },
-    []
-  );
-
   return (
     <div className={styles.container}>
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerContainer}>
-          <div className={styles.headerContent}>
-            <div className={styles.headerLeft}>
-              {selectedFolder ? (
-                getFolderHeaderIcon(selectedFolder.name)
-              ) : (
-                <FolderOpen className={styles.appIcon} />
-              )}
-              <h1 className={styles.appTitle}>Meeting Transcript Processor</h1>
-            </div>
-            <div className={styles.headerRight}>
-              {systemStatus && (
-                <div className={styles.statusIndicator}>
-                  <div className={statusDotClass}></div>
-                  <span className={styles.statusText}>
-                    {systemStatus.isRunning ? "Running" : "Offline"}
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={() => setShowUpload(true)}
-                className={styles.uploadButton}
-              >
-                <Upload className="h-4 w-4" />
-                <span>Upload</span>
-              </button>
-              <button
-                onClick={() => setShowSettings(true)}
-                className={styles.iconButton}
-              >
-                <Settings className="h-5 w-5" />
-              </button>
-              <button
-                onClick={loadFolders}
-                className={`${styles.iconButton} ${
-                  loading ? styles.iconButtonLoading : ""
-                }`}
-                disabled={loading}
-              >
-                <RefreshCw
-                  className={`h-5 w-5 ${loading ? styles.spinIcon : ""}`}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        selectedFolder={selectedFolder}
+        systemStatus={systemStatus}
+        loading={loading}
+        onShowUpload={() => setShowUpload(true)}
+        onShowSettings={() => setShowSettings(true)}
+        onRefresh={loadFolders}
+        getFolderHeaderIcon={getFolderHeaderIcon}
+      />
 
-      {/* Main Content */}
       <div className={styles.main}>
-        {error && (
-          <div className={styles.errorAlert}>
-            {error}
-            <button
-              onClick={() => setError(null)}
-              className={styles.errorCloseButton}
-            >
-              ×
-            </button>
-          </div>
-        )}
+        <ErrorAlert error={error} onClose={() => setError(null)} />
 
         <div className={styles.layoutGrid}>
-          {/* Sidebar - Folders */}
-          <div className={styles.sidebarColumn}>
-            <div className={styles.sidebar}>
-              <h2 className={styles.sidebarTitle}>Folders</h2>
-              <div className={styles.folderList}>
-                {folders.map((folder) => (
-                  <button
-                    key={folder.name}
-                    onClick={() => handleFolderSelect(folder)}
-                    className={getFolderButtonClass(
-                      folder,
-                      selectedFolder?.name === folder.name
-                    )}
-                  >
-                    <div className={styles.folderContent}>
-                      <div className={styles.folderInfo}>
-                        {getFolderIcon(folder.name)}
-                        <span className={styles.folderName}>{folder.name}</span>
-                      </div>
-                      <span className={styles.folderCount}>
-                        {folder.meetingCount}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <FolderSidebar
+            folders={folders}
+            selectedFolder={selectedFolder}
+            onFolderSelect={handleFolderSelect}
+            getFolderIcon={getFolderIcon}
+            getFolderButtonClass={getFolderButtonClass}
+          />
 
-          {/* Main Content Area */}
-          <div className={styles.contentColumn}>
-            {!selectedFolder ? (
-              <div className={styles.emptyState}>
-                <FolderOpen className={styles.emptyIcon} />
-                <h3 className={styles.emptyTitle}>
-                  Select a folder to view meetings
-                </h3>
-                <p className={styles.emptyDescription}>
-                  Choose a folder from the sidebar to see all processed
-                  meetings.
-                </p>
-              </div>
-            ) : !selectedMeeting ? (
-              <div className={styles.contentArea}>
-                <div className={styles.meetingList}>
-                  <MeetingListHeader
-                    selectedFolder={selectedFolder}
-                    meetingCount={meetings.length}
-                    showFilters={showFilters}
-                    onToggleFilters={() => setShowFilters(!showFilters)}
-                    currentFilter={currentFilter}
-                  />
-
-                  {/* Show filter component only for Archive folder */}
-                  {selectedFolder.type === FolderType.Archive && (
-                    <MeetingFilterComponent
-                      onFilterChange={handleFilterChange}
-                      meetings={meetings}
-                      isVisible={showFilters}
-                    />
-                  )}
-
-                  <div className={styles.meetingGrid}>
-                    {meetings.length === 0 ? (
-                      <div className={styles.emptyState}>
-                        <File className={styles.emptyIcon} />
-                        <h3 className={styles.emptyTitle}>No meetings found</h3>
-                        <p className={styles.emptyDescription}>
-                          This folder doesn't contain any meeting files yet.
-                        </p>
-                      </div>
-                    ) : (
-                      meetings.map((meeting) => (
-                        <MeetingCard
-                          key={meeting.fileName}
-                          meeting={meeting}
-                          onSelect={loadMeeting}
-                          onToggleFavorite={toggleFavorite}
-                          isFavorite={favorites.includes(meeting.fileName)}
-                          onEditTitle={handleEditTitle}
-                          onMoveToArchive={handleMoveToArchive}
-                          onMoveToIncoming={handleMoveToIncoming}
-                          onDelete={handleDeleteMeeting}
-                          currentFolder={selectedFolder?.name}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <MeetingDetails
-                meeting={selectedMeeting}
-                onBack={() => setSelectedMeeting(null)}
-                onToggleFavorite={() =>
-                  toggleFavorite(selectedMeeting.fileName)
-                }
-                isFavorite={favorites.includes(selectedMeeting.fileName)}
-              />
-            )}
-          </div>
+          <MainContentArea
+            selectedFolder={selectedFolder}
+            selectedMeeting={selectedMeeting}
+            meetings={meetings}
+            showFilters={showFilters}
+            currentFilter={currentFilter}
+            favorites={favorites}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            onFilterChange={handleFilterChange}
+            onSelectMeeting={loadMeeting}
+            onBackFromMeeting={() => setSelectedMeeting(null)}
+            onToggleFavorite={toggleFavorite}
+            onEditTitle={handleEditTitle}
+            onMoveToArchive={handleMoveToArchive}
+            onMoveToIncoming={handleMoveToIncoming}
+            onDeleteMeeting={handleDeleteMeeting}
+          />
         </div>
       </div>
 
