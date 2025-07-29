@@ -104,6 +104,7 @@ export const FolderType = {
   Incoming: 1,
   Processing: 2,
   Recent: 3,
+  Favorites: 4,
 } as const;
 
 export type FolderType = (typeof FolderType)[keyof typeof FolderType];
@@ -163,6 +164,14 @@ export const meetingApi = {
         params.append("hasJiraTickets", filter.hasJiraTickets.toString());
       if (filter.sortBy) params.append("sortBy", filter.sortBy);
       if (filter.sortOrder) params.append("sortOrder", filter.sortOrder);
+    }
+
+    // For Favorites folder, add favorite file names as a parameter
+    if (folderType === FolderType.Favorites) {
+      const favorites = localStorageService.getFavorites();
+      if (favorites.length > 0) {
+        params.append("favoriteFileNames", favorites.join(","));
+      }
     }
 
     const queryString = params.toString();

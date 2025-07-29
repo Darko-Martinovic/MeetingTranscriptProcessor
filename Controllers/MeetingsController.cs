@@ -73,6 +73,13 @@ namespace MeetingTranscriptProcessor.Controllers
                         Path = "", // Recent is virtual, no physical path
                         Type = FolderType.Recent,
                         MeetingCount = await GetRecentMeetingCount()
+                    },
+                    new FolderInfo
+                    {
+                        Name = "Favorites",
+                        Path = "", // Favorites is virtual, no physical path
+                        Type = FolderType.Favorites,
+                        MeetingCount = await GetFavoriteMeetingCount()
                     }
                 };
 
@@ -95,7 +102,8 @@ namespace MeetingTranscriptProcessor.Controllers
             [FromQuery] DateTime? dateTo = null,
             [FromQuery] bool? hasJiraTickets = null,
             [FromQuery] string sortBy = "date",
-            [FromQuery] string sortOrder = "desc"
+            [FromQuery] string sortOrder = "desc",
+            [FromQuery] string? favoriteFileNames = null
         )
         {
             try
@@ -105,6 +113,10 @@ namespace MeetingTranscriptProcessor.Controllers
                 if (folderType == FolderType.Recent)
                 {
                     meetings = await GetRecentMeetings();
+                }
+                else if (folderType == FolderType.Favorites)
+                {
+                    meetings = await GetFavoriteMeetings(favoriteFileNames);
                 }
                 else
                 {
@@ -340,10 +352,15 @@ namespace MeetingTranscriptProcessor.Controllers
                     return BadRequest(new { error = "Invalid target folder type" });
                 }
 
-                // Validate target folder type (Recent is virtual, Processing is typically system-managed)
+                // Validate target folder type (Recent and Favorites are virtual, Processing is typically system-managed)
                 if (request.TargetFolderType == FolderType.Recent)
                 {
                     return BadRequest(new { error = "Cannot move meetings to Recent folder (it's virtual)" });
+                }
+
+                if (request.TargetFolderType == FolderType.Favorites)
+                {
+                    return BadRequest(new { error = "Cannot move meetings to Favorites folder (it's virtual)" });
                 }
 
                 if (request.TargetFolderType == FolderType.Processing)
@@ -573,6 +590,63 @@ namespace MeetingTranscriptProcessor.Controllers
             // Recent folder always shows max 5 meetings
             var recentMeetings = await GetRecentMeetings();
             return recentMeetings.Count;
+        }
+
+        private async Task<int> GetFavoriteMeetingCount()
+        {
+            // Since favorites are stored client-side in localStorage, 
+            // we'll return 0 here. The actual count will be managed by the frontend.
+            // In a real application, you might store favorites in a database.
+            return await Task.FromResult(0);
+        }
+
+        private async Task<List<MeetingInfo>> GetFavoriteMeetings(string? favoriteFileNames)
+        {
+            var favoriteMeetings = new List<MeetingInfo>();
+
+            if (string.IsNullOrWhiteSpace(favoriteFileNames))
+            {
+                return favoriteMeetings;
+            }
+
+            // Parse comma-separated favorite file names
+            var fileNames = favoriteFileNames.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                           .Select(name => name.Trim())
+                                           .Where(name => !string.IsNullOrEmpty(name))
+                                           .ToList();
+
+            if (!fileNames.Any())
+            {
+                return favoriteMeetings;
+            }
+
+            // Search for favorite files across all directories
+            var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
+
+            foreach (var fileName in fileNames)
+            {
+                foreach (var path in allPaths)
+                {
+                    var filePath = Path.Combine(path, fileName);
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        var folderType = path == _archivePath ? FolderType.Archive :
+                                        path == _incomingPath ? FolderType.Incoming :
+                                        FolderType.Processing;
+
+                        var meetings = await GetMeetingsFromFolder(path, folderType);
+                        var meeting = meetings.FirstOrDefault(m => m.FileName == fileName);
+                        
+                        if (meeting != null)
+                        {
+                            favoriteMeetings.Add(meeting);
+                            break; // Found the file, no need to search in other directories
+                        }
+                    }
+                }
+            }
+
+            return favoriteMeetings;
         }
 
         private List<string> ExtractParticipants(string content)

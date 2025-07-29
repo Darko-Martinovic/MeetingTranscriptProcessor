@@ -5,6 +5,7 @@ namespace MeetingTranscriptProcessor.Models
         Archive,
         Incoming,
         Processing,
-        Recent
+        Recent,
+        Favorites
     }
 }
