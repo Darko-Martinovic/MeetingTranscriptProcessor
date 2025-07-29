@@ -252,9 +252,9 @@ const App: React.FC = () => {
 
   const handleDeleteMeeting = async (fileName: string) => {
     try {
-      // TODO: Implement API call to delete meeting
-      console.log("Deleting meeting:", fileName);
-      // For now, just refresh the current folder
+      await meetingApi.deleteMeeting(fileName);
+      console.log("Meeting deleted successfully:", fileName);
+      // Refresh the current folder after successful deletion
       if (selectedFolder) {
         await loadMeetingsInFolder(selectedFolder, currentFilter);
       }
