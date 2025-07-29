@@ -172,62 +172,86 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
               />
             </div>
 
-            <div className={styles.filterGrid}>
-              {/* Status Filter */}
-              <div className={styles.filterCard}>
-                <div className={styles.filterCardHeader}>
-                  <div className={styles.statusDot}></div>
-                  <span>Status</span>
+            {/* Compact Filter Sections */}
+            <div className={styles.compactFilterGrid}>
+              {/* Status and Language Row */}
+              <div className={styles.filterRow}>
+                <div className={styles.filterSection}>
+                  <div className={styles.filterHeader}>
+                    <div className={styles.statusDot}></div>
+                    <span>Status</span>
+                  </div>
+                  <div className={styles.filterTags}>
+                    {availableFilters.statuses.map((status) => (
+                      <label
+                        key={status}
+                        className={`${styles.filterTag} ${
+                          filter.status?.includes(status)
+                            ? styles.filterTagActive
+                            : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filter.status?.includes(status) || false}
+                          onChange={() => toggleArrayFilter("status", status)}
+                          className={styles.hiddenCheckbox}
+                        />
+                        <span>{status}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div className={styles.filterOptions}>
-                  {availableFilters.statuses.map((status) => (
-                    <label key={status} className={styles.filterOption}>
-                      <input
-                        type="checkbox"
-                        checked={filter.status?.includes(status) || false}
-                        onChange={() => toggleArrayFilter("status", status)}
-                        className={`${styles.checkbox} ${styles.checkboxStatus}`}
-                      />
-                      <span className={styles.filterOptionLabel}>{status}</span>
-                    </label>
-                  ))}
+
+                <div className={styles.filterSection}>
+                  <div className={styles.filterHeader}>
+                    <Languages size={14} className={styles.iconLanguage} />
+                    <span>Language</span>
+                  </div>
+                  <div className={styles.filterTags}>
+                    {availableFilters.languages.map((language) => (
+                      <label
+                        key={language}
+                        className={`${styles.filterTag} ${
+                          filter.language?.includes(language)
+                            ? styles.filterTagActive
+                            : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filter.language?.includes(language) || false}
+                          onChange={() =>
+                            toggleArrayFilter("language", language)
+                          }
+                          className={styles.hiddenCheckbox}
+                        />
+                        <span>{language}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Language Filter */}
-              <div className={styles.filterCard}>
-                <div className={styles.filterCardHeader}>
-                  <Languages size={16} className={styles.iconLanguage} />
-                  <span>Language</span>
-                </div>
-                <div className={styles.filterOptions}>
-                  {availableFilters.languages.map((language) => (
-                    <label key={language} className={styles.filterOption}>
-                      <input
-                        type="checkbox"
-                        checked={filter.language?.includes(language) || false}
-                        onChange={() => toggleArrayFilter("language", language)}
-                        className={`${styles.checkbox} ${styles.checkboxLanguage}`}
-                      />
-                      <span className={styles.filterOptionLabel}>
-                        {language}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Participants Filter */}
-              <div className={styles.filterCard}>
-                <div className={styles.filterCardHeader}>
-                  <Users size={16} className={styles.iconParticipants} />
-                  <span>Participants</span>
-                </div>
-                <div className={styles.filterOptions}>
-                  {availableFilters.participants
-                    .slice(0, 10)
-                    .map((participant) => (
-                      <label key={participant} className={styles.filterOption}>
+              {/* Participants Row */}
+              <div className={styles.filterRow}>
+                <div className={styles.filterSection}>
+                  <div className={styles.filterHeader}>
+                    <Users size={14} className={styles.iconParticipants} />
+                    <span>
+                      Participants ({availableFilters.participants.length})
+                    </span>
+                  </div>
+                  <div className={styles.filterTags}>
+                    {availableFilters.participants.map((participant) => (
+                      <label
+                        key={participant}
+                        className={`${styles.filterTag} ${
+                          filter.participants?.includes(participant)
+                            ? styles.filterTagActive
+                            : ""
+                        }`}
+                      >
                         <input
                           type="checkbox"
                           checked={
@@ -236,88 +260,74 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
                           onChange={() =>
                             toggleArrayFilter("participants", participant)
                           }
-                          className={`${styles.checkbox} ${styles.checkboxParticipants}`}
+                          className={styles.hiddenCheckbox}
                         />
-                        <span className={styles.filterOptionLabel}>
-                          {participant}
-                        </span>
+                        <span>{participant}</span>
                       </label>
                     ))}
-                  {availableFilters.participants.length > 10 && (
-                    <div className={styles.participantsOverflow}>
-                      +{availableFilters.participants.length - 10} more
-                      participants
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              {/* Date Range and Special Filters */}
-              <div className={styles.filterCard}>
-                <div className={styles.dateSpecialSection}>
-                  {/* Date Range */}
-                  <div className={styles.dateRangeSection}>
-                    <div className={styles.filterCardHeader}>
-                      <Calendar size={16} className={styles.iconCalendar} />
-                      <span>Date Range</span>
-                    </div>
-                    <div className={styles.dateInputGroup}>
-                      <label className={styles.dateLabel}>From</label>
-                      <input
-                        type="date"
-                        value={filter.dateFrom}
-                        onChange={(e) =>
-                          updateFilter("dateFrom", e.target.value)
-                        }
-                        className={styles.dateInput}
-                      />
-                    </div>
-                    <div className={styles.dateInputGroup}>
-                      <label className={styles.dateLabel}>To</label>
-                      <input
-                        type="date"
-                        value={filter.dateTo}
-                        onChange={(e) => updateFilter("dateTo", e.target.value)}
-                        className={styles.dateInput}
-                      />
-                    </div>
+              {/* Date Range and Jira Row */}
+              <div className={styles.filterRow}>
+                <div className={styles.filterSection}>
+                  <div className={styles.filterHeader}>
+                    <Calendar size={14} className={styles.iconCalendar} />
+                    <span>Date Range</span>
                   </div>
+                  <div className={styles.dateRange}>
+                    <input
+                      type="date"
+                      value={filter.dateFrom}
+                      onChange={(e) => updateFilter("dateFrom", e.target.value)}
+                      className={styles.compactDateInput}
+                      placeholder="From"
+                    />
+                    <span className={styles.dateSeparator}>to</span>
+                    <input
+                      type="date"
+                      value={filter.dateTo}
+                      onChange={(e) => updateFilter("dateTo", e.target.value)}
+                      className={styles.compactDateInput}
+                      placeholder="To"
+                    />
+                  </div>
+                </div>
 
-                  {/* Jira Tickets Filter */}
-                  <div className={styles.jiraSection}>
-                    <div className={styles.filterCardHeader}>
-                      <CheckSquare size={16} className={styles.iconJira} />
-                      <span>Jira Tickets</span>
-                    </div>
-                    <select
-                      value={
-                        filter.hasJiraTickets === undefined
-                          ? ""
-                          : filter.hasJiraTickets.toString()
-                      }
-                      onChange={(e) =>
-                        updateFilter(
-                          "hasJiraTickets",
-                          e.target.value === ""
-                            ? undefined
-                            : e.target.value === "true"
-                        )
-                      }
-                      className={styles.jiraSelect}
-                    >
-                      <option value="">All Meetings</option>
-                      <option value="true">✅ Has Jira Tickets</option>
-                      <option value="false">❌ No Jira Tickets</option>
-                    </select>
+                <div className={styles.filterSection}>
+                  <div className={styles.filterHeader}>
+                    <CheckSquare size={14} className={styles.iconJira} />
+                    <span>Jira Tickets</span>
                   </div>
+                  <select
+                    value={
+                      filter.hasJiraTickets === undefined
+                        ? ""
+                        : filter.hasJiraTickets.toString()
+                    }
+                    onChange={(e) =>
+                      updateFilter(
+                        "hasJiraTickets",
+                        e.target.value === ""
+                          ? undefined
+                          : e.target.value === "true"
+                      )
+                    }
+                    className={styles.compactSelect}
+                  >
+                    <option value="">All Meetings</option>
+                    <option value="true">✅ Has Jira Tickets</option>
+                    <option value="false">❌ No Jira Tickets</option>
+                  </select>
                 </div>
               </div>
             </div>
 
-            {/* Sorting */}
-            <div className={styles.sortingSection}>
+            {/* Compact Sorting */}
+            <div className={styles.compactSortingSection}>
               <div className={styles.sortingGroup}>
-                <label className={styles.sortingLabel}>🔄 Sort By</label>
+                <label className={styles.sortingLabel}>Sort by:</label>
                 <select
                   value={filter.sortBy}
                   onChange={(e) =>
@@ -332,7 +342,7 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
                         | "participants"
                     )
                   }
-                  className={styles.sortingSelect}
+                  className={styles.compactSelect}
                 >
                   <option value="date">📅 Date</option>
                   <option value="title">📝 Title</option>
@@ -343,13 +353,12 @@ const MeetingFilterComponent: React.FC<MeetingFilterProps> = React.memo(
                 </select>
               </div>
               <div className={styles.sortingGroup}>
-                <label className={styles.sortingLabel}>📊 Order</label>
                 <select
                   value={filter.sortOrder}
                   onChange={(e) =>
                     updateFilter("sortOrder", e.target.value as "asc" | "desc")
                   }
-                  className={styles.sortingSelect}
+                  className={styles.compactSelect}
                 >
                   <option value="desc">⬇️ Descending</option>
                   <option value="asc">⬆️ Ascending</option>
