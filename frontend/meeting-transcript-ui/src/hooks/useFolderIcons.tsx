@@ -9,7 +9,13 @@ import {
 } from "lucide-react";
 import styles from "../App.module.css";
 
-export const useFolderIcons = () => {
+interface UseFolderIconsReturn {
+  getFolderIcon: (folderName: string) => React.ReactElement;
+  getFolderHeaderIcon: (folderName: string) => React.ReactElement;
+  getFolderButtonClass: (isSelected: boolean) => string;
+}
+
+export const useFolderIcons = (): UseFolderIconsReturn => {
   const getFolderIcon = useCallback((folderName: string) => {
     switch (folderName.toLowerCase()) {
       case "archive":
