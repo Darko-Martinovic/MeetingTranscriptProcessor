@@ -1,5 +1,11 @@
 import React from "react";
-import { FolderOpen, Settings, Upload, RefreshCw } from "lucide-react";
+import {
+  FolderOpen,
+  Settings,
+  Upload,
+  RefreshCw,
+  Workflow,
+} from "lucide-react";
 import type { FolderInfo, SystemStatusDto } from "../services/api";
 import styles from "./AppHeader.module.css";
 
@@ -9,6 +15,7 @@ interface AppHeaderProps {
   loading: boolean;
   onShowUpload: () => void;
   onShowSettings: () => void;
+  onShowWorkflow: () => void;
   onRefresh: () => void;
   getFolderHeaderIcon: (folderName: string) => React.ReactElement;
 }
@@ -19,6 +26,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   loading,
   onShowUpload,
   onShowSettings,
+  onShowWorkflow,
   onRefresh,
   getFolderHeaderIcon,
 }) => {
@@ -50,6 +58,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             <button onClick={onShowUpload} className={styles.uploadButton}>
               <Upload className="h-4 w-4" />
               <span>Upload</span>
+            </button>
+            <button onClick={onShowWorkflow} className={styles.iconButton}>
+              <Workflow className="h-5 w-5" />
             </button>
             <button onClick={onShowSettings} className={styles.iconButton}>
               <Settings className="h-5 w-5" />
