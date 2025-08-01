@@ -76,9 +76,6 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ onClose }) => {
         "Once processing is complete, relevant team members receive Slack notifications with meeting summaries, links to created JIRA tickets, and key outcomes. This ensures everyone stays informed about meeting results.",
       color: "#fecaca", // Pastel pink
     },
-  ];
-
-  const additionalFolders: WorkflowStep[] = [
     {
       id: "archive",
       name: "Archive",
@@ -88,6 +85,9 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ onClose }) => {
         "All successfully processed meeting transcripts are stored here for long-term retention. This serves as a searchable repository of all past meetings and their analysis results.",
       color: "#e5e7eb", // Pastel gray
     },
+  ];
+
+  const additionalFolders: WorkflowStep[] = [
     {
       id: "recent",
       name: "Recent",

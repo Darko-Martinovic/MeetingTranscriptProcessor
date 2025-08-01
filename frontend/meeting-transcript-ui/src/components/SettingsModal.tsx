@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Info } from "lucide-react";
 import { configurationApi } from "../services/api";
 import type { ConfigurationDto } from "../services/api";
 import styles from "./SettingsModal.module.css";
@@ -11,6 +12,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState("azure");
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<ConfigurationDto | null>(null);
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
 
   useEffect(() => {
     loadConfiguration();
@@ -97,6 +99,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       alert("Failed to update Jira configuration");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleTooltip = (tooltipId: string) => {
+    setShowTooltip(showTooltip === tooltipId ? null : tooltipId);
+  };
+
+  const getTooltipContent = (type: string): string => {
+    switch (type) {
+      case "validation":
+        return "Cross-validates AI-extracted action items with rule-based extraction to detect potential false positives and false negatives. Provides confidence scoring for extracted items and tracks validation metrics over time.";
+      case "hallucination":
+        return "Analyzes extracted action items for AI hallucinations by validating context snippets exist in the original transcript, checking assignee names against meeting participants, and filtering out items with low confidence scores.";
+      case "consistency":
+        return "Automatically detects meeting type (standup, sprint, architecture, etc.) and adapts extraction prompts based on meeting context. Supports multi-language transcript processing and optimizes AI parameters for different meeting types.";
+      default:
+        return "";
     }
   };
 
@@ -223,37 +242,79 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 />
               </div>
               <div className={styles.checkboxGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    name="enableValidation"
-                    defaultChecked={config.extraction.enableValidation}
-                    className={styles.checkbox}
-                  />
-                  Enable Validation
-                </label>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    name="enableHallucinationDetection"
-                    defaultChecked={
-                      config.extraction.enableHallucinationDetection
-                    }
-                    className={styles.checkbox}
-                  />
-                  Enable Hallucination Detection
-                </label>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    name="enableConsistencyManagement"
-                    defaultChecked={
-                      config.extraction.enableConsistencyManagement
-                    }
-                    className={styles.checkbox}
-                  />
-                  Enable Consistency Management
-                </label>
+                <div className={styles.checkboxItem}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      name="enableValidation"
+                      defaultChecked={config.extraction.enableValidation}
+                      className={styles.checkbox}
+                    />
+                    Enable Validation
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => toggleTooltip("validation")}
+                    className={styles.infoButton}
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                  {showTooltip === "validation" && (
+                    <div className={styles.tooltip}>
+                      {getTooltipContent("validation")}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.checkboxItem}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      name="enableHallucinationDetection"
+                      defaultChecked={
+                        config.extraction.enableHallucinationDetection
+                      }
+                      className={styles.checkbox}
+                    />
+                    Enable Hallucination Detection
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => toggleTooltip("hallucination")}
+                    className={styles.infoButton}
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                  {showTooltip === "hallucination" && (
+                    <div className={styles.tooltip}>
+                      {getTooltipContent("hallucination")}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.checkboxItem}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      name="enableConsistencyManagement"
+                      defaultChecked={
+                        config.extraction.enableConsistencyManagement
+                      }
+                      className={styles.checkbox}
+                    />
+                    Enable Consistency Management
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => toggleTooltip("consistency")}
+                    className={styles.infoButton}
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                  {showTooltip === "consistency" && (
+                    <div className={styles.tooltip}>
+                      {getTooltipContent("consistency")}
+                    </div>
+                  )}
+                </div>
               </div>
               <button
                 type="submit"
