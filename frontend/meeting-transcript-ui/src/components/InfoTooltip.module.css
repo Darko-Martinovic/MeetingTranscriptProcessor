@@ -28,7 +28,6 @@
 .tooltip {
   position: absolute;
   top: 100%;
-  left: 0;
   right: 0;
   margin-top: 0.5rem;
   padding: 0.75rem;
@@ -39,9 +38,11 @@
   font-size: 0.875rem;
   line-height: 1.5;
   color: #374151;
-  z-index: 10;
+  z-index: 1000;
   animation: tooltipFadeIn 0.2s ease-out;
-  min-width: 250px;
+  min-width: 280px;
+  max-width: 320px;
+  white-space: normal;
 }
 
 @keyframes tooltipFadeIn {
@@ -52,5 +53,24 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Alternative positioning for better visibility */
+@media (max-width: 768px) {
+  .tooltip {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 260px;
+    max-width: 90vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .tooltip {
+    min-width: 240px;
+    font-size: 0.8125rem;
+    padding: 0.625rem;
   }
 }

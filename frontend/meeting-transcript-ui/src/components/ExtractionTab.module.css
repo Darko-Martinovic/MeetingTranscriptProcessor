@@ -59,6 +59,7 @@
   background: #f9fafb;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
+  overflow: visible;
 }
 
 .checkboxItem {
@@ -69,6 +70,7 @@
   padding: 0.5rem;
   border-radius: 6px;
   transition: background-color 0.2s ease;
+  overflow: visible;
 }
 
 .checkboxItem:hover {
