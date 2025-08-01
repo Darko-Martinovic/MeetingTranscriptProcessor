@@ -9,7 +9,7 @@ import {
 } from "../services/api";
 import MeetingListHeader from "./MeetingListHeader";
 import MeetingFilterComponent from "./MeetingFilter";
-import MeetingCard from "./MeetingCard";
+import MeetingCard from "./meeting/MeetingCard";
 import MeetingDetails from "./MeetingDetails";
 import styles from "./MainContentArea.module.css";
 
