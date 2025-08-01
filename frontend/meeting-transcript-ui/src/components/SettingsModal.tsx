@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Info } from "lucide-react";
 import { configurationApi } from "../services/api";
 import type { ConfigurationDto } from "../services/api";
+import AzureOpenAITab from "./AzureOpenAITab";
+import ExtractionTab from "./ExtractionTab";
+import JiraTab from "./JiraTab";
 import styles from "./SettingsModal.module.css";
 
 interface SettingsModalProps {
@@ -106,19 +108,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     setShowTooltip(showTooltip === tooltipId ? null : tooltipId);
   };
 
-  const getTooltipContent = (type: string): string => {
-    switch (type) {
-      case "validation":
-        return "Cross-validates AI-extracted action items with rule-based extraction to detect potential false positives and false negatives. Provides confidence scoring for extracted items and tracks validation metrics over time.";
-      case "hallucination":
-        return "Analyzes extracted action items for AI hallucinations by validating context snippets exist in the original transcript, checking assignee names against meeting participants, and filtering out items with low confidence scores.";
-      case "consistency":
-        return "Automatically detects meeting type (standup, sprint, architecture, etc.) and adapts extraction prompts based on meeting context. Supports multi-language transcript processing and optimizes AI parameters for different meeting types.";
-      default:
-        return "";
-    }
-  };
-
   if (!config) return null;
 
   return (
@@ -162,225 +151,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
         <div className={styles.modalBody}>
           {activeTab === "azure" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateAzureOpenAI(new FormData(e.currentTarget));
-              }}
-              className={styles.form}
-            >
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Endpoint</label>
-                <input
-                  type="url"
-                  name="endpoint"
-                  defaultValue={config.azureOpenAI.endpoint}
-                  className={styles.input}
-                  placeholder="https://your-resource.openai.azure.com/"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>API Key</label>
-                <input
-                  type="password"
-                  name="apiKey"
-                  className={styles.input}
-                  placeholder="Enter your API key"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Deployment Name</label>
-                <input
-                  type="text"
-                  name="deploymentName"
-                  defaultValue={config.azureOpenAI.deploymentName}
-                  className={styles.input}
-                  placeholder="gpt-4"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className={styles.submitButton}
-              >
-                {loading ? "Updating..." : "Update Azure OpenAI Settings"}
-              </button>
-            </form>
+            <AzureOpenAITab
+              config={config}
+              loading={loading}
+              onSubmit={updateAzureOpenAI}
+            />
           )}
 
           {activeTab === "extraction" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateExtraction(new FormData(e.currentTarget));
-              }}
-              className={styles.form}
-            >
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Max Concurrent Files</label>
-                <input
-                  type="number"
-                  name="maxConcurrentFiles"
-                  min="1"
-                  max="10"
-                  defaultValue={config.extraction.maxConcurrentFiles}
-                  className={styles.input}
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Validation Confidence Threshold
-                </label>
-                <input
-                  type="number"
-                  name="validationConfidenceThreshold"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  defaultValue={config.extraction.validationConfidenceThreshold}
-                  className={styles.input}
-                />
-              </div>
-              <div className={styles.checkboxGroup}>
-                <div className={styles.checkboxItem}>
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      name="enableValidation"
-                      defaultChecked={config.extraction.enableValidation}
-                      className={styles.checkbox}
-                    />
-                    Enable Validation
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => toggleTooltip("validation")}
-                    className={styles.infoButton}
-                  >
-                    <Info className="h-4 w-4" />
-                  </button>
-                  {showTooltip === "validation" && (
-                    <div className={styles.tooltip}>
-                      {getTooltipContent("validation")}
-                    </div>
-                  )}
-                </div>
-                <div className={styles.checkboxItem}>
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      name="enableHallucinationDetection"
-                      defaultChecked={
-                        config.extraction.enableHallucinationDetection
-                      }
-                      className={styles.checkbox}
-                    />
-                    Enable Hallucination Detection
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => toggleTooltip("hallucination")}
-                    className={styles.infoButton}
-                  >
-                    <Info className="h-4 w-4" />
-                  </button>
-                  {showTooltip === "hallucination" && (
-                    <div className={styles.tooltip}>
-                      {getTooltipContent("hallucination")}
-                    </div>
-                  )}
-                </div>
-                <div className={styles.checkboxItem}>
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      name="enableConsistencyManagement"
-                      defaultChecked={
-                        config.extraction.enableConsistencyManagement
-                      }
-                      className={styles.checkbox}
-                    />
-                    Enable Consistency Management
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => toggleTooltip("consistency")}
-                    className={styles.infoButton}
-                  >
-                    <Info className="h-4 w-4" />
-                  </button>
-                  {showTooltip === "consistency" && (
-                    <div className={styles.tooltip}>
-                      {getTooltipContent("consistency")}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className={styles.submitButton}
-              >
-                {loading ? "Updating..." : "Update Extraction Settings"}
-              </button>
-            </form>
+            <ExtractionTab
+              config={config}
+              loading={loading}
+              showTooltip={showTooltip}
+              onSubmit={updateExtraction}
+              onTooltipToggle={toggleTooltip}
+            />
           )}
 
           {activeTab === "jira" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateJira(new FormData(e.currentTarget));
-              }}
-              className={styles.form}
-            >
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Jira URL</label>
-                <input
-                  type="url"
-                  name="url"
-                  defaultValue={config.environment.jiraUrl}
-                  className={styles.input}
-                  placeholder="https://your-domain.atlassian.net"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  defaultValue={config.environment.jiraEmail}
-                  className={styles.input}
-                  placeholder="your-email@example.com"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>API Token</label>
-                <input
-                  type="password"
-                  name="apiToken"
-                  className={styles.input}
-                  placeholder="Enter your Jira API token"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Default Project</label>
-                <input
-                  type="text"
-                  name="defaultProject"
-                  defaultValue={config.environment.jiraDefaultProject}
-                  className={styles.input}
-                  placeholder="TASK"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className={styles.submitButton}
-              >
-                {loading ? "Updating..." : "Update Jira Settings"}
-              </button>
-            </form>
+            <JiraTab config={config} loading={loading} onSubmit={updateJira} />
           )}
         </div>
       </div>
