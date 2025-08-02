@@ -6,6 +6,7 @@ import {
   RefreshCw,
   Workflow,
   Shield,
+  Layers,
 } from "lucide-react";
 import type { FolderInfo, SystemStatusDto } from "../services/api";
 import styles from "./AppHeader.module.css";
@@ -18,6 +19,7 @@ interface AppHeaderProps {
   onShowSettings: () => void;
   onShowWorkflow: () => void;
   onShowHallucinationDetector: () => void;
+  onShowConsistencyManager: () => void;
   onRefresh: () => void;
   getFolderHeaderIcon: (folderName: string) => React.ReactElement;
 }
@@ -30,6 +32,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onShowSettings,
   onShowWorkflow,
   onShowHallucinationDetector,
+  onShowConsistencyManager,
   onRefresh,
   getFolderHeaderIcon,
 }) => {
@@ -71,6 +74,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               title="AI Validation System"
             >
               <Shield className="h-5 w-5" />
+            </button>
+            <button
+              onClick={onShowConsistencyManager}
+              className={styles.iconButton}
+              title="Context Manager"
+            >
+              <Layers className="h-5 w-5" />
             </button>
             <button onClick={onShowSettings} className={styles.iconButton}>
               <Settings className="h-5 w-5" />

@@ -17,7 +17,10 @@ import ErrorAlert from "./components/ErrorAlert";
 import UploadModal from "./components/UploadModal";
 import SettingsModal from "./components/SettingsModal";
 import WorkflowModal from "./components/WorkflowModal";
-import { HallucinationDetectorModal } from "./components/modals";
+import {
+  HallucinationDetectorModal,
+  ConsistencyManagerModal,
+} from "./components/modals";
 import { useFolderIcons } from "./hooks/useFolderIcons";
 import styles from "./App.module.css";
 
@@ -37,6 +40,7 @@ const App: React.FC = () => {
   const [showUpload, setShowUpload] = useState(false);
   const [showHallucinationDetector, setShowHallucinationDetector] =
     useState(false);
+  const [showConsistencyManager, setShowConsistencyManager] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<MeetingFilter>({});
   const [showFilters, setShowFilters] = useState(false);
@@ -380,6 +384,7 @@ const App: React.FC = () => {
         onShowSettings={() => setShowSettings(true)}
         onShowWorkflow={() => setShowWorkflow(true)}
         onShowHallucinationDetector={() => setShowHallucinationDetector(true)}
+        onShowConsistencyManager={() => setShowConsistencyManager(true)}
         onRefresh={loadFolders}
         getFolderHeaderIcon={getFolderHeaderIcon}
       />
@@ -437,6 +442,14 @@ const App: React.FC = () => {
         <HallucinationDetectorModal
           isOpen={showHallucinationDetector}
           onClose={() => setShowHallucinationDetector(false)}
+        />
+      )}
+
+      {/* Consistency Manager Modal */}
+      {showConsistencyManager && (
+        <ConsistencyManagerModal
+          isOpen={showConsistencyManager}
+          onClose={() => setShowConsistencyManager(false)}
         />
       )}
     </div>
