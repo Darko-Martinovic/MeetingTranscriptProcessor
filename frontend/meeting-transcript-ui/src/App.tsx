@@ -17,6 +17,7 @@ import ErrorAlert from "./components/ErrorAlert";
 import UploadModal from "./components/UploadModal";
 import SettingsModal from "./components/SettingsModal";
 import WorkflowModal from "./components/WorkflowModal";
+import { HallucinationDetectorModal } from "./components/modals";
 import { useFolderIcons } from "./hooks/useFolderIcons";
 import styles from "./App.module.css";
 
@@ -34,6 +35,8 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showWorkflow, setShowWorkflow] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [showHallucinationDetector, setShowHallucinationDetector] =
+    useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<MeetingFilter>({});
   const [showFilters, setShowFilters] = useState(false);
@@ -376,6 +379,7 @@ const App: React.FC = () => {
         onShowUpload={() => setShowUpload(true)}
         onShowSettings={() => setShowSettings(true)}
         onShowWorkflow={() => setShowWorkflow(true)}
+        onShowHallucinationDetector={() => setShowHallucinationDetector(true)}
         onRefresh={loadFolders}
         getFolderHeaderIcon={getFolderHeaderIcon}
       />
@@ -427,6 +431,14 @@ const App: React.FC = () => {
 
       {/* Workflow Modal */}
       {showWorkflow && <WorkflowModal onClose={() => setShowWorkflow(false)} />}
+
+      {/* Hallucination Detector Modal */}
+      {showHallucinationDetector && (
+        <HallucinationDetectorModal
+          isOpen={showHallucinationDetector}
+          onClose={() => setShowHallucinationDetector(false)}
+        />
+      )}
     </div>
   );
 };
