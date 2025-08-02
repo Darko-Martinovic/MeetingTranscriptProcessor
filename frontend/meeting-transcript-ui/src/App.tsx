@@ -20,6 +20,7 @@ import WorkflowModal from "./components/WorkflowModal";
 import {
   HallucinationDetectorModal,
   ConsistencyManagerModal,
+  ActionItemValidatorModal,
 } from "./components/modals";
 import { useFolderIcons } from "./hooks/useFolderIcons";
 import styles from "./App.module.css";
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   const [showHallucinationDetector, setShowHallucinationDetector] =
     useState(false);
   const [showConsistencyManager, setShowConsistencyManager] = useState(false);
+  const [showActionItemValidator, setShowActionItemValidator] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<MeetingFilter>({});
   const [showFilters, setShowFilters] = useState(false);
@@ -385,6 +387,7 @@ const App: React.FC = () => {
         onShowWorkflow={() => setShowWorkflow(true)}
         onShowHallucinationDetector={() => setShowHallucinationDetector(true)}
         onShowConsistencyManager={() => setShowConsistencyManager(true)}
+        onShowActionItemValidator={() => setShowActionItemValidator(true)}
         onRefresh={loadFolders}
         getFolderHeaderIcon={getFolderHeaderIcon}
       />
@@ -450,6 +453,14 @@ const App: React.FC = () => {
         <ConsistencyManagerModal
           isOpen={showConsistencyManager}
           onClose={() => setShowConsistencyManager(false)}
+        />
+      )}
+
+      {/* Action Item Validator Modal */}
+      {showActionItemValidator && (
+        <ActionItemValidatorModal
+          isOpen={showActionItemValidator}
+          onClose={() => setShowActionItemValidator(false)}
         />
       )}
     </div>

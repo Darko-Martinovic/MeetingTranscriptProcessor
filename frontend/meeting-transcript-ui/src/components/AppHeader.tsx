@@ -7,6 +7,7 @@ import {
   Workflow,
   Shield,
   Layers,
+  CheckCircle2,
 } from "lucide-react";
 import type { FolderInfo, SystemStatusDto } from "../services/api";
 import styles from "./AppHeader.module.css";
@@ -20,6 +21,7 @@ interface AppHeaderProps {
   onShowWorkflow: () => void;
   onShowHallucinationDetector: () => void;
   onShowConsistencyManager: () => void;
+  onShowActionItemValidator: () => void;
   onRefresh: () => void;
   getFolderHeaderIcon: (folderName: string) => React.ReactElement;
 }
@@ -33,6 +35,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onShowWorkflow,
   onShowHallucinationDetector,
   onShowConsistencyManager,
+  onShowActionItemValidator,
   onRefresh,
   getFolderHeaderIcon,
 }) => {
@@ -81,6 +84,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               title="Context Manager"
             >
               <Layers className="h-5 w-5" />
+            </button>
+            <button
+              onClick={onShowActionItemValidator}
+              className={styles.iconButton}
+              title="Action Item Validator"
+            >
+              <CheckCircle2 className="h-5 w-5" />
             </button>
             <button onClick={onShowSettings} className={styles.iconButton}>
               <Settings className="h-5 w-5" />
