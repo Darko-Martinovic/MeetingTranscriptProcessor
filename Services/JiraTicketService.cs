@@ -231,6 +231,23 @@ public class JiraTicketService : IJiraTicketService, IDisposable
 
                     Console.WriteLine($"✅ Created Jira ticket: {ticketKey}");
 
+                    // Add ticket reference to transcript
+                    var ticketReference = new JiraTicketReference
+                    {
+                        TicketKey = ticketKey ?? "",
+                        TicketUrl = ticketUrl,
+                        Title = formattedTicket.Title,
+                        ActionItemId = actionItem.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        Priority = formattedTicket.Priority.ToString(),
+                        Type = formattedTicket.Type.ToString(),
+                        AssignedTo = actionItem.AssignedTo,
+                        Status = "Open"
+                    };
+                    
+                    transcript.CreatedJiraTickets.Add(ticketReference);
+                    Console.WriteLine($"📎 Added ticket reference to meeting: {ticketKey}");
+
                     return new TicketCreationResult
                     {
                         Success = true,

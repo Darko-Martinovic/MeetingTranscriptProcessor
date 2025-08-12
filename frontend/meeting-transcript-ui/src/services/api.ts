@@ -45,7 +45,20 @@ export interface MeetingTranscript {
   processedAt: string;
   processedBy: string;
   actionItems: ActionItem[];
+  createdJiraTickets: JiraTicketReference[];
   status: TranscriptStatus;
+}
+
+export interface JiraTicketReference {
+  ticketKey: string;
+  ticketUrl: string;
+  title: string;
+  actionItemId: string;
+  createdAt: string;
+  priority: string;
+  type: string;
+  assignedTo?: string;
+  status: string;
 }
 
 export interface ActionItem {
@@ -185,6 +198,13 @@ export const meetingApi = {
   getMeeting: async (fileName: string): Promise<MeetingTranscript> => {
     const response = await api.get(
       `/meetings/meeting/${encodeURIComponent(fileName)}`
+    );
+    return response.data;
+  },
+
+  getMeetingJiraTickets: async (fileName: string): Promise<JiraTicketReference[]> => {
+    const response = await api.get(
+      `/meetings/meeting/${encodeURIComponent(fileName)}/tickets`
     );
     return response.data;
   },

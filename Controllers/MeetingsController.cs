@@ -11,17 +11,20 @@ namespace MeetingTranscriptProcessor.Controllers
     {
         private readonly ITranscriptProcessorService _transcriptProcessor;
         private readonly IConfigurationService _configurationService;
+        private readonly IJiraTicketService _jiraTicketService;
         private readonly string _archivePath;
         private readonly string _incomingPath;
         private readonly string _processingPath;
 
         public MeetingsController(
             ITranscriptProcessorService transcriptProcessor,
-            IConfigurationService configurationService
+            IConfigurationService configurationService,
+            IJiraTicketService jiraTicketService
         )
         {
             _transcriptProcessor = transcriptProcessor;
             _configurationService = configurationService;
+            _jiraTicketService = jiraTicketService;
 
             // Get paths from environment or use defaults
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -159,7 +162,14 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             try
             {
-                // Search in all directories
+                // Try to load from metadata file first (has JIRA ticket references)
+                var transcript = await LoadTranscriptWithMetadata(fileName);
+                if (transcript != null)
+                {
+                    return Ok(transcript);
+                }
+
+                // Fallback to processing the original file
                 var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
 
                 foreach (var path in allPaths)
@@ -167,14 +177,33 @@ namespace MeetingTranscriptProcessor.Controllers
                     var filePath = Path.Combine(path, fileName);
                     if (System.IO.File.Exists(filePath))
                     {
-                        var transcript = await _transcriptProcessor.ProcessTranscriptAsync(
-                            filePath
-                        );
+                        transcript = await _transcriptProcessor.ProcessTranscriptAsync(filePath);
                         return Ok(transcript);
                     }
                 }
 
                 return NotFound(new { error = "Meeting file not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("meeting/{fileName}/tickets")]
+        public async Task<ActionResult<List<JiraTicketReference>>> GetMeetingJiraTickets(string fileName)
+        {
+            try
+            {
+                // Try to load from metadata file first
+                var transcript = await LoadTranscriptWithMetadata(fileName);
+                if (transcript != null)
+                {
+                    return Ok(transcript.CreatedJiraTickets);
+                }
+
+                // Fallback: return empty list if no metadata found
+                return Ok(new List<JiraTicketReference>());
             }
             catch (Exception ex)
             {
@@ -201,12 +230,64 @@ namespace MeetingTranscriptProcessor.Controllers
 
                 Directory.CreateDirectory(_incomingPath);
 
+                // Save the uploaded file
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
 
-                return Ok(new { message = "File uploaded successfully", fileName });
+                // Process the file immediately (extract action items and create JIRA tickets)
+                try
+                {
+                    Console.WriteLine($"🔄 Processing uploaded file: {fileName}");
+                    
+                    // Process transcript to extract action items
+                    var transcript = await _transcriptProcessor.ProcessTranscriptAsync(filePath);
+                    
+                    if (transcript.Status == TranscriptStatus.Error)
+                    {
+                        Console.WriteLine($"❌ Processing failed for: {fileName}");
+                        return Ok(new { 
+                            message = "File uploaded but processing failed", 
+                            fileName,
+                            status = "error"
+                        });
+                    }
+
+                    Console.WriteLine($"✅ Transcript processed. Action items: {transcript.ActionItems.Count}");
+
+                    // Process action items and create JIRA tickets
+                    var jiraResult = await _jiraTicketService.ProcessActionItemsAsync(transcript);
+                    Console.WriteLine($"✅ JIRA processing complete. Tickets created: {jiraResult.TicketsCreated}");
+
+                    // Save transcript metadata (including JIRA ticket references)
+                    Console.WriteLine($"💾 Saving transcript metadata for: {fileName}");
+                    await SaveTranscriptMetadataAsync(transcript, filePath);
+
+                    // Archive the processed file
+                    Console.WriteLine($"📦 Archiving file: {fileName}");
+                    ArchiveFile(filePath, jiraResult.Success ? "success" : "error", transcript.DetectedLanguage);
+
+                    return Ok(new { 
+                        message = "File uploaded and processed successfully", 
+                        fileName,
+                        status = "processed",
+                        actionItemsFound = transcript.ActionItems.Count,
+                        jiraTicketsCreated = jiraResult.TicketsCreated,
+                        jiraTicketsUpdated = jiraResult.TicketsUpdated
+                    });
+                }
+                catch (Exception processingEx)
+                {
+                    // If processing fails, still return success for upload but indicate processing error
+                    Console.WriteLine($"❌ Error processing file {fileName}: {processingEx.Message}");
+                    return Ok(new { 
+                        message = "File uploaded but processing failed", 
+                        fileName,
+                        status = "upload_success_processing_failed",
+                        error = processingEx.Message
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -827,6 +908,184 @@ namespace MeetingTranscriptProcessor.Controllers
                 FolderType.Processing => _processingPath,
                 _ => null
             };
+        }
+
+        /// <summary>
+        /// Saves transcript metadata including JIRA ticket references
+        /// </summary>
+        private async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string originalFilePath)
+        {
+            try
+            {
+                // Create metadata filename (same as original but with .meta.json extension)
+                var originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
+                var metadataFileName = $"{originalFileName}.meta.json";
+                var metadataPath = Path.Combine(Path.GetDirectoryName(originalFilePath) ?? "", metadataFileName);
+
+                // Serialize transcript to JSON
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+
+                var jsonContent = JsonSerializer.Serialize(transcript, options);
+                await System.IO.File.WriteAllTextAsync(metadataPath, jsonContent);
+
+                Console.WriteLine($"💾 Saved transcript metadata: {metadataFileName}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Warning: Failed to save transcript metadata: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Archives processed file to archive directory with timestamp
+        /// </summary>
+        private void ArchiveFile(string filePath, string status, string? languageCode = null)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(filePath))
+                    return;
+
+                var fileName = Path.GetFileName(filePath);
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+                // Include language in filename if available
+                var languageInfo = string.IsNullOrEmpty(languageCode) ? "" : $"_{GetLanguageName(languageCode)}";
+                var archivedFileName = $"{timestamp}_{status}{languageInfo}_{fileName}";
+                var archivedPath = Path.Combine(_archivePath, archivedFileName);
+
+                // Move file to archive
+                System.IO.File.Move(filePath, archivedPath);
+
+                // Also move metadata file if it exists
+                var originalFileName = Path.GetFileNameWithoutExtension(filePath);
+                var metadataFileName = $"{originalFileName}.meta.json";
+                var metadataFilePath = Path.Combine(Path.GetDirectoryName(filePath) ?? "", metadataFileName);
+                
+                if (System.IO.File.Exists(metadataFilePath))
+                {
+                    // Archive metadata with base filename only (no timestamp prefix)
+                    // This allows LoadTranscriptWithMetadata to find it using the extracted base filename
+                    var baseFileName = ExtractBaseFileName(fileName);
+                    var archivedMetadataFileName = $"{baseFileName}.meta.json";
+                    var archivedMetadataPath = Path.Combine(_archivePath, archivedMetadataFileName);
+                    System.IO.File.Move(metadataFilePath, archivedMetadataPath);
+                    Console.WriteLine($"📦 Archived metadata: {archivedMetadataFileName}");
+                }
+
+                Console.WriteLine($"📦 Archived: {archivedFileName}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Warning: Failed to archive file {Path.GetFileName(filePath)}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets language name from language code
+        /// </summary>
+        private static string GetLanguageName(string? languageCode)
+        {
+            return languageCode?.ToLowerInvariant() switch
+            {
+                "en" => "English",
+                "fr" => "French", 
+                "nl" => "Dutch",
+                "de" => "German",
+                "es" => "Spanish",
+                _ => languageCode ?? "Unknown"
+            };
+        }
+
+        /// <summary>
+        /// Loads transcript with metadata (including JIRA ticket references) if available
+        /// </summary>
+        private async Task<MeetingTranscript?> LoadTranscriptWithMetadata(string fileName)
+        {
+            try
+            {
+                Console.WriteLine($"🔍 LoadTranscriptWithMetadata called for: {fileName}");
+                
+                // Remove timestamp prefix to get base filename
+                var baseFileName = ExtractBaseFileName(fileName);
+                var metadataFileName = $"{baseFileName}.meta.json";
+                
+                Console.WriteLine($"🔍 Base filename extracted: {baseFileName}");
+                Console.WriteLine($"🔍 Looking for metadata file: {metadataFileName}");
+
+                // Search in all directories for metadata file
+                var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
+
+                foreach (var path in allPaths)
+                {
+                    var metadataPath = Path.Combine(path, metadataFileName);
+                    Console.WriteLine($"🔍 Checking path: {metadataPath}");
+                    Console.WriteLine($"🔍 File exists: {System.IO.File.Exists(metadataPath)}");
+                    
+                    if (System.IO.File.Exists(metadataPath))
+                    {
+                        Console.WriteLine($"✅ Found metadata file at: {metadataPath}");
+                        var jsonContent = await System.IO.File.ReadAllTextAsync(metadataPath);
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                        };
+                        var transcript = JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
+                        return transcript;
+                    }
+                }
+
+                Console.WriteLine($"❌ No metadata file found for base filename: {baseFileName}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Error loading metadata for {fileName}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Extracts base filename by removing timestamp prefix
+        /// </summary>
+        private static string ExtractBaseFileName(string fileName)
+        {
+            // Remove extension first
+            var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+            
+            // Pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
+            // We want to extract the original name part
+            var parts = nameWithoutExt.Split('_');
+            if (parts.Length >= 4)
+            {
+                // Skip timestamp (YYYYMMDD_HHMMSS), status, and possibly language
+                // Join the remaining parts as the original filename
+                var skipCount = 3; // timestamp + status
+                
+                // Check if next part might be a language (like "English")
+                if (parts.Length > 4 && IsLanguageName(parts[3]))
+                {
+                    skipCount = 4; // timestamp + status + language
+                }
+                
+                return string.Join("_", parts.Skip(skipCount));
+            }
+            
+            // If pattern doesn't match, return as-is
+            return nameWithoutExt;
+        }
+
+        /// <summary>
+        /// Checks if a string might be a language name
+        /// </summary>
+        private static bool IsLanguageName(string part)
+        {
+            var commonLanguages = new[] { "English", "French", "Dutch", "Spanish", "German" };
+            return commonLanguages.Contains(part, StringComparer.OrdinalIgnoreCase);
         }
     }
 }

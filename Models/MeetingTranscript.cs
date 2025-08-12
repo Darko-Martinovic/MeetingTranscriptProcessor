@@ -16,6 +16,7 @@ namespace MeetingTranscriptProcessor.Models
         public DateTime ProcessedAt { get; set; }
         public string ProcessedBy { get; set; } = "AI Assistant";
         public List<ActionItem> ActionItems { get; set; } = new();
+        public List<JiraTicketReference> CreatedJiraTickets { get; set; } = new();
         public TranscriptStatus Status { get; set; } = TranscriptStatus.New;
     }
 
@@ -29,5 +30,21 @@ namespace MeetingTranscriptProcessor.Models
         Processed,
         Error,
         Archived
+    }
+
+    /// <summary>
+    /// Represents a reference to a JIRA ticket created from a meeting
+    /// </summary>
+    public class JiraTicketReference
+    {
+        public string TicketKey { get; set; } = string.Empty;
+        public string TicketUrl { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string ActionItemId { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public string Priority { get; set; } = "Medium";
+        public string Type { get; set; } = "Task";
+        public string? AssignedTo { get; set; }
+        public string Status { get; set; } = "Open";
     }
 }

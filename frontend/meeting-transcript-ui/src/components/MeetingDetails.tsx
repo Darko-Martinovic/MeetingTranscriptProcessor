@@ -1,6 +1,7 @@
-import React, { useCallback } from "react";
-import { Star } from "lucide-react";
-import type { MeetingTranscript } from "../services/api";
+import React, { useCallback, useState, useEffect } from "react";
+import { Star, ExternalLink, Calendar, User, AlertCircle } from "lucide-react";
+import type { MeetingTranscript, JiraTicketReference } from "../services/api";
+import { meetingApi } from "../services/api";
 import styles from "./MeetingDetails.module.css";
 
 interface MeetingDetailsProps {
@@ -12,9 +13,58 @@ interface MeetingDetailsProps {
 
 const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
   ({ meeting, onBack, onToggleFavorite, isFavorite }) => {
+    const [jiraTickets, setJiraTickets] = useState<JiraTicketReference[]>([]);
+    const [loadingTickets, setLoadingTickets] = useState(false);
+
     const formatDate = useCallback((dateString: string): string => {
       return new Date(dateString).toLocaleString();
     }, []);
+
+    // Load JIRA tickets when component mounts
+    useEffect(() => {
+      const loadJiraTickets = async () => {
+        try {
+          setLoadingTickets(true);
+          const tickets = await meetingApi.getMeetingJiraTickets(meeting.fileName);
+          setJiraTickets(tickets);
+        } catch (error) {
+          console.error("Failed to load JIRA tickets:", error);
+          // Check if tickets are available in the meeting object
+          if (meeting.createdJiraTickets) {
+            setJiraTickets(meeting.createdJiraTickets);
+          }
+        } finally {
+          setLoadingTickets(false);
+        }
+      };
+
+      loadJiraTickets();
+    }, [meeting.fileName, meeting.createdJiraTickets]);
+
+    const getPriorityColor = (priority: string) => {
+      switch (priority.toLowerCase()) {
+        case 'high':
+        case 'critical':
+          return styles.priorityHigh;
+        case 'medium':
+          return styles.priorityMedium;
+        case 'low':
+          return styles.priorityLow;
+        default:
+          return styles.priorityMedium;
+      }
+    };
+
+    const getTypeIcon = (type: string) => {
+      switch (type.toLowerCase()) {
+        case 'bug':
+          return <AlertCircle className="h-4 w-4" />;
+        case 'task':
+          return <User className="h-4 w-4" />;
+        default:
+          return <Calendar className="h-4 w-4" />;
+      }
+    };
 
     return (
       <div className={styles.meetingDetail}>
@@ -87,6 +137,63 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
               </div>
             </div>
           )}
+
+          {/* JIRA Tickets */}
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              Created JIRA Tickets ({jiraTickets.length})
+            </h3>
+            {loadingTickets ? (
+              <div className={styles.loading}>Loading JIRA tickets...</div>
+            ) : jiraTickets.length > 0 ? (
+              <div className={styles.jiraTickets}>
+                {jiraTickets.map((ticket) => (
+                  <div key={ticket.ticketKey} className={styles.jiraTicket}>
+                    <div className={styles.jiraTicketHeader}>
+                      <div className={styles.jiraTicketTitle}>
+                        {getTypeIcon(ticket.type)}
+                        <a
+                          href={ticket.ticketUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.jiraTicketLink}
+                        >
+                          {ticket.ticketKey}
+                        </a>
+                        <ExternalLink className="h-4 w-4 ml-1" />
+                      </div>
+                      <div className={styles.jiraTicketMeta}>
+                        <span className={`${styles.priorityBadge} ${getPriorityColor(ticket.priority)}`}>
+                          {ticket.priority}
+                        </span>
+                        <span className={styles.typeBadge}>{ticket.type}</span>
+                        <span className={styles.statusBadge}>{ticket.status}</span>
+                      </div>
+                    </div>
+                    <div className={styles.jiraTicketContent}>
+                      <p className={styles.jiraTicketDescription}>{ticket.title}</p>
+                      <div className={styles.jiraTicketDetails}>
+                        {ticket.assignedTo && (
+                          <span className={styles.jiraTicketDetail}>
+                            <User className="h-4 w-4" />
+                            {ticket.assignedTo}
+                          </span>
+                        )}
+                        <span className={styles.jiraTicketDetail}>
+                          <Calendar className="h-4 w-4" />
+                          {formatDate(ticket.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.noTickets}>
+                No JIRA tickets have been created for this meeting yet.
+              </div>
+            )}
+          </div>
 
           {/* Content */}
           <div className={styles.section}>

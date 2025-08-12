@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Linq;
+using System.Text.Json;
 
 namespace MeetingTranscriptProcessor
 {
@@ -477,6 +479,9 @@ namespace MeetingTranscriptProcessor
                     // Process action items and create Jira tickets
                     var result = await _jiraTicketService!.ProcessActionItemsAsync(transcript);
 
+                    // Save transcript metadata (including JIRA ticket references) before archiving
+                    await SaveTranscriptMetadataAsync(transcript, filePath);
+
                     // Display results (thread-safe console output)
                     lock (Console.Out)
                     {
@@ -564,6 +569,39 @@ namespace MeetingTranscriptProcessor
         /// <summary>
         /// Archives a processed file with language information
         /// </summary>
+        /// <summary>
+        /// Saves transcript metadata including JIRA ticket references
+        /// </summary>
+        private static async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string originalFilePath)
+        {
+            try
+            {
+                // Create metadata filename (same as original but with .meta.json extension)
+                var originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
+                var metadataFileName = $"{originalFileName}.meta.json";
+                var metadataPath = Path.Combine(Path.GetDirectoryName(originalFilePath) ?? "", metadataFileName);
+
+                // Serialize transcript to JSON
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+
+                var jsonContent = JsonSerializer.Serialize(transcript, options);
+                await File.WriteAllTextAsync(metadataPath, jsonContent);
+
+                Console.WriteLine($"💾 Saved transcript metadata: {metadataFileName}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Warning: Failed to save transcript metadata: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Archives processed file to archive directory with timestamp
+        /// </summary>
         private static void ArchiveFile(string filePath, string status, string? languageCode = null)
         {
             try
@@ -583,6 +621,22 @@ namespace MeetingTranscriptProcessor
 
                 // Move file to archive
                 File.Move(filePath, archivedPath);
+
+                // Also move metadata file if it exists
+                var originalFileName = Path.GetFileNameWithoutExtension(filePath);
+                var metadataFileName = $"{originalFileName}.meta.json";
+                var metadataFilePath = Path.Combine(Path.GetDirectoryName(filePath) ?? "", metadataFileName);
+                
+                if (File.Exists(metadataFilePath))
+                {
+                    // Archive metadata with base filename only (no timestamp prefix)
+                    // This allows LoadTranscriptWithMetadata to find it using the extracted base filename
+                    var baseFileName = ExtractBaseFileName(fileName);
+                    var archivedMetadataFileName = $"{baseFileName}.meta.json";
+                    var archivedMetadataPath = Path.Combine(ArchivePath, archivedMetadataFileName);
+                    File.Move(metadataFilePath, archivedMetadataPath);
+                    Console.WriteLine($"📦 Archived metadata: {archivedMetadataFileName}");
+                }
 
                 Console.WriteLine($"📦 Archived: {archivedFileName}");
             }
@@ -782,6 +836,45 @@ namespace MeetingTranscriptProcessor
             {
                 Console.WriteLine($"❌ Error displaying validation metrics: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Extracts base filename by removing timestamp prefix
+        /// </summary>
+        private static string ExtractBaseFileName(string fileName)
+        {
+            // Remove extension first
+            var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+            
+            // Pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
+            // We want to extract the original name part
+            var parts = nameWithoutExt.Split('_');
+            if (parts.Length >= 4)
+            {
+                // Skip timestamp (YYYYMMDD_HHMMSS), status, and possibly language
+                // Join the remaining parts as the original filename
+                var skipCount = 3; // timestamp + status
+                
+                // Check if next part might be a language (like "English")
+                if (parts.Length > 4 && IsLanguageName(parts[3]))
+                {
+                    skipCount = 4; // timestamp + status + language
+                }
+                
+                return string.Join("_", parts.Skip(skipCount));
+            }
+            
+            // If pattern doesn't match, return as-is
+            return nameWithoutExt;
+        }
+
+        /// <summary>
+        /// Checks if a string is a language name
+        /// </summary>
+        private static bool IsLanguageName(string text)
+        {
+            var languages = new[] { "English", "French", "Dutch", "Spanish", "German", "Portuguese", "Unknown" };
+            return languages.Contains(text, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
