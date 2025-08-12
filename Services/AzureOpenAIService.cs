@@ -140,31 +140,45 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
 
             var prompt =
                 $@"
-Format the following action item into a proper Jira ticket with clean title and detailed description IN ENGLISH.
-If the input is in another language, translate it to English while preserving the meaning and context.
+You are an expert at creating well-formatted Jira tickets. Your task is to create a clean, actionable Jira ticket from the following meeting action item.
 
+CRITICAL RULES:
+1. ALL OUTPUT MUST BE IN ENGLISH - translate if necessary
+2. Create a NEW, CLEAN title - do NOT use the raw input title if it contains conversation snippets
+3. If the input title looks like a conversation snippet (contains quotes, colons, or dialogue), extract the actual action from it
+4. The title should be a clear action verb + object (e.g. 'Fix authentication bug', 'Create user documentation', 'Investigate performance issue')
+
+INPUT DATA:
 Action Item Title: {actionItemTitle}
 Action Item Description: {actionItemDescription}
 Meeting Context: {meetingContext}
 Meeting Participants: {participants}
 
+ANALYSIS TASK:
+- If the title contains conversation snippets like 'context: Person: I will do something...', extract the actual action
+- If the title is just dialogue, create a proper action-oriented title from the description/context
+- Focus on WHAT needs to be done, not WHO said it
+
 Please provide a response in this exact JSON format (ALL TEXT MUST BE IN ENGLISH):
 {{
-  ""title"": ""Clean, actionable title in English without prefixes like 'Create Jira ticket' or 'Action item'"",
-  ""description"": ""Detailed description in English with context and requirements"",
+  ""title"": ""Clean, actionable title starting with an action verb (max 60 characters)"",
+  ""description"": ""Detailed description with context and requirements"",
   ""priority"": ""High/Medium/Low"",
   ""type"": ""Task/Bug/Story/Investigation/Documentation/Review"",
   ""labels"": [""meeting-generated"", ""action-item""]
 }}
 
-Rules:
-1. ALL OUTPUT MUST BE IN ENGLISH - translate if necessary
-2. Title should be concise and actionable (max 80 characters) in English
-3. Remove any prefixes like 'Create new Jira ticket:', 'Action item:', etc.
-4. Description should include context from the meeting, translated to English
-5. Choose appropriate priority based on urgency indicators
-6. Choose appropriate type based on the action needed
-7. Preserve participant names as they are, but translate all other content
+EXAMPLES OF GOOD TITLES:
+- ""Fix authentication timeout issue""
+- ""Create API documentation for users""
+- ""Investigate database performance degradation""
+- ""Update deployment pipeline configuration""
+- ""Review security compliance requirements""
+
+EXAMPLES OF BAD TITLES TO AVOID:
+- ""context: John: I'll fix the bug...""
+- ""John said he will look into it""
+- ""We discussed the API issue""
 ";
 
             var settings = _configService.GetAzureOpenAISettings();
@@ -309,6 +323,13 @@ Rules:
             .Replace("TODO:", "", StringComparison.OrdinalIgnoreCase)
             .Trim();
 
+        // Check if title contains conversation snippets and extract action
+        if (cleanTitle.Contains("\"context\":") || cleanTitle.Contains("context\":"))
+        {
+            // Extract action from conversation snippet
+            cleanTitle = ExtractActionFromConversation(cleanTitle, description);
+        }
+
         // If title is still empty or too long, use a fallback
         if (string.IsNullOrEmpty(cleanTitle))
         {
@@ -332,6 +353,60 @@ Rules:
             formattedTicket,
             new JsonSerializerOptions { WriteIndented = true }
         );
+    }
+
+    /// <summary>
+    /// Extracts actionable title from conversation snippets
+    /// </summary>
+    private static string ExtractActionFromConversation(string conversationTitle, string description)
+    {
+        // Look for common action patterns in the conversation
+        var actionPatterns = new[]
+        {
+            @"I'll\s+(.*?)(?:\.|,|$)",
+            @"I\s+will\s+(.*?)(?:\.|,|$)",
+            @"create\s+(.*?)(?:\.|,|$)",
+            @"fix\s+(.*?)(?:\.|,|$)",
+            @"investigate\s+(.*?)(?:\.|,|$)",
+            @"review\s+(.*?)(?:\.|,|$)",
+            @"update\s+(.*?)(?:\.|,|$)",
+            @"implement\s+(.*?)(?:\.|,|$)"
+        };
+
+        foreach (var pattern in actionPatterns)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                conversationTitle,
+                pattern,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            );
+            if (match.Success && match.Groups[1].Value.Trim().Length > 3)
+            {
+                var action = match.Groups[1].Value.Trim();
+                return char.ToUpper(action[0]) + action.Substring(1);
+            }
+        }
+
+        // If no action found, try to extract from description
+        if (!string.IsNullOrEmpty(description))
+        {
+            foreach (var pattern in actionPatterns)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    description,
+                    pattern,
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                );
+                if (match.Success && match.Groups[1].Value.Trim().Length > 3)
+                {
+                    var action = match.Groups[1].Value.Trim();
+                    return char.ToUpper(action[0]) + action.Substring(1);
+                }
+            }
+        }
+
+        // Default fallback
+        return "Complete meeting action item";
     }
 
     #region Helper Methods

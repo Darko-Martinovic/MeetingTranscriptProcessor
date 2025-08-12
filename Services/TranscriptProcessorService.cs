@@ -321,6 +321,10 @@ public class TranscriptProcessorService : ITranscriptProcessorService
                 finalItems = ApplyBusinessRules(aiExtracted);
             }
 
+            // 7. Deduplicate and merge similar action items
+            finalItems = DeduplicateActionItems(finalItems);
+            Console.WriteLine($"📊 After deduplication: {finalItems.Count} action items remain");
+
             transcript.ActionItems = finalItems;
 
             // 7. Log validation warnings (if validation was performed)
@@ -805,5 +809,186 @@ Focus on:
             "pt" => "Portuguese",
             _ => "Unknown"
         };
+    }
+
+    /// <summary>
+    /// Deduplicates and merges similar action items to reduce over-extraction
+    /// </summary>
+    private static List<ActionItem> DeduplicateActionItems(List<ActionItem> actionItems)
+    {
+        if (actionItems == null || actionItems.Count <= 1)
+            return actionItems ?? new List<ActionItem>();
+
+        var deduplicatedItems = new List<ActionItem>();
+        var processedIndices = new HashSet<int>();
+
+        for (int i = 0; i < actionItems.Count; i++)
+        {
+            if (processedIndices.Contains(i))
+                continue;
+
+            var currentItem = actionItems[i];
+            var similarItems = new List<ActionItem> { currentItem };
+            processedIndices.Add(i);
+
+            // Find similar items
+            for (int j = i + 1; j < actionItems.Count; j++)
+            {
+                if (processedIndices.Contains(j))
+                    continue;
+
+                var otherItem = actionItems[j];
+                if (AreActionItemsSimilar(currentItem, otherItem))
+                {
+                    similarItems.Add(otherItem);
+                    processedIndices.Add(j);
+                }
+            }
+
+            // Merge similar items into one
+            if (similarItems.Count > 1)
+            {
+                var mergedItem = MergeActionItems(similarItems);
+                deduplicatedItems.Add(mergedItem);
+                Console.WriteLine($"🔗 Merged {similarItems.Count} similar items into: '{mergedItem.Title}'");
+            }
+            else
+            {
+                deduplicatedItems.Add(currentItem);
+            }
+        }
+
+        return deduplicatedItems;
+    }
+
+    /// <summary>
+    /// Checks if two action items are similar enough to be merged
+    /// </summary>
+    private static bool AreActionItemsSimilar(ActionItem item1, ActionItem item2)
+    {
+        // Check for exact title matches
+        if (string.Equals(item1.Title, item2.Title, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Check for similar titles (high similarity)
+        var titleSimilarity = CalculateStringSimilarity(item1.Title, item2.Title);
+        if (titleSimilarity > 0.8) // 80% similarity threshold
+            return true;
+
+        // Check if one is a subset of the other (e.g., "Create ticket" vs "Create Jira ticket for analysis")
+        var title1Lower = item1.Title.ToLowerInvariant();
+        var title2Lower = item2.Title.ToLowerInvariant();
+        if (title1Lower.Contains(title2Lower) || title2Lower.Contains(title1Lower))
+            return true;
+
+        // Check for same assignee and very similar descriptions
+        if (!string.IsNullOrEmpty(item1.AssignedTo) && 
+            string.Equals(item1.AssignedTo, item2.AssignedTo, StringComparison.OrdinalIgnoreCase))
+        {
+            var descriptionSimilarity = CalculateStringSimilarity(item1.Description, item2.Description);
+            if (descriptionSimilarity > 0.7) // 70% similarity for descriptions with same assignee
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Merges multiple similar action items into one comprehensive item
+    /// </summary>
+    private static ActionItem MergeActionItems(List<ActionItem> items)
+    {
+        if (items.Count == 1)
+            return items[0];
+
+        // Use the item with the most detailed title/description as base
+        var baseItem = items.OrderByDescending(i => i.Title.Length + i.Description.Length).First();
+
+        // Combine descriptions, removing duplicates
+        var allDescriptions = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.Description))
+            .Select(i => i.Description.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var mergedDescription = string.Join("\n\n", allDescriptions);
+
+        // Combine contexts
+        var allContexts = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.Context))
+            .Select(i => i.Context.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var mergedContext = string.Join("\n", allContexts);
+
+        // Use highest priority
+        var highestPriority = items.Max(i => i.Priority);
+
+        // Combine assignees if different
+        var assignees = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.AssignedTo))
+            .Select(i => i.AssignedTo!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var mergedAssignee = assignees.Count == 1 ? assignees[0] : string.Join(", ", assignees);
+
+        return new ActionItem
+        {
+            Id = baseItem.Id,
+            Title = baseItem.Title,
+            Description = mergedDescription,
+            AssignedTo = mergedAssignee,
+            DueDate = items.FirstOrDefault(i => i.DueDate.HasValue)?.DueDate,
+            Priority = highestPriority,
+            Type = baseItem.Type,
+            Context = mergedContext,
+            ProjectKey = baseItem.ProjectKey,
+            RequiresJiraTicket = items.Any(i => i.RequiresJiraTicket)
+        };
+    }
+
+    /// <summary>
+    /// Calculates string similarity using Levenshtein distance
+    /// </summary>
+    private static double CalculateStringSimilarity(string str1, string str2)
+    {
+        if (string.IsNullOrEmpty(str1) || string.IsNullOrEmpty(str2))
+            return 0;
+
+        var maxLength = Math.Max(str1.Length, str2.Length);
+        if (maxLength == 0)
+            return 1;
+
+        var distance = LevenshteinDistance(str1.ToLowerInvariant(), str2.ToLowerInvariant());
+        return 1.0 - (double)distance / maxLength;
+    }
+
+    /// <summary>
+    /// Calculates Levenshtein distance between two strings
+    /// </summary>
+    private static int LevenshteinDistance(string str1, string str2)
+    {
+        var matrix = new int[str1.Length + 1, str2.Length + 1];
+
+        for (int i = 0; i <= str1.Length; i++)
+            matrix[i, 0] = i;
+
+        for (int j = 0; j <= str2.Length; j++)
+            matrix[0, j] = j;
+
+        for (int i = 1; i <= str1.Length; i++)
+        {
+            for (int j = 1; j <= str2.Length; j++)
+            {
+                var cost = str1[i - 1] == str2[j - 1] ? 0 : 1;
+                matrix[i, j] = Math.Min(
+                    Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                    matrix[i - 1, j - 1] + cost);
+            }
+        }
+
+        return matrix[str1.Length, str2.Length];
     }
 }

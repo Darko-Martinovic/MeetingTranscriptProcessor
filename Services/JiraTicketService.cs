@@ -165,6 +165,18 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             // Use AI to format the ticket properly
             var formattedTicket = await FormatTicketWithAIAsync(actionItem, transcript);
 
+            // Check if the title still contains conversation snippets and needs additional cleaning
+            if (IsConversationSnippet(formattedTicket.Title))
+            {
+                Console.WriteLine($"🧹 Title contains conversation snippet: '{formattedTicket.Title}'");
+                Console.WriteLine($"🧹 Attempting AI cleanup...");
+                formattedTicket = await CleanupTitleWithAIAsync(formattedTicket, actionItem, transcript);
+            }
+            else
+            {
+                Console.WriteLine($"✅ Title looks good: '{formattedTicket.Title}'");
+            }
+
             var projectKey = actionItem.ProjectKey ?? transcript.ProjectKey ?? _defaultProjectKey;
 
             var issuePayload = new
@@ -176,9 +188,9 @@ public class JiraTicketService : IJiraTicketService, IDisposable
                     description = CreateJiraDescriptionADF(formattedTicket.Description, transcript),
                     issuetype = new
                     {
-                        name = MapActionItemTypeToJiraIssueType(formattedTicket.Type)
+                        name = MapActionItemTypeToJiraIssueType(formattedTicket.Type) // Use proper mapping
                     },
-                    priority = new { name = MapPriorityToJira(formattedTicket.Priority) },
+                    // priority = new { name = MapPriorityToJira(formattedTicket.Priority) }, // Commented out - field not on screen
                     assignee = string.IsNullOrEmpty(actionItem.AssignedTo)
                         ? null
                         : new { name = actionItem.AssignedTo },
@@ -582,6 +594,182 @@ public class JiraTicketService : IJiraTicketService, IDisposable
     }
 
     /// <summary>
+    /// Cleans AI JSON response by removing markdown code blocks and other formatting
+    /// </summary>
+    private static string CleanAIJsonResponse(string aiResponse)
+    {
+        if (string.IsNullOrWhiteSpace(aiResponse))
+            return aiResponse;
+
+        // Remove markdown code blocks
+        var cleaned = aiResponse.Trim();
+        
+        // Remove leading/trailing backticks and json specifier
+        if (cleaned.StartsWith("```json"))
+            cleaned = cleaned.Substring(7);
+        else if (cleaned.StartsWith("```"))
+            cleaned = cleaned.Substring(3);
+        
+        if (cleaned.EndsWith("```"))
+            cleaned = cleaned.Substring(0, cleaned.Length - 3);
+        
+        return cleaned.Trim();
+    }
+
+    /// <summary>
+    /// Checks if a title contains conversation snippets that need cleaning
+    /// </summary>
+    private static bool IsConversationSnippet(string title)
+    {
+        if (string.IsNullOrEmpty(title))
+            return false;
+
+        // Check for common conversation snippet patterns
+        var conversationPatterns = new[]
+        {
+            "\"context\":",
+            "\"description\":",
+            "context\":",
+            "description\":",
+            "\"title\":",
+            "title\":",
+            @"\w+:\s+I'll",
+            @"\w+:\s+I\s+will",
+            @"\w+:\s+We'll",
+            @"\w+:\s+We\s+will",
+            @"\w+:\s+[A-Z][a-z]+\s+(said|mentioned|discussed)",
+            @"^\s*\{", // Starts with JSON-like structure
+            @"^\s*""[^""]*"":\s*""", // Starts with JSON key-value
+            @"Create\s+a?\s+Jira\s+ticket", // Literal "Create Jira ticket" text
+            @"Create\s+new\s+Jira\s+ticket" // Literal "Create new Jira ticket" text
+        };
+
+        var foundPattern = conversationPatterns.Any(pattern => 
+            System.Text.RegularExpressions.Regex.IsMatch(title, pattern, 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+
+        if (foundPattern)
+        {
+            Console.WriteLine($"🔍 Detected conversation snippet pattern in: '{title}'");
+        }
+
+        return foundPattern;
+    }
+
+    /// <summary>
+    /// Uses AI to clean up malformed titles that contain conversation snippets
+    /// </summary>
+    private async Task<FormattedTicket> CleanupTitleWithAIAsync(
+        FormattedTicket originalTicket, 
+        ActionItem actionItem, 
+        MeetingTranscript transcript)
+    {
+        try
+        {
+            var cleanupPrompt = $@"
+URGENT TITLE CLEANUP TASK:
+
+You have a malformed JIRA ticket title that contains conversation snippets. Your job is to extract a clean, actionable title.
+
+MALFORMED TITLE: {originalTicket.Title}
+DESCRIPTION: {originalTicket.Description}
+ACTION ITEM CONTEXT: {actionItem.Context}
+
+TASK: Create a clean, actionable JIRA ticket title that:
+1. Starts with an action verb (Create, Fix, Update, Investigate, Review, etc.)
+2. Is under 60 characters
+3. Describes WHAT needs to be done (not WHO said it)
+4. Is professional and clear
+
+EXAMPLES:
+- If conversation mentions 'I'll create a ticket for API bug' → 'Fix API authentication bug'
+- If conversation mentions 'We need to update documentation' → 'Update API documentation'
+- If conversation mentions 'Someone should investigate the issue' → 'Investigate database performance issue'
+
+Respond with ONLY the clean title, nothing else. No JSON, no quotes, just the clean title.
+";
+
+            var cleanTitle = await _aiService.ProcessTranscriptAsync(cleanupPrompt);
+            
+            // Clean up any extra formatting from AI response
+            cleanTitle = cleanTitle.Trim().Trim('"').Trim();
+            
+            // Ensure it's not empty and not too long
+            if (string.IsNullOrEmpty(cleanTitle) || cleanTitle.Length > 80)
+            {
+                cleanTitle = "Complete meeting action item";
+            }
+
+            Console.WriteLine($"✅ Title cleaned: '{originalTicket.Title}' → '{cleanTitle}'");
+
+            return new FormattedTicket
+            {
+                Title = cleanTitle,
+                Description = originalTicket.Description,
+                Priority = originalTicket.Priority,
+                Type = originalTicket.Type,
+                Labels = originalTicket.Labels
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error cleaning up title with AI");
+            Console.WriteLine($"❌ Title cleanup failed, using fallback");
+            
+            // Fallback to simple cleanup
+            var fallbackTitle = ExtractActionFromConversation(originalTicket.Title, originalTicket.Description);
+            return new FormattedTicket
+            {
+                Title = fallbackTitle,
+                Description = originalTicket.Description,
+                Priority = originalTicket.Priority,
+                Type = originalTicket.Type,
+                Labels = originalTicket.Labels
+            };
+        }
+    }
+
+    /// <summary>
+    /// Extracts actionable title from conversation snippets (fallback method)
+    /// </summary>
+    private static string ExtractActionFromConversation(string conversationTitle, string description)
+    {
+        // Look for common action patterns in the conversation
+        var actionPatterns = new[]
+        {
+            @"I'll\s+(.*?)(?:\.|,|$)",
+            @"I\s+will\s+(.*?)(?:\.|,|$)",
+            @"create\s+(.*?)(?:\.|,|$)",
+            @"fix\s+(.*?)(?:\.|,|$)",
+            @"investigate\s+(.*?)(?:\.|,|$)",
+            @"review\s+(.*?)(?:\.|,|$)",
+            @"update\s+(.*?)(?:\.|,|$)",
+            @"implement\s+(.*?)(?:\.|,|$)"
+        };
+
+        var textToSearch = conversationTitle + " " + (description ?? "");
+
+        foreach (var pattern in actionPatterns)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                textToSearch,
+                pattern,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            );
+            if (match.Success && match.Groups[1].Value.Trim().Length > 3)
+            {
+                var action = match.Groups[1].Value.Trim();
+                // Clean up common suffixes
+                action = action.Replace("a ticket", "").Replace("the ticket", "").Trim();
+                return char.ToUpper(action[0]) + action.Substring(1);
+            }
+        }
+
+        // Default fallback
+        return "Complete meeting action item";
+    }
+
+    /// <summary>
     /// Maps priority to Jira priority names
     /// </summary>
     private static string MapPriorityToJira(ActionItemPriority priority)
@@ -663,7 +851,10 @@ public class JiraTicketService : IJiraTicketService, IDisposable
                 participants
             );
 
-            var formattedData = JsonSerializer.Deserialize<JsonElement>(formattedJson);
+            // Clean up potential markdown formatting from AI response
+            var cleanedJson = CleanAIJsonResponse(formattedJson);
+
+            var formattedData = JsonSerializer.Deserialize<JsonElement>(cleanedJson);
 
             return new FormattedTicket
             {
