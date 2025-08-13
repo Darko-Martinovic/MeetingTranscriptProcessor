@@ -12,6 +12,7 @@ namespace MeetingTranscriptProcessor.Controllers
         private readonly ITranscriptProcessorService _transcriptProcessor;
         private readonly IConfigurationService _configurationService;
         private readonly IJiraTicketService _jiraTicketService;
+        private readonly IProcessingStatusService _processingStatusService;
         private readonly string _archivePath;
         private readonly string _incomingPath;
         private readonly string _processingPath;
@@ -19,12 +20,14 @@ namespace MeetingTranscriptProcessor.Controllers
         public MeetingsController(
             ITranscriptProcessorService transcriptProcessor,
             IConfigurationService configurationService,
-            IJiraTicketService jiraTicketService
+            IJiraTicketService jiraTicketService,
+            IProcessingStatusService processingStatusService
         )
         {
             _transcriptProcessor = transcriptProcessor;
             _configurationService = configurationService;
             _jiraTicketService = jiraTicketService;
+            _processingStatusService = processingStatusService;
 
             // Get paths from environment or use defaults
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -240,15 +243,16 @@ namespace MeetingTranscriptProcessor.Controllers
                 try
                 {
                     Console.WriteLine($"🔄 Processing uploaded file: {fileName}");
-                    
+
                     // Process transcript to extract action items
                     var transcript = await _transcriptProcessor.ProcessTranscriptAsync(filePath);
-                    
+
                     if (transcript.Status == TranscriptStatus.Error)
                     {
                         Console.WriteLine($"❌ Processing failed for: {fileName}");
-                        return Ok(new { 
-                            message = "File uploaded but processing failed", 
+                        return Ok(new
+                        {
+                            message = "File uploaded but processing failed",
                             fileName,
                             status = "error"
                         });
@@ -259,17 +263,26 @@ namespace MeetingTranscriptProcessor.Controllers
                     // Process action items and create JIRA tickets
                     var jiraResult = await _jiraTicketService.ProcessActionItemsAsync(transcript);
                     Console.WriteLine($"✅ JIRA processing complete. Tickets created: {jiraResult.TicketsCreated}");
+                    Console.WriteLine($"DEBUG: After JIRA processing - Success: {jiraResult.Success}, Tickets created: {jiraResult.TicketsCreated}");
+                    Console.WriteLine($"DEBUG: Transcript JIRA tickets count: {transcript.CreatedJiraTickets.Count}");
 
-                    // Save transcript metadata (including JIRA ticket references)
-                    Console.WriteLine($"💾 Saving transcript metadata for: {fileName}");
-                    await SaveTranscriptMetadataAsync(transcript, filePath);
+                    // Archive the processed file FIRST
+                    Console.WriteLine($"� Archiving file: {fileName}");
+                    Console.WriteLine($"DEBUG: About to archive file: {filePath}");
+                    var archivedFilePath = ArchiveFile(filePath, jiraResult.Success ? "success" : "error", transcript.DetectedLanguage);
+                    Console.WriteLine($"DEBUG: File archived. Archived path: '{archivedFilePath}'");
+                    Console.WriteLine($"DEBUG: Archived path is null/empty: {string.IsNullOrEmpty(archivedFilePath)}");
 
-                    // Archive the processed file
-                    Console.WriteLine($"📦 Archiving file: {fileName}");
-                    ArchiveFile(filePath, jiraResult.Success ? "success" : "error", transcript.DetectedLanguage);
+                    // Save transcript metadata (including JIRA ticket references) AFTER archiving
+                    if (!string.IsNullOrEmpty(archivedFilePath))
+                    {
+                        Console.WriteLine($"� Saving transcript metadata for archived file: {Path.GetFileName(archivedFilePath)}");
+                        await SaveTranscriptMetadataAsync(transcript, archivedFilePath);
+                    }
 
-                    return Ok(new { 
-                        message = "File uploaded and processed successfully", 
+                    return Ok(new
+                    {
+                        message = "File uploaded and processed successfully",
                         fileName,
                         status = "processed",
                         actionItemsFound = transcript.ActionItems.Count,
@@ -281,8 +294,9 @@ namespace MeetingTranscriptProcessor.Controllers
                 {
                     // If processing fails, still return success for upload but indicate processing error
                     Console.WriteLine($"❌ Error processing file {fileName}: {processingEx.Message}");
-                    return Ok(new { 
-                        message = "File uploaded but processing failed", 
+                    return Ok(new
+                    {
+                        message = "File uploaded but processing failed",
                         fileName,
                         status = "upload_success_processing_failed",
                         error = processingEx.Message
@@ -913,42 +927,76 @@ namespace MeetingTranscriptProcessor.Controllers
         /// <summary>
         /// Saves transcript metadata including JIRA ticket references
         /// </summary>
-        private async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string originalFilePath)
+        private async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string archivedFilePath)
         {
             try
             {
-                // Create metadata filename (same as original but with .meta.json extension)
-                var originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
-                var metadataFileName = $"{originalFileName}.meta.json";
-                var metadataPath = Path.Combine(Path.GetDirectoryName(originalFilePath) ?? "", metadataFileName);
+                Console.WriteLine($"🔄 SaveTranscriptMetadataAsync called for: {Path.GetFileName(archivedFilePath)}");
+                Console.WriteLine($"📊 Transcript has {transcript.CreatedJiraTickets.Count} JIRA tickets");
 
-                // Serialize transcript to JSON
+                // Extract base filename from archived file (removes timestamp prefix)
+                var archivedFileName = Path.GetFileNameWithoutExtension(archivedFilePath);
+                var baseFileName = ExtractBaseFileName(Path.GetFileName(archivedFilePath));
+                var metadataFileName = $"{baseFileName}.meta.json";
+                var metadataPath = Path.Combine(Path.GetDirectoryName(archivedFilePath) ?? "", metadataFileName);
+
+                Console.WriteLine($"📂 Base filename: {baseFileName}");
+                Console.WriteLine($"📂 Metadata path: {metadataPath}");
+                Console.WriteLine($"📂 Directory exists: {Directory.Exists(Path.GetDirectoryName(metadataPath))}");
+
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(metadataPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                    Console.WriteLine($"📁 Created directory: {directory}");
+                }
+
+                // Serialize transcript to JSON with comprehensive options
                 var options = new JsonSerializerOptions
                 {
                     WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                 };
 
                 var jsonContent = JsonSerializer.Serialize(transcript, options);
+                Console.WriteLine($"📄 JSON content length: {jsonContent.Length} characters");
+                Console.WriteLine($"🎫 JIRA tickets in JSON: {transcript.CreatedJiraTickets.Count}");
+
                 await System.IO.File.WriteAllTextAsync(metadataPath, jsonContent);
 
-                Console.WriteLine($"💾 Saved transcript metadata: {metadataFileName}");
+                // Verify file was created
+                if (System.IO.File.Exists(metadataPath))
+                {
+                    var fileInfo = new FileInfo(metadataPath);
+                    Console.WriteLine($"✅ Successfully saved metadata file: {metadataFileName} ({fileInfo.Length} bytes)");
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Metadata file was not created: {metadataPath}");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️  Warning: Failed to save transcript metadata: {ex.Message}");
+                Console.WriteLine($"❌ ERROR: Failed to save transcript metadata: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+
+                // Re-throw to ensure the error is visible in processing
+                throw new InvalidOperationException($"Failed to save metadata for {Path.GetFileName(archivedFilePath)}: {ex.Message}", ex);
             }
         }
 
         /// <summary>
         /// Archives processed file to archive directory with timestamp
         /// </summary>
-        private void ArchiveFile(string filePath, string status, string? languageCode = null)
+        private string ArchiveFile(string filePath, string status, string? languageCode = null)
         {
             try
             {
                 if (!System.IO.File.Exists(filePath))
-                    return;
+                    return "";
 
                 var fileName = Path.GetFileName(filePath);
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -961,11 +1009,11 @@ namespace MeetingTranscriptProcessor.Controllers
                 // Move file to archive
                 System.IO.File.Move(filePath, archivedPath);
 
-                // Also move metadata file if it exists
+                // Also move metadata file if it exists (this is legacy - new approach creates metadata after archiving)
                 var originalFileName = Path.GetFileNameWithoutExtension(filePath);
                 var metadataFileName = $"{originalFileName}.meta.json";
                 var metadataFilePath = Path.Combine(Path.GetDirectoryName(filePath) ?? "", metadataFileName);
-                
+
                 if (System.IO.File.Exists(metadataFilePath))
                 {
                     // Archive metadata with base filename only (no timestamp prefix)
@@ -978,10 +1026,12 @@ namespace MeetingTranscriptProcessor.Controllers
                 }
 
                 Console.WriteLine($"📦 Archived: {archivedFileName}");
+                return archivedPath;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"⚠️  Warning: Failed to archive file {Path.GetFileName(filePath)}: {ex.Message}");
+                return "";
             }
         }
 
@@ -993,7 +1043,7 @@ namespace MeetingTranscriptProcessor.Controllers
             return languageCode?.ToLowerInvariant() switch
             {
                 "en" => "English",
-                "fr" => "French", 
+                "fr" => "French",
                 "nl" => "Dutch",
                 "de" => "German",
                 "es" => "Spanish",
@@ -1009,11 +1059,11 @@ namespace MeetingTranscriptProcessor.Controllers
             try
             {
                 Console.WriteLine($"🔍 LoadTranscriptWithMetadata called for: {fileName}");
-                
+
                 // Remove timestamp prefix to get base filename
                 var baseFileName = ExtractBaseFileName(fileName);
                 var metadataFileName = $"{baseFileName}.meta.json";
-                
+
                 Console.WriteLine($"🔍 Base filename extracted: {baseFileName}");
                 Console.WriteLine($"🔍 Looking for metadata file: {metadataFileName}");
 
@@ -1025,7 +1075,7 @@ namespace MeetingTranscriptProcessor.Controllers
                     var metadataPath = Path.Combine(path, metadataFileName);
                     Console.WriteLine($"🔍 Checking path: {metadataPath}");
                     Console.WriteLine($"🔍 File exists: {System.IO.File.Exists(metadataPath)}");
-                    
+
                     if (System.IO.File.Exists(metadataPath))
                     {
                         Console.WriteLine($"✅ Found metadata file at: {metadataPath}");
@@ -1056,7 +1106,7 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             // Remove extension first
             var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-            
+
             // Pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
             // We want to extract the original name part
             var parts = nameWithoutExt.Split('_');
@@ -1065,16 +1115,16 @@ namespace MeetingTranscriptProcessor.Controllers
                 // Skip timestamp (YYYYMMDD_HHMMSS), status, and possibly language
                 // Join the remaining parts as the original filename
                 var skipCount = 3; // timestamp + status
-                
+
                 // Check if next part might be a language (like "English")
                 if (parts.Length > 4 && IsLanguageName(parts[3]))
                 {
                     skipCount = 4; // timestamp + status + language
                 }
-                
+
                 return string.Join("_", parts.Skip(skipCount));
             }
-            
+
             // If pattern doesn't match, return as-is
             return nameWithoutExt;
         }

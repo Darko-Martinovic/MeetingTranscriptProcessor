@@ -17,6 +17,7 @@ import ErrorAlert from "./components/ErrorAlert";
 import UploadModal from "./components/UploadModal";
 import SettingsModal from "./components/SettingsModal";
 import WorkflowModal from "./components/WorkflowModal";
+import ProcessingMonitor from "./components/ProcessingMonitor";
 import {
   HallucinationDetectorModal,
   ConsistencyManagerModal,
@@ -463,6 +464,9 @@ const App: React.FC = () => {
           onClose={() => setShowActionItemValidator(false)}
         />
       )}
+
+      {/* Processing Monitor */}
+      <ProcessingMonitor />
     </div>
   );
 };

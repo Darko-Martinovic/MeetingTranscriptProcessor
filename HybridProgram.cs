@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace MeetingTranscriptProcessor
 {
@@ -162,6 +163,7 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IAzureOpenAIService, AzureOpenAIService>();
             services.AddSingleton<ITranscriptProcessorService, TranscriptProcessorService>();
             services.AddSingleton<IJiraTicketService, JiraTicketService>();
+            services.AddSingleton<IProcessingStatusService, ProcessingStatusService>();
 
             // Register validation and consistency services
             services.AddSingleton<IActionItemValidator, ActionItemValidator>();
@@ -301,6 +303,7 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IAzureOpenAIService, AzureOpenAIService>();
             services.AddSingleton<ITranscriptProcessorService, TranscriptProcessorService>();
             services.AddSingleton<IJiraTicketService, JiraTicketService>();
+            services.AddSingleton<IProcessingStatusService, ProcessingStatusService>();
             services.AddSingleton<IActionItemValidator, ActionItemValidator>();
             services.AddSingleton<IHallucinationDetector, HallucinationDetector>();
             services.AddSingleton<IConsistencyManager, ConsistencyManager>();
@@ -427,6 +430,16 @@ namespace MeetingTranscriptProcessor
 
                     var result = await _jiraTicketService!.ProcessActionItemsAsync(transcript);
 
+                    // Archive the processed file first
+                    var archivedFilePath = ArchiveFile(filePath, result.Success ? "success" : "error", transcript.DetectedLanguage);
+
+                    // Save transcript metadata (including JIRA ticket references) AFTER archiving
+                    if (!string.IsNullOrEmpty(archivedFilePath))
+                    {
+                        Console.WriteLine($"💾 Saving transcript metadata for archived file: {Path.GetFileName(archivedFilePath)}");
+                        await SaveTranscriptMetadataAsync(transcript, archivedFilePath);
+                    }
+
                     lock (Console.Out)
                     {
                         DisplayProcessingResults(result);
@@ -434,8 +447,6 @@ namespace MeetingTranscriptProcessor
                         Console.WriteLine($"✅ File processed: {fileName}");
                         if (!_runAsWebApi) Console.Write("> ");
                     }
-
-                    ArchiveFile(filePath, result.Success ? "success" : "error", transcript.DetectedLanguage);
                 }
                 finally
                 {
@@ -479,12 +490,12 @@ namespace MeetingTranscriptProcessor
             }
         }
 
-        private static void ArchiveFile(string filePath, string status, string? languageCode = null)
+        private static string ArchiveFile(string filePath, string status, string? languageCode = null)
         {
             try
             {
                 if (!File.Exists(filePath))
-                    return;
+                    return "";
 
                 var fileName = Path.GetFileName(filePath);
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -494,10 +505,120 @@ namespace MeetingTranscriptProcessor
 
                 File.Move(filePath, archivedPath);
                 Console.WriteLine($"📦 Archived: {archivedFileName}");
+                return archivedPath;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"⚠️  Warning: Failed to archive file {Path.GetFileName(filePath)}: {ex.Message}");
+                return "";
+            }
+        }
+
+        /// <summary>
+        /// Saves transcript metadata to a JSON file in the same directory as the archived file
+        /// </summary>
+        private static async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string archivedFilePath)
+        {
+            try
+            {
+                Console.WriteLine($"🔄 SaveTranscriptMetadataAsync called for: {Path.GetFileName(archivedFilePath)}");
+                Console.WriteLine($"📊 Transcript has {transcript.CreatedJiraTickets.Count} JIRA tickets");
+
+                // Extract base filename from archived file (removes timestamp prefix)
+                var baseFileName = ExtractBaseFileName(Path.GetFileName(archivedFilePath));
+                var metadataFileName = $"{baseFileName}.meta.json";
+                var metadataPath = Path.Combine(Path.GetDirectoryName(archivedFilePath) ?? "", metadataFileName);
+
+                Console.WriteLine($"📂 Base filename: {baseFileName}");
+                Console.WriteLine($"📂 Metadata path: {metadataPath}");
+                Console.WriteLine($"📂 Directory exists: {Directory.Exists(Path.GetDirectoryName(metadataPath))}");
+
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(metadataPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                    Console.WriteLine($"📁 Created directory: {directory}");
+                }
+
+                // Serialize transcript to JSON
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+
+                var jsonContent = JsonSerializer.Serialize(transcript, options);
+                Console.WriteLine($"📄 JSON content length: {jsonContent.Length} characters");
+                Console.WriteLine($"🎫 JIRA tickets in JSON: {transcript.CreatedJiraTickets.Count}");
+
+                await File.WriteAllTextAsync(metadataPath, jsonContent);
+
+                // Verify file was created
+                if (File.Exists(metadataPath))
+                {
+                    var fileInfo = new FileInfo(metadataPath);
+                    Console.WriteLine($"✅ Successfully saved metadata file: {metadataFileName} ({fileInfo.Length} bytes)");
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Metadata file was not created: {metadataPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ ERROR: Failed to save transcript metadata: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+                throw new InvalidOperationException($"Failed to save metadata for {Path.GetFileName(archivedFilePath)}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Extracts the base filename from an archived filename by removing the timestamp prefix
+        /// </summary>
+        private static string ExtractBaseFileName(string archivedFileName)
+        {
+            try
+            {
+                // Remove extension first
+                var nameWithoutExtension = Path.GetFileNameWithoutExtension(archivedFileName);
+                
+                // Pattern: YYYYMMDD_HHMMSS_status_language_originalname
+                // We want to extract: originalname
+                var parts = nameWithoutExtension.Split('_');
+                if (parts.Length >= 4)
+                {
+                    // Skip timestamp (YYYYMMDD), time (HHMMSS), status, and optionally language
+                    // Find where the original filename starts
+                    var timestampPart = parts[0]; // YYYYMMDD
+                    var timePart = parts[1];      // HHMMSS
+                    var statusPart = parts[2];    // success/error
+                    
+                    // Check if the 4th part is a language (common language names)
+                    var potentialLanguage = parts[3];
+                    var isLanguage = potentialLanguage.Equals("English", StringComparison.OrdinalIgnoreCase) ||
+                                   potentialLanguage.Equals("French", StringComparison.OrdinalIgnoreCase) ||
+                                   potentialLanguage.Equals("Dutch", StringComparison.OrdinalIgnoreCase) ||
+                                   potentialLanguage.Equals("German", StringComparison.OrdinalIgnoreCase) ||
+                                   potentialLanguage.Equals("Spanish", StringComparison.OrdinalIgnoreCase);
+                    
+                    var startIndex = isLanguage ? 4 : 3;
+                    
+                    if (parts.Length > startIndex)
+                    {
+                        return string.Join("_", parts.Skip(startIndex));
+                    }
+                }
+                
+                // Fallback: return the filename without extension
+                return nameWithoutExtension;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Warning: Failed to extract base filename from {archivedFileName}: {ex.Message}");
+                return Path.GetFileNameWithoutExtension(archivedFileName);
             }
         }
 

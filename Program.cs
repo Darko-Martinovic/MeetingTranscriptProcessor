@@ -19,6 +19,7 @@ namespace MeetingTranscriptProcessor
         private static IFileWatcherService? _fileWatcher;
         private static ITranscriptProcessorService? _transcriptProcessor;
         private static IJiraTicketService? _jiraTicketService;
+        private static IProcessingStatusService? _processingStatusService;
         private static bool _isShuttingDown = false;
 
         // Concurrency control
@@ -44,8 +45,11 @@ namespace MeetingTranscriptProcessor
 
         static async Task Main(string[] args)
         {
+            // Run metadata saving test first
+            await Test.MetadataTestHelper.TestMetadataSaving();
+
             // Check if should run as web API
-            bool runAsWebApi = args.Contains("--web") || args.Contains("--api") || 
+            bool runAsWebApi = args.Contains("--web") || args.Contains("--api") ||
                               Environment.GetEnvironmentVariable("RUN_AS_WEB_API")?.ToLower() == "true";
 
             if (runAsWebApi)
@@ -249,6 +253,7 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IAzureOpenAIService, AzureOpenAIService>();
             services.AddSingleton<ITranscriptProcessorService, TranscriptProcessorService>();
             services.AddSingleton<IJiraTicketService, JiraTicketService>();
+            services.AddSingleton<IProcessingStatusService, ProcessingStatusService>();
 
             // Register validation and consistency services
             services.AddSingleton<IActionItemValidator, ActionItemValidator>();
@@ -272,6 +277,7 @@ namespace MeetingTranscriptProcessor
             _transcriptProcessor =
                 _serviceProvider.GetRequiredService<ITranscriptProcessorService>();
             _jiraTicketService = _serviceProvider.GetRequiredService<IJiraTicketService>();
+            _processingStatusService = _serviceProvider.GetRequiredService<IProcessingStatusService>();
 
             // Setup event handlers
             _fileWatcher.FileDetected += OnFileDetected;
@@ -445,6 +451,13 @@ namespace MeetingTranscriptProcessor
                 return;
             }
 
+            // Start processing status tracking
+            string? processingId = null;
+            if (_processingStatusService != null)
+            {
+                processingId = _processingStatusService.StartProcessing(fileName);
+            }
+
             try
             {
                 // Wait for available processing slot
@@ -459,12 +472,23 @@ namespace MeetingTranscriptProcessor
                     if (_isShuttingDown || _cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
+                    if (processingId != null)
+                    {
+                        _processingStatusService?.UpdateStatus(processingId, ProcessingStage.Starting, "Initializing file processing", 5);
+                    }
+
                     Console.WriteLine(
-                        $"\n📄 Processing file: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})"
+                        $"\n📄 Processing file: {fileName} (ID: {processingId}) (Thread: {Thread.CurrentThread.ManagedThreadId})"
                     );
                     Console.WriteLine(
                         "──────────────────────────────────────────────────────────────"
                     );
+
+                    // Update status: Reading file
+                    if (processingId != null)
+                    {
+                        _processingStatusService?.UpdateStatus(processingId, ProcessingStage.ReadingFile, "Reading and parsing transcript", 15);
+                    }
 
                     // Process the transcript
                     var transcript = await _transcriptProcessor!.ProcessTranscriptAsync(filePath);
@@ -472,15 +496,82 @@ namespace MeetingTranscriptProcessor
                     if (transcript.Status == TranscriptStatus.Error)
                     {
                         Console.WriteLine($"❌ Failed to process transcript: {fileName}");
+                        if (processingId != null)
+                        {
+                            _processingStatusService?.CompleteProcessing(processingId, false, "Failed to parse transcript");
+                        }
                         ArchiveFile(filePath, "error", transcript.DetectedLanguage);
                         return;
                     }
 
-                    // Process action items and create Jira tickets
-                    var result = await _jiraTicketService!.ProcessActionItemsAsync(transcript);
+                    // Update status: Extracting action items
+                    if (processingId != null)
+                    {
+                        _processingStatusService?.UpdateStatus(processingId, ProcessingStage.ExtractingActionItems, $"Extracted {transcript.ActionItems.Count} action items", 50);
+                    }
 
-                    // Save transcript metadata (including JIRA ticket references) before archiving
-                    await SaveTranscriptMetadataAsync(transcript, filePath);
+                    // Update status: Creating JIRA tickets
+                    if (processingId != null)
+                    {
+                        _processingStatusService?.UpdateStatus(processingId, ProcessingStage.CreatingJiraTickets, "Creating JIRA tickets from action items", 70);
+                    }
+
+                    // Process action items and create Jira tickets
+                    Console.WriteLine($"🔍 TRACE: About to call JiraTicketService.ProcessActionItemsAsync");
+                    var result = await _jiraTicketService!.ProcessActionItemsAsync(transcript);
+                    Console.WriteLine($"🔍 TRACE: JiraTicketService.ProcessActionItemsAsync completed");
+
+                    Console.WriteLine($"🔍 DEBUG: After JIRA processing - Success: {result.Success}, Tickets created: {result.TicketsCreated}");
+                    Console.WriteLine($"🔍 DEBUG: Transcript JIRA tickets count: {transcript.CreatedJiraTickets.Count}");
+                    
+                    // Update status: Archiving
+                    if (processingId != null)
+                    {
+                        _processingStatusService?.UpdateStatus(processingId, ProcessingStage.Archiving, "Moving files to archive", 85);
+                    }
+
+                    Console.WriteLine($"🔍 DEBUG: About to archive file: {filePath}");
+
+                    // Archive the processed file first
+                    var archivedFilePath = ArchiveFile(
+                        filePath,
+                        result.Success ? "success" : "error",
+                        transcript.DetectedLanguage
+                    );
+
+                    Console.WriteLine($"🔍 DEBUG: File archived. Archived path: '{archivedFilePath}'");
+                    Console.WriteLine($"🔍 DEBUG: Archived path is null/empty: {string.IsNullOrEmpty(archivedFilePath)}");
+
+                    // Update status: Saving metadata
+                    if (processingId != null)
+                    {
+                        _processingStatusService?.UpdateStatus(processingId, ProcessingStage.SavingMetadata, "Saving transcript metadata", 95);
+                    }
+
+                    // Save transcript metadata (including JIRA ticket references) AFTER archiving
+                    if (!string.IsNullOrEmpty(archivedFilePath))
+                    {
+                        Console.WriteLine($"🔍 DEBUG: About to save metadata for archived file");
+                        await SaveTranscriptMetadataAsync(transcript, archivedFilePath);
+                        Console.WriteLine($"🔍 DEBUG: Metadata save completed");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ DEBUG: Cannot save metadata - archived file path is null or empty");
+                    }
+
+                    // Update metrics and complete processing
+                    if (processingId != null)
+                    {
+                        var metrics = new ProcessingMetrics
+                        {
+                            ActionItemsExtracted = transcript.ActionItems.Count,
+                            JiraTicketsCreated = result.TicketsCreated,
+                            DetectedLanguage = transcript.DetectedLanguage
+                        };
+                        _processingStatusService?.UpdateMetrics(processingId, metrics);
+                        _processingStatusService?.CompleteProcessing(processingId, result.Success);
+                    }
 
                     // Display results (thread-safe console output)
                     lock (Console.Out)
@@ -490,17 +581,10 @@ namespace MeetingTranscriptProcessor
                             "──────────────────────────────────────────────────────────────"
                         );
                         Console.WriteLine(
-                            $"✅ File processed: {fileName} (Thread: {Thread.CurrentThread.ManagedThreadId})"
+                            $"✅ File processed: {fileName} (ID: {processingId}) (Thread: {Thread.CurrentThread.ManagedThreadId})"
                         );
                         Console.Write("> ");
                     }
-
-                    // Archive the processed file
-                    ArchiveFile(
-                        filePath,
-                        result.Success ? "success" : "error",
-                        transcript.DetectedLanguage
-                    );
                 }
                 finally
                 {
@@ -511,14 +595,26 @@ namespace MeetingTranscriptProcessor
             catch (OperationCanceledException)
             {
                 Console.WriteLine($"⚠️  Processing cancelled for file: {fileName}");
+                if (processingId != null)
+                {
+                    _processingStatusService?.CompleteProcessing(processingId, false, "Processing cancelled");
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error processing file {fileName}: {ex.Message}");
+                if (processingId != null)
+                {
+                    _processingStatusService?.CompleteProcessing(processingId, false, ex.Message);
+                }
 
                 try
                 {
-                    ArchiveFile(filePath, "error"); // No language info available in error case
+                    var errorArchivedPath = ArchiveFile(filePath, "error"); // No language info available in error case
+                    if (string.IsNullOrEmpty(errorArchivedPath))
+                    {
+                        Console.WriteLine($"❌ Failed to archive error file to get return path");
+                    }
                 }
                 catch (Exception archiveEx)
                 {
@@ -572,42 +668,75 @@ namespace MeetingTranscriptProcessor
         /// <summary>
         /// Saves transcript metadata including JIRA ticket references
         /// </summary>
-        private static async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string originalFilePath)
+        private static async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string archivedFilePath)
         {
             try
             {
-                // Create metadata filename (same as original but with .meta.json extension)
-                var originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
-                var metadataFileName = $"{originalFileName}.meta.json";
-                var metadataPath = Path.Combine(Path.GetDirectoryName(originalFilePath) ?? "", metadataFileName);
+                Console.WriteLine($"🔄 SaveTranscriptMetadataAsync called for: {Path.GetFileName(archivedFilePath)}");
+                Console.WriteLine($"📊 Transcript has {transcript.CreatedJiraTickets.Count} JIRA tickets");
 
-                // Serialize transcript to JSON
+                // Extract base filename from archived file (removes timestamp prefix)
+                var archivedFileName = Path.GetFileNameWithoutExtension(archivedFilePath);
+                var baseFileName = ExtractBaseFileName(Path.GetFileName(archivedFilePath));
+                var metadataFileName = $"{baseFileName}.meta.json";
+                var metadataPath = Path.Combine(Path.GetDirectoryName(archivedFilePath) ?? "", metadataFileName);
+
+                Console.WriteLine($"📂 Base filename: {baseFileName}");
+                Console.WriteLine($"📂 Metadata path: {metadataPath}");
+                Console.WriteLine($"📂 Directory exists: {Directory.Exists(Path.GetDirectoryName(metadataPath))}");
+
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(metadataPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                    Console.WriteLine($"📁 Created directory: {directory}");
+                }
+
+                // Serialize transcript to JSON with comprehensive options
                 var options = new JsonSerializerOptions
                 {
                     WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                 };
 
                 var jsonContent = JsonSerializer.Serialize(transcript, options);
+                Console.WriteLine($"📄 JSON content length: {jsonContent.Length} characters");
+                Console.WriteLine($"🎫 JIRA tickets in JSON: {transcript.CreatedJiraTickets.Count}");
+
                 await File.WriteAllTextAsync(metadataPath, jsonContent);
 
-                Console.WriteLine($"💾 Saved transcript metadata: {metadataFileName}");
+                // Verify file was created
+                if (File.Exists(metadataPath))
+                {
+                    var fileInfo = new FileInfo(metadataPath);
+                    Console.WriteLine($"✅ Successfully saved metadata file: {metadataFileName} ({fileInfo.Length} bytes)");
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Metadata file was not created: {metadataPath}");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️  Warning: Failed to save transcript metadata: {ex.Message}");
-            }
-        }
+                Console.WriteLine($"❌ ERROR: Failed to save transcript metadata: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
 
-        /// <summary>
-        /// Archives processed file to archive directory with timestamp
-        /// </summary>
-        private static void ArchiveFile(string filePath, string status, string? languageCode = null)
+                // Re-throw to ensure the error is visible in processing
+                throw new InvalidOperationException($"Failed to save metadata for {Path.GetFileName(archivedFilePath)}: {ex.Message}", ex);
+            }
+        }        /// <summary>
+                 /// Archives processed file to archive directory with timestamp
+                 /// </summary>
+                 /// <returns>The path of the archived file, or empty string if archiving failed</returns>
+        private static string ArchiveFile(string filePath, string status, string? languageCode = null)
         {
             try
             {
                 if (!File.Exists(filePath))
-                    return;
+                    return "";
 
                 var fileName = Path.GetFileName(filePath);
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -622,11 +751,11 @@ namespace MeetingTranscriptProcessor
                 // Move file to archive
                 File.Move(filePath, archivedPath);
 
-                // Also move metadata file if it exists
+                // Also move metadata file if it exists (this is legacy - new approach creates metadata after archiving)
                 var originalFileName = Path.GetFileNameWithoutExtension(filePath);
                 var metadataFileName = $"{originalFileName}.meta.json";
                 var metadataFilePath = Path.Combine(Path.GetDirectoryName(filePath) ?? "", metadataFileName);
-                
+
                 if (File.Exists(metadataFilePath))
                 {
                     // Archive metadata with base filename only (no timestamp prefix)
@@ -639,12 +768,14 @@ namespace MeetingTranscriptProcessor
                 }
 
                 Console.WriteLine($"📦 Archived: {archivedFileName}");
+                return archivedPath;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(
                     $"⚠️  Warning: Failed to archive file {Path.GetFileName(filePath)}: {ex.Message}"
                 );
+                return "";
             }
         }
 
@@ -845,7 +976,7 @@ namespace MeetingTranscriptProcessor
         {
             // Remove extension first
             var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-            
+
             // Pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
             // We want to extract the original name part
             var parts = nameWithoutExt.Split('_');
@@ -854,16 +985,16 @@ namespace MeetingTranscriptProcessor
                 // Skip timestamp (YYYYMMDD_HHMMSS), status, and possibly language
                 // Join the remaining parts as the original filename
                 var skipCount = 3; // timestamp + status
-                
+
                 // Check if next part might be a language (like "English")
                 if (parts.Length > 4 && IsLanguageName(parts[3]))
                 {
                     skipCount = 4; // timestamp + status + language
                 }
-                
+
                 return string.Join("_", parts.Skip(skipCount));
             }
-            
+
             // If pattern doesn't match, return as-is
             return nameWithoutExt;
         }

@@ -61,6 +61,48 @@ export interface JiraTicketReference {
   status: string;
 }
 
+export interface ProcessingStatus {
+  id: string;
+  fileName: string;
+  stage: ProcessingStage;
+  statusMessage: string;
+  progressPercentage: number;
+  startedAt: string;
+  completedAt?: string;
+  estimatedTimeRemaining?: string;
+  hasError: boolean;
+  errorMessage?: string;
+  metrics?: ProcessingMetrics;
+}
+
+export interface ProcessingMetrics {
+  actionItemsExtracted: number;
+  jiraTicketsCreated: number;
+  detectedLanguage?: string;
+  processingTime: string;
+}
+
+export const ProcessingStage = {
+  Queued: 0,
+  Starting: 1,
+  ReadingFile: 2,
+  ExtractingActionItems: 3,
+  CreatingJiraTickets: 4,
+  SavingMetadata: 5,
+  Archiving: 6,
+  Completed: 7,
+  Failed: 8
+} as const;
+
+export type ProcessingStage = typeof ProcessingStage[keyof typeof ProcessingStage];
+
+export interface ProcessingQueue {
+  currentlyProcessing: ProcessingStatus[];
+  recentlyCompleted: ProcessingStatus[];
+  queueLength: number;
+  isProcessingEnabled: boolean;
+}
+
 export interface ActionItem {
   id: string;
   description: string;
@@ -252,6 +294,23 @@ export const meetingApi = {
       `/meetings/meeting/${encodeURIComponent(fileName)}/move`,
       { targetFolderType }
     );
+    return response.data;
+  },
+};
+
+export const processingApi = {
+  getProcessingQueue: async (): Promise<ProcessingQueue> => {
+    const response = await api.get("/processing/queue");
+    return response.data;
+  },
+
+  getProcessingStatus: async (id: string): Promise<ProcessingStatus> => {
+    const response = await api.get(`/processing/status/${encodeURIComponent(id)}`);
+    return response.data;
+  },
+
+  clearCompleted: async (): Promise<{ message: string }> => {
+    const response = await api.delete("/processing/completed");
     return response.data;
   },
 };

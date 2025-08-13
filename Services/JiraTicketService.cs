@@ -159,7 +159,7 @@ public class JiraTicketService : IJiraTicketService, IDisposable
         {
             if (!IsJiraConfigured())
             {
-                return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created);
+                return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created, transcript);
             }
 
             // Use AI to format the ticket properly
@@ -244,7 +244,7 @@ public class JiraTicketService : IJiraTicketService, IDisposable
                         AssignedTo = actionItem.AssignedTo,
                         Status = "Open"
                     };
-                    
+
                     transcript.CreatedJiraTickets.Add(ticketReference);
                     Console.WriteLine($"📎 Added ticket reference to meeting: {ticketKey}");
 
@@ -271,7 +271,7 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             Console.WriteLine("   Falling back to simulation mode");
 
             // Fallback to simulation
-            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created);
+            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created, transcript);
         }
         catch (Exception ex)
         {
@@ -281,7 +281,7 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             );
             Console.WriteLine($"❌ Exception creating JIRA ticket: {ex.Message}");
             Console.WriteLine("   Falling back to simulation mode");
-            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created);
+            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created, transcript);
         }
     }
 
@@ -354,7 +354,8 @@ public class JiraTicketService : IJiraTicketService, IDisposable
     /// </summary>
     private async Task<TicketCreationResult> SimulateTicketCreationAsync(
         ActionItem actionItem,
-        TicketOperation operation
+        TicketOperation operation,
+        MeetingTranscript? transcript = null
     )
     {
         await Task.Delay(100); // Simulate API call time
@@ -385,6 +386,26 @@ public class JiraTicketService : IJiraTicketService, IDisposable
         if (actionItem.DueDate.HasValue)
         {
             Console.WriteLine($"   📅 Due: {actionItem.DueDate.Value:yyyy-MM-dd}");
+        }
+
+        // Add ticket reference to transcript even in simulation mode
+        if (transcript != null && operation == TicketOperation.Created)
+        {
+            var ticketReference = new JiraTicketReference
+            {
+                TicketKey = ticketKey ?? "",
+                TicketUrl = $"[Simulated] {_jiraBaseUrl}/browse/{ticketKey}",
+                Title = actionItem.Title,
+                ActionItemId = actionItem.Id,
+                CreatedAt = DateTime.UtcNow,
+                Priority = actionItem.Priority.ToString(),
+                Type = actionItem.Type.ToString(),
+                AssignedTo = actionItem.AssignedTo,
+                Status = "Open"
+            };
+
+            transcript.CreatedJiraTickets.Add(ticketReference);
+            Console.WriteLine($"📎 Added simulated ticket reference to meeting: {ticketKey}");
         }
 
         return new TicketCreationResult
@@ -620,16 +641,16 @@ public class JiraTicketService : IJiraTicketService, IDisposable
 
         // Remove markdown code blocks
         var cleaned = aiResponse.Trim();
-        
+
         // Remove leading/trailing backticks and json specifier
         if (cleaned.StartsWith("```json"))
             cleaned = cleaned.Substring(7);
         else if (cleaned.StartsWith("```"))
             cleaned = cleaned.Substring(3);
-        
+
         if (cleaned.EndsWith("```"))
             cleaned = cleaned.Substring(0, cleaned.Length - 3);
-        
+
         return cleaned.Trim();
     }
 
@@ -661,8 +682,8 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             @"Create\s+new\s+Jira\s+ticket" // Literal "Create new Jira ticket" text
         };
 
-        var foundPattern = conversationPatterns.Any(pattern => 
-            System.Text.RegularExpressions.Regex.IsMatch(title, pattern, 
+        var foundPattern = conversationPatterns.Any(pattern =>
+            System.Text.RegularExpressions.Regex.IsMatch(title, pattern,
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase));
 
         if (foundPattern)
@@ -677,8 +698,8 @@ public class JiraTicketService : IJiraTicketService, IDisposable
     /// Uses AI to clean up malformed titles that contain conversation snippets
     /// </summary>
     private async Task<FormattedTicket> CleanupTitleWithAIAsync(
-        FormattedTicket originalTicket, 
-        ActionItem actionItem, 
+        FormattedTicket originalTicket,
+        ActionItem actionItem,
         MeetingTranscript transcript)
     {
         try
@@ -707,10 +728,10 @@ Respond with ONLY the clean title, nothing else. No JSON, no quotes, just the cl
 ";
 
             var cleanTitle = await _aiService.ProcessTranscriptAsync(cleanupPrompt);
-            
+
             // Clean up any extra formatting from AI response
             cleanTitle = cleanTitle.Trim().Trim('"').Trim();
-            
+
             // Ensure it's not empty and not too long
             if (string.IsNullOrEmpty(cleanTitle) || cleanTitle.Length > 80)
             {
@@ -732,7 +753,7 @@ Respond with ONLY the clean title, nothing else. No JSON, no quotes, just the cl
         {
             _logger?.LogError(ex, "Error cleaning up title with AI");
             Console.WriteLine($"❌ Title cleanup failed, using fallback");
-            
+
             // Fallback to simple cleanup
             var fallbackTitle = ExtractActionFromConversation(originalTicket.Title, originalTicket.Description);
             return new FormattedTicket
