@@ -537,6 +537,7 @@ namespace MeetingTranscriptProcessor.Controllers
                     .Where(
                         f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())
                     )
+                    .Where(f => !Path.GetFileName(f).EndsWith(".meta.json", StringComparison.OrdinalIgnoreCase)) // Exclude metadata files
                     .ToList();
 
                 return await Task.FromResult(files.Count);
@@ -565,6 +566,7 @@ namespace MeetingTranscriptProcessor.Controllers
                     .Where(
                         f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())
                     )
+                    .Where(f => !Path.GetFileName(f).EndsWith(".meta.json", StringComparison.OrdinalIgnoreCase)) // Exclude metadata files
                     .OrderByDescending(f => new FileInfo(f).LastWriteTime)
                     .ToList();
 

@@ -20,6 +20,7 @@ namespace MeetingTranscriptProcessor
         private static IFileWatcherService? _fileWatcher;
         private static ITranscriptProcessorService? _transcriptProcessor;
         private static IJiraTicketService? _jiraTicketService;
+        private static IProcessingStatusService? _processingStatusService;
         private static bool _isShuttingDown = false;
         private static bool _runAsWebApi = false;
 
@@ -49,7 +50,7 @@ namespace MeetingTranscriptProcessor
             try
             {
                 // Check if should run as web API
-                _runAsWebApi = args.Contains("--web") || args.Contains("--api") || 
+                _runAsWebApi = args.Contains("--web") || args.Contains("--api") ||
                               Environment.GetEnvironmentVariable("RUN_AS_WEB_API")?.ToLower() == "true";
 
                 // Display application header
@@ -88,7 +89,7 @@ namespace MeetingTranscriptProcessor
 
             // Add controllers
             builder.Services.AddControllers();
-            
+
             // Add CORS for frontend
             builder.Services.AddCors(options =>
             {
@@ -308,13 +309,14 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IHallucinationDetector, HallucinationDetector>();
             services.AddSingleton<IConsistencyManager, ConsistencyManager>();
             services.AddSingleton<IFileWatcherService>(provider =>
-                new FileWatcherService(IncomingPath, ProcessingPath, 
+                new FileWatcherService(IncomingPath, ProcessingPath,
                     provider.GetService<MeetingTranscriptProcessor.Services.ILogger>()));
 
             _serviceProvider = services.BuildServiceProvider();
             _fileWatcher = _serviceProvider.GetRequiredService<IFileWatcherService>();
             _transcriptProcessor = _serviceProvider.GetRequiredService<ITranscriptProcessorService>();
             _jiraTicketService = _serviceProvider.GetRequiredService<IJiraTicketService>();
+            _processingStatusService = _serviceProvider.GetRequiredService<IProcessingStatusService>();
             _fileWatcher.FileDetected += OnFileDetected;
 
             Console.WriteLine("✅ Services initialized successfully");
@@ -404,8 +406,15 @@ namespace MeetingTranscriptProcessor
                 return;
             }
 
+            string processingId = "";
             try
             {
+                // Start processing status tracking
+                if (_processingStatusService != null)
+                {
+                    processingId = _processingStatusService.StartProcessing(fileName);
+                }
+
                 if (_processingSemaphore != null)
                 {
                     await _processingSemaphore.WaitAsync(_cancellationTokenSource.Token);
@@ -414,24 +423,46 @@ namespace MeetingTranscriptProcessor
                 try
                 {
                     if (_isShuttingDown || _cancellationTokenSource.Token.IsCancellationRequested)
+                    {
+                        _processingStatusService?.CompleteProcessing(processingId, false, "Processing cancelled");
                         return;
+                    }
 
                     Console.WriteLine($"\n📄 Processing file: {fileName}");
                     Console.WriteLine("──────────────────────────────────────────────────────────────");
+
+                    // Update status: Starting
+                    _processingStatusService?.UpdateStatus(processingId, ProcessingStage.Starting, "Initializing file processing", 5);
+
+                    // Update status: Reading file
+                    _processingStatusService?.UpdateStatus(processingId, ProcessingStage.ReadingFile, "Reading and parsing transcript", 15);
 
                     var transcript = await _transcriptProcessor!.ProcessTranscriptAsync(filePath);
 
                     if (transcript.Status == TranscriptStatus.Error)
                     {
                         Console.WriteLine($"❌ Failed to process transcript: {fileName}");
+                        _processingStatusService?.CompleteProcessing(processingId, false, "Failed to parse transcript");
                         ArchiveFile(filePath, "error", transcript.DetectedLanguage);
                         return;
                     }
 
+                    // Update status: Action items extracted
+                    _processingStatusService?.UpdateStatus(processingId, ProcessingStage.ExtractingActionItems, $"Extracted {transcript.ActionItems.Count} action items", 50);
+
+                    // Update status: Creating JIRA tickets
+                    _processingStatusService?.UpdateStatus(processingId, ProcessingStage.CreatingJiraTickets, "Creating JIRA tickets from action items", 70);
+
                     var result = await _jiraTicketService!.ProcessActionItemsAsync(transcript);
+
+                    // Update status: Archiving
+                    _processingStatusService?.UpdateStatus(processingId, ProcessingStage.Archiving, "Moving files to archive", 85);
 
                     // Archive the processed file first
                     var archivedFilePath = ArchiveFile(filePath, result.Success ? "success" : "error", transcript.DetectedLanguage);
+
+                    // Update status: Saving metadata
+                    _processingStatusService?.UpdateStatus(processingId, ProcessingStage.SavingMetadata, "Saving transcript metadata", 95);
 
                     // Save transcript metadata (including JIRA ticket references) AFTER archiving
                     if (!string.IsNullOrEmpty(archivedFilePath))
@@ -439,6 +470,16 @@ namespace MeetingTranscriptProcessor
                         Console.WriteLine($"💾 Saving transcript metadata for archived file: {Path.GetFileName(archivedFilePath)}");
                         await SaveTranscriptMetadataAsync(transcript, archivedFilePath);
                     }
+
+                    // Update processing metrics
+                    var metrics = new ProcessingMetrics
+                    {
+                        ActionItemsExtracted = transcript.ActionItems.Count,
+                        JiraTicketsCreated = transcript.CreatedJiraTickets.Count,
+                        DetectedLanguage = transcript.DetectedLanguage
+                    };
+                    _processingStatusService?.UpdateMetrics(processingId, metrics);
+                    _processingStatusService?.CompleteProcessing(processingId, result.Success);
 
                     lock (Console.Out)
                     {
@@ -456,10 +497,12 @@ namespace MeetingTranscriptProcessor
             catch (OperationCanceledException)
             {
                 Console.WriteLine($"⚠️  Processing cancelled for file: {fileName}");
+                _processingStatusService?.CompleteProcessing(processingId, false, "Processing cancelled");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error processing file {fileName}: {ex.Message}");
+                _processingStatusService?.CompleteProcessing(processingId, false, ex.Message);
                 try
                 {
                     ArchiveFile(filePath, "error");
@@ -584,7 +627,7 @@ namespace MeetingTranscriptProcessor
             {
                 // Remove extension first
                 var nameWithoutExtension = Path.GetFileNameWithoutExtension(archivedFileName);
-                
+
                 // Pattern: YYYYMMDD_HHMMSS_status_language_originalname
                 // We want to extract: originalname
                 var parts = nameWithoutExtension.Split('_');
@@ -595,7 +638,7 @@ namespace MeetingTranscriptProcessor
                     var timestampPart = parts[0]; // YYYYMMDD
                     var timePart = parts[1];      // HHMMSS
                     var statusPart = parts[2];    // success/error
-                    
+
                     // Check if the 4th part is a language (common language names)
                     var potentialLanguage = parts[3];
                     var isLanguage = potentialLanguage.Equals("English", StringComparison.OrdinalIgnoreCase) ||
@@ -603,15 +646,15 @@ namespace MeetingTranscriptProcessor
                                    potentialLanguage.Equals("Dutch", StringComparison.OrdinalIgnoreCase) ||
                                    potentialLanguage.Equals("German", StringComparison.OrdinalIgnoreCase) ||
                                    potentialLanguage.Equals("Spanish", StringComparison.OrdinalIgnoreCase);
-                    
+
                     var startIndex = isLanguage ? 4 : 3;
-                    
+
                     if (parts.Length > startIndex)
                     {
                         return string.Join("_", parts.Skip(startIndex));
                     }
                 }
-                
+
                 // Fallback: return the filename without extension
                 return nameWithoutExtension;
             }
