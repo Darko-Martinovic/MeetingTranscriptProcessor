@@ -259,6 +259,7 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IActionItemValidator, ActionItemValidator>();
             services.AddSingleton<IHallucinationDetector, HallucinationDetector>();
             services.AddSingleton<IConsistencyManager, ConsistencyManager>();
+            services.AddSingleton<SmartTitleGeneratorService>();
 
             services.AddSingleton<IFileWatcherService>(
                 provider =>
@@ -523,7 +524,7 @@ namespace MeetingTranscriptProcessor
 
                     Console.WriteLine($"🔍 DEBUG: After JIRA processing - Success: {result.Success}, Tickets created: {result.TicketsCreated}");
                     Console.WriteLine($"🔍 DEBUG: Transcript JIRA tickets count: {transcript.CreatedJiraTickets.Count}");
-                    
+
                     // Update status: Archiving
                     if (processingId != null)
                     {

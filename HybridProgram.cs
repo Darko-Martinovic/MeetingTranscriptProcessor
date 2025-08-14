@@ -170,6 +170,7 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IActionItemValidator, ActionItemValidator>();
             services.AddSingleton<IHallucinationDetector, HallucinationDetector>();
             services.AddSingleton<IConsistencyManager, ConsistencyManager>();
+            services.AddSingleton<SmartTitleGeneratorService>();
 
             services.AddSingleton<IFileWatcherService>(
                 provider =>
@@ -195,6 +196,7 @@ namespace MeetingTranscriptProcessor
             _fileWatcher = _serviceProvider?.GetRequiredService<IFileWatcherService>();
             _transcriptProcessor = _serviceProvider?.GetRequiredService<ITranscriptProcessorService>();
             _jiraTicketService = _serviceProvider?.GetRequiredService<IJiraTicketService>();
+            _processingStatusService = _serviceProvider?.GetRequiredService<IProcessingStatusService>();
 
             // Setup event handlers
             if (_fileWatcher != null)
@@ -308,6 +310,7 @@ namespace MeetingTranscriptProcessor
             services.AddSingleton<IActionItemValidator, ActionItemValidator>();
             services.AddSingleton<IHallucinationDetector, HallucinationDetector>();
             services.AddSingleton<IConsistencyManager, ConsistencyManager>();
+            services.AddSingleton<SmartTitleGeneratorService>();
             services.AddSingleton<IFileWatcherService>(provider =>
                 new FileWatcherService(IncomingPath, ProcessingPath,
                     provider.GetService<MeetingTranscriptProcessor.Services.ILogger>()));
@@ -410,9 +413,15 @@ namespace MeetingTranscriptProcessor
             try
             {
                 // Start processing status tracking
+                Console.WriteLine($"🔧 ProcessingStatusService is null: {_processingStatusService == null}");
                 if (_processingStatusService != null)
                 {
                     processingId = _processingStatusService.StartProcessing(fileName);
+                    Console.WriteLine($"🚀 Started processing status tracking: {fileName} (ID: {processingId})");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ ProcessingStatusService is null - cannot track processing status");
                 }
 
                 if (_processingSemaphore != null)

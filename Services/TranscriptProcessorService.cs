@@ -14,6 +14,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     private readonly IHallucinationDetector _hallucinationDetector;
     private readonly IConsistencyManager _consistencyManager;
     private readonly IConfigurationService _configService;
+    private readonly SmartTitleGeneratorService _titleGenerator;
     private readonly ILogger? _logger;
 
     // Validation service control settings - loaded from environment
@@ -28,6 +29,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         IHallucinationDetector hallucinationDetector,
         IConsistencyManager consistencyManager,
         IConfigurationService configService,
+        SmartTitleGeneratorService titleGenerator,
         ILogger? logger = null)
     {
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
@@ -35,6 +37,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         _hallucinationDetector = hallucinationDetector ?? throw new ArgumentNullException(nameof(hallucinationDetector));
         _consistencyManager = consistencyManager ?? throw new ArgumentNullException(nameof(consistencyManager));
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+        _titleGenerator = titleGenerator ?? throw new ArgumentNullException(nameof(titleGenerator));
         _logger = logger;
 
         // Load validation settings from environment variables
@@ -72,6 +75,9 @@ public class TranscriptProcessorService : ITranscriptProcessorService
 
             // Extract action items using AI
             await ExtractActionItemsAsync(transcript);
+
+            // Generate smart title if current title is generic
+            _titleGenerator.UpdateTitleIfGeneric(transcript);
 
             transcript.Status = TranscriptStatus.Processed;
 
@@ -882,7 +888,7 @@ Focus on:
             return true;
 
         // Check for same assignee and very similar descriptions
-        if (!string.IsNullOrEmpty(item1.AssignedTo) && 
+        if (!string.IsNullOrEmpty(item1.AssignedTo) &&
             string.Equals(item1.AssignedTo, item2.AssignedTo, StringComparison.OrdinalIgnoreCase))
         {
             var descriptionSimilarity = CalculateStringSimilarity(item1.Description, item2.Description);
