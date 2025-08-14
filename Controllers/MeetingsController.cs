@@ -624,9 +624,8 @@ namespace MeetingTranscriptProcessor.Controllers
                         meetingInfo.PreviewContent =
                             content.Length > 200 ? content.Substring(0, 200) + "..." : content;
 
-                        // Try to detect meeting title from first few lines
-                        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                        meetingInfo.Title = lines.FirstOrDefault()?.Trim() ?? "Untitled Meeting";
+                        // Try to get title from metadata file first (for smart titles), then fallback to file content
+                        meetingInfo.Title = await GetTitleFromMetadataOrContent(fileName, content);
 
                         if (meetingInfo.Title.Length > 100)
                             meetingInfo.Title = meetingInfo.Title.Substring(0, 100) + "...";
@@ -1138,6 +1137,50 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             var commonLanguages = new[] { "English", "French", "Dutch", "Spanish", "German" };
             return commonLanguages.Contains(part, StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Gets the title from metadata file if available, otherwise from file content
+        /// </summary>
+        private async Task<string> GetTitleFromMetadataOrContent(string fileName, string content)
+        {
+            try
+            {
+                // Try to get title from metadata file first
+                var baseFileName = ExtractBaseFileName(fileName);
+                var metadataFileName = $"{baseFileName}.meta.json";
+
+                // Search in all directories for metadata file
+                var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
+
+                foreach (var path in allPaths)
+                {
+                    var metadataPath = Path.Combine(path, metadataFileName);
+                    if (System.IO.File.Exists(metadataPath))
+                    {
+                        var jsonContent = await System.IO.File.ReadAllTextAsync(metadataPath);
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                        };
+                        var transcript = JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
+                        if (transcript != null && !string.IsNullOrWhiteSpace(transcript.Title))
+                        {
+                            return transcript.Title;
+                        }
+                    }
+                }
+
+                // Fallback to content-based title detection
+                var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                return lines.FirstOrDefault()?.Trim() ?? "Untitled Meeting";
+            }
+            catch
+            {
+                // If anything fails, fallback to content-based title detection
+                var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                return lines.FirstOrDefault()?.Trim() ?? "Untitled Meeting";
+            }
         }
     }
 }
