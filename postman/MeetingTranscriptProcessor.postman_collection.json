@@ -1,596 +1,657 @@
 {
-	"info": {
-		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-		"name": "Meeting Transcript Processor API",
-		"description": "API collection for testing the Meeting Transcript Processor application",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "12345678"
-	},
-	"item": [
-		{
-			"name": "System Status",
-			"item": [
-				{
-					"name": "Get System Status",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/status",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"status"
-							]
-						},
-						"description": "Get system health and processing metrics"
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Folder Management",
-			"item": [
-				{
-					"name": "Get All Folders",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders"
-							]
-						},
-						"description": "Get all folders with meeting counts"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Archive Meetings",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/0/meetings",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"0",
-								"meetings"
-							]
-						},
-						"description": "Get meetings in Archive folder (FolderType: 0)"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Archive Meetings with Filters",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/0/meetings?search=sprint&status=success&language=en&sortBy=date&sortOrder=desc",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"0",
-								"meetings"
-							],
-							"query": [
-								{
-									"key": "search",
-									"value": "sprint",
-									"description": "Search text in title/content"
-								},
-								{
-									"key": "status",
-									"value": "success",
-									"description": "Filter by status"
-								},
-								{
-									"key": "language",
-									"value": "en",
-									"description": "Filter by language"
-								},
-								{
-									"key": "sortBy",
-									"value": "date",
-									"description": "Sort field"
-								},
-								{
-									"key": "sortOrder",
-									"value": "desc",
-									"description": "Sort order"
-								}
-							]
-						},
-						"description": "Get Archive meetings with advanced filtering"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Incoming Meetings",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/1/meetings",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"1",
-								"meetings"
-							]
-						},
-						"description": "Get meetings in Incoming folder (FolderType: 1)"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Processing Meetings",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/2/meetings",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"2",
-								"meetings"
-							]
-						},
-						"description": "Get meetings in Processing folder (FolderType: 2)"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Recent Meetings",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/3/meetings",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"3",
-								"meetings"
-							]
-						},
-						"description": "Get recent meetings (last 5 across all folders, FolderType: 3)"
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Meeting Management",
-			"item": [
-				{
-					"name": "Get Meeting Details",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/{{fileName}}",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"{{fileName}}"
-							]
-						},
-						"description": "Get detailed meeting transcript and action items"
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Meeting",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/{{fileName}}",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"{{fileName}}"
-							]
-						},
-						"description": "Delete a meeting file"
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "File Upload",
-			"item": [
-				{
-					"name": "Upload Single File",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": [],
-									"description": "Select a transcript file (.txt, .md, .json, .xml, .docx, .pdf)"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/upload",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"upload"
-							]
-						},
-						"description": "Upload a single meeting transcript file"
-					},
-					"response": []
-				},
-				{
-					"name": "Upload Multiple Files",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": [],
-									"description": "Select first transcript file"
-								},
-								{
-									"key": "file",
-									"type": "file",
-									"src": [],
-									"description": "Select second transcript file"
-								},
-								{
-									"key": "file",
-									"type": "file",
-									"src": [],
-									"description": "Add more files as needed"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/upload",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"upload"
-							]
-						},
-						"description": "Upload multiple meeting transcript files at once"
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Configuration",
-			"item": [
-				{
-					"name": "Get Configuration",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/configuration",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"configuration"
-							]
-						},
-						"description": "Get current system configuration"
-					},
-					"response": []
-				},
-				{
-					"name": "Update Azure OpenAI Configuration",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"endpoint\": \"{{azureOpenAIEndpoint}}\",\n  \"apiKey\": \"{{azureOpenAIApiKey}}\",\n  \"deploymentName\": \"{{azureOpenAIDeployment}}\",\n  \"isConfigured\": true\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/configuration/azure-openai",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"configuration",
-								"azure-openai"
-							]
-						},
-						"description": "Update Azure OpenAI configuration settings"
-					},
-					"response": []
-				},
-				{
-					"name": "Update Jira Configuration",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"url\": \"{{jiraUrl}}\",\n  \"email\": \"{{jiraEmail}}\",\n  \"apiToken\": \"{{jiraApiToken}}\",\n  \"projectKey\": \"{{jiraProjectKey}}\",\n  \"isConfigured\": true\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/configuration/jira",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"configuration",
-								"jira"
-							]
-						},
-						"description": "Update Jira integration configuration"
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Advanced Filtering Examples",
-			"item": [
-				{
-					"name": "Filter by Date Range",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/0/meetings?dateFrom=2024-01-01&dateTo=2024-12-31",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"0",
-								"meetings"
-							],
-							"query": [
-								{
-									"key": "dateFrom",
-									"value": "2024-01-01",
-									"description": "Start date (YYYY-MM-DD)"
-								},
-								{
-									"key": "dateTo",
-									"value": "2024-12-31",
-									"description": "End date (YYYY-MM-DD)"
-								}
-							]
-						},
-						"description": "Filter meetings by date range"
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Participants",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/0/meetings?participants=john,jane",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"0",
-								"meetings"
-							],
-							"query": [
-								{
-									"key": "participants",
-									"value": "john,jane",
-									"description": "Comma-separated participant names"
-								}
-							]
-						},
-						"description": "Filter meetings by specific participants"
-					},
-					"response": []
-				},
-				{
-					"name": "Filter by Jira Ticket Status",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/0/meetings?hasJiraTickets=true",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"0",
-								"meetings"
-							],
-							"query": [
-								{
-									"key": "hasJiraTickets",
-									"value": "true",
-									"description": "Filter by Jira ticket existence (true/false)"
-								}
-							]
-						},
-						"description": "Filter meetings with Jira tickets"
-					},
-					"response": []
-				},
-				{
-					"name": "Complex Filter Combination",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/meetings/folders/0/meetings?search=sprint&status=success&language=en&participants=john&dateFrom=2024-01-01&dateTo=2024-12-31&hasJiraTickets=true&sortBy=date&sortOrder=desc",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"meetings",
-								"folders",
-								"0",
-								"meetings"
-							],
-							"query": [
-								{
-									"key": "search",
-									"value": "sprint",
-									"description": "Search text"
-								},
-								{
-									"key": "status",
-									"value": "success",
-									"description": "Processing status"
-								},
-								{
-									"key": "language",
-									"value": "en",
-									"description": "Meeting language"
-								},
-								{
-									"key": "participants",
-									"value": "john",
-									"description": "Participant name"
-								},
-								{
-									"key": "dateFrom",
-									"value": "2024-01-01",
-									"description": "Start date"
-								},
-								{
-									"key": "dateTo",
-									"value": "2024-12-31",
-									"description": "End date"
-								},
-								{
-									"key": "hasJiraTickets",
-									"value": "true",
-									"description": "Has Jira tickets"
-								},
-								{
-									"key": "sortBy",
-									"value": "date",
-									"description": "Sort field"
-								},
-								{
-									"key": "sortOrder",
-									"value": "desc",
-									"description": "Sort order"
-								}
-							]
-						},
-						"description": "Example of combining multiple filters"
-					},
-					"response": []
-				}
-			]
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "baseUrl",
-			"value": "http://localhost:5000",
-			"type": "string"
-		}
-	]
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Meeting Transcript Processor API",
+    "description": "API collection for testing the Meeting Transcript Processor application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345678"
+  },
+  "item": [
+    {
+      "name": "System Status",
+      "item": [
+        {
+          "name": "Get System Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/configuration/system-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "configuration", "system-status"]
+            },
+            "description": "Get system health and processing metrics"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Folder Management",
+      "item": [
+        {
+          "name": "Get All Folders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders"]
+            },
+            "description": "Get all folders with meeting counts"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Archive Meetings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "0", "meetings"]
+            },
+            "description": "Get meetings in Archive folder (FolderType: 0)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Archive Meetings with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?search=sprint&status=success&language=en&sortBy=date&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "sprint",
+                  "description": "Search text in title/content"
+                },
+                {
+                  "key": "status",
+                  "value": "success",
+                  "description": "Filter by status"
+                },
+                {
+                  "key": "language",
+                  "value": "en",
+                  "description": "Filter by language"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "date",
+                  "description": "Sort field"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Sort order"
+                }
+              ]
+            },
+            "description": "Get Archive meetings with advanced filtering"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Incoming Meetings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/1/meetings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "1", "meetings"]
+            },
+            "description": "Get meetings in Incoming folder (FolderType: 1)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Processing Meetings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/2/meetings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "2", "meetings"]
+            },
+            "description": "Get meetings in Processing folder (FolderType: 2)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recent Meetings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/3/meetings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "3", "meetings"]
+            },
+            "description": "Get recent meetings (last 5 across all folders, FolderType: 3)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Meeting Management",
+      "item": [
+        {
+          "name": "Get Meeting Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "meeting", "{{fileName}}"]
+            },
+            "description": "Get detailed meeting transcript and action items"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meeting Tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "meeting", "{{fileName}}", "tickets"]
+            },
+            "description": "Get Jira tickets for a specific meeting"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Meeting Title",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newTitle\": \"Updated Meeting Title\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}/title",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "meeting", "{{fileName}}", "title"]
+            },
+            "description": "Update the title of a meeting"
+          },
+          "response": []
+        },
+        {
+          "name": "Move Meeting",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinationFolder\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}/move",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "meeting", "{{fileName}}", "move"]
+            },
+            "description": "Move a meeting to a different folder (0=Archive, 1=Incoming, 2=Processing)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Meeting",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "meeting", "{{fileName}}"]
+            },
+            "description": "Delete a meeting file"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "File Upload",
+      "item": [
+        {
+          "name": "Upload Single File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select a transcript file (.txt, .md, .json, .xml, .docx, .pdf)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "upload"]
+            },
+            "description": "Upload a single meeting transcript file"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Multiple Files",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select first transcript file"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select second transcript file"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Add more files as needed"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "upload"]
+            },
+            "description": "Upload multiple meeting transcript files at once"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Processing Status",
+      "item": [
+        {
+          "name": "Get Processing Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/processing/queue",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "processing", "queue"]
+            },
+            "description": "Get the current processing queue and status"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Processing Status by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/processing/status/{{processingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "processing", "status", "{{processingId}}"]
+            },
+            "description": "Get status for a specific processing job"
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Completed Processing History",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/processing/completed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "processing", "completed"]
+            },
+            "description": "Clear completed processing history"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Configuration",
+      "item": [
+        {
+          "name": "Get Configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/configuration",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "configuration"]
+            },
+            "description": "Get current system configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/configuration/system-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "configuration", "system-status"]
+            },
+            "description": "Get system health and processing metrics"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Azure OpenAI Configuration",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endpoint\": \"{{azureOpenAIEndpoint}}\",\n  \"apiKey\": \"{{azureOpenAIApiKey}}\",\n  \"deploymentName\": \"{{azureOpenAIDeployment}}\",\n  \"isConfigured\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/configuration/azure-openai",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "configuration", "azure-openai"]
+            },
+            "description": "Update Azure OpenAI configuration settings"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Extraction Configuration",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxConcurrentFiles\": 3,\n  \"validationConfidenceThreshold\": 0.5,\n  \"enableValidation\": true,\n  \"enableHallucinationDetection\": true,\n  \"enableConsistencyManagement\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/configuration/extraction",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "configuration", "extraction"]
+            },
+            "description": "Update extraction configuration settings"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Jira Configuration",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{jiraUrl}}\",\n  \"email\": \"{{jiraEmail}}\",\n  \"apiToken\": \"{{jiraApiToken}}\",\n  \"projectKey\": \"{{jiraProjectKey}}\",\n  \"isConfigured\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/configuration/jira",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "configuration", "jira"]
+            },
+            "description": "Update Jira integration configuration"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Advanced Filtering Examples",
+      "item": [
+        {
+          "name": "Filter by Date Range",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?dateFrom=2024-01-01&dateTo=2024-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "query": [
+                {
+                  "key": "dateFrom",
+                  "value": "2024-01-01",
+                  "description": "Start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2024-12-31",
+                  "description": "End date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Filter meetings by date range"
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by Participants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?participants=john,jane",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "query": [
+                {
+                  "key": "participants",
+                  "value": "john,jane",
+                  "description": "Comma-separated participant names"
+                }
+              ]
+            },
+            "description": "Filter meetings by specific participants"
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by Jira Ticket Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?hasJiraTickets=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "query": [
+                {
+                  "key": "hasJiraTickets",
+                  "value": "true",
+                  "description": "Filter by Jira ticket existence (true/false)"
+                }
+              ]
+            },
+            "description": "Filter meetings with Jira tickets"
+          },
+          "response": []
+        },
+        {
+          "name": "Complex Filter Combination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?search=sprint&status=success&language=en&participants=john&dateFrom=2024-01-01&dateTo=2024-12-31&hasJiraTickets=true&sortBy=date&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "sprint",
+                  "description": "Search text"
+                },
+                {
+                  "key": "status",
+                  "value": "success",
+                  "description": "Processing status"
+                },
+                {
+                  "key": "language",
+                  "value": "en",
+                  "description": "Meeting language"
+                },
+                {
+                  "key": "participants",
+                  "value": "john",
+                  "description": "Participant name"
+                },
+                {
+                  "key": "dateFrom",
+                  "value": "2024-01-01",
+                  "description": "Start date"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2024-12-31",
+                  "description": "End date"
+                },
+                {
+                  "key": "hasJiraTickets",
+                  "value": "true",
+                  "description": "Has Jira tickets"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "date",
+                  "description": "Sort field"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Sort order"
+                }
+              ]
+            },
+            "description": "Example of combining multiple filters"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "fileName",
+      "value": "sample_meeting_transcript.txt",
+      "type": "string"
+    },
+    {
+      "key": "processingId",
+      "value": "sample-processing-id",
+      "type": "string"
+    },
+    {
+      "key": "azureOpenAIEndpoint",
+      "value": "https://your-resource.openai.azure.com",
+      "type": "string"
+    },
+    {
+      "key": "azureOpenAIApiKey",
+      "value": "your-api-key-here",
+      "type": "string"
+    },
+    {
+      "key": "azureOpenAIDeployment",
+      "value": "gpt-4",
+      "type": "string"
+    },
+    {
+      "key": "jiraUrl",
+      "value": "https://your-domain.atlassian.net",
+      "type": "string"
+    },
+    {
+      "key": "jiraEmail",
+      "value": "your-email@example.com",
+      "type": "string"
+    },
+    {
+      "key": "jiraApiToken",
+      "value": "your-jira-api-token",
+      "type": "string"
+    },
+    {
+      "key": "jiraProjectKey",
+      "value": "PROJECT",
+      "type": "string"
+    }
+  ]
 }
