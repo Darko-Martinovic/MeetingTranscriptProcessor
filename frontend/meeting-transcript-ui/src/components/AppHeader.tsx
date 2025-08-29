@@ -12,7 +12,7 @@ import {
   Moon,
 } from "lucide-react";
 import type { FolderInfo, SystemStatusDto } from "../services/api";
-import { useTheme } from "../hooks/useTheme";
+import { useTheme } from "../contexts/ThemeContext";
 import styles from "./AppHeader.module.css";
 
 interface AppHeaderProps {
