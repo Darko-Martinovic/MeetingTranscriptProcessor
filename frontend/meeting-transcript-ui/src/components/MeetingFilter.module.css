@@ -2,9 +2,10 @@
 
 /* Main container */
 .container {
-  border-bottom: 1px solid #e5e7eb;
-  background-color: white;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-primary);
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.2s ease-in-out;
 }
 
 /* Filter toggle section */
@@ -13,8 +14,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(
+    135deg,
+    var(--bg-secondary) 0%,
+    var(--bg-tertiary) 100%
+  );
+  border-bottom: 1px solid var(--border-primary);
 }
 
 /* Toggle button styles */
@@ -29,7 +34,7 @@
   transition: all 0.2s ease-in-out;
   border: none;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   min-height: 2.75rem;
   position: relative;
   overflow: hidden;
@@ -37,51 +42,76 @@
 
 .toggleButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .toggleButton:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .toggleButtonVisible {
-  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
-  color: #1e3a8a;
-  border: 1px solid #93c5fd;
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
 }
 
 .toggleButtonActive {
-  background: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%);
-  color: #14532d;
-  border: 1px solid #86efac;
+  background: linear-gradient(
+    135deg,
+    var(--accent-green) 0%,
+    var(--accent-green-hover) 100%
+  );
+  color: var(--text-inverse);
+  border: 1px solid var(--accent-green);
 }
 
 .toggleButtonInactive {
-  background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
-  color: #4c1d95;
-  border: 1px solid #c4b5fd;
+  background: linear-gradient(
+    135deg,
+    var(--accent-purple) 0%,
+    var(--accent-purple) 100%
+  );
+  color: var(--text-inverse);
+  border: 1px solid var(--accent-purple);
 }
 
 .toggleButtonInactive:hover {
-  background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);
-  border-color: #a78bfa;
+  background: linear-gradient(
+    135deg,
+    var(--accent-purple) 0%,
+    var(--accent-purple) 100%
+  );
+  border-color: var(--accent-purple);
+  opacity: 0.9;
 }
 
 .toggleButtonVisible:hover {
-  background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
-  border-color: #60a5fa;
+  background: linear-gradient(
+    135deg,
+    var(--accent-blue) 0%,
+    var(--accent-blue-hover) 100%
+  );
+  border-color: var(--accent-blue-hover);
 }
 
 .toggleButtonActive:hover {
-  background: linear-gradient(135deg, #86efac 0%, #4ade80 100%);
-  border-color: #4ade80;
+  background: linear-gradient(
+    135deg,
+    var(--accent-green-hover) 0%,
+    var(--accent-green-hover) 100%
+  );
+  border-color: var(--accent-green-hover);
 }
 
 /* Active filter count badge */
 .filterCountBadge {
-  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
-  color: #9a3412;
+  background: linear-gradient(
+    135deg,
+    var(--accent-yellow) 0%,
+    var(--accent-yellow) 100%
+  );
+  color: var(--text-inverse);
   border-radius: 50%;
   width: 1.25rem;
   height: 1.25rem;
@@ -91,8 +121,8 @@
   justify-content: center;
   font-weight: 700;
   margin-left: 0.5rem;
-  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
-  border: 1px solid #fdba74;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--accent-yellow);
 }
 
 /* Clear all button */
@@ -101,29 +131,37 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
-  color: #991b1b;
+  background: linear-gradient(
+    135deg,
+    var(--accent-red) 0%,
+    var(--accent-red-hover) 100%
+  );
+  color: var(--text-inverse);
   border-radius: 0.75rem;
   font-weight: 600;
   font-size: 0.875rem;
-  border: 1px solid #fca5a5;
+  border: 1px solid var(--accent-red);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-  box-shadow: 0 2px 4px rgba(252, 165, 165, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .clearButton:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #fca5a5 0%, #f87171 100%);
-  border-color: #f87171;
-  box-shadow: 0 4px 8px rgba(252, 165, 165, 0.3);
+  background: linear-gradient(
+    135deg,
+    var(--accent-red-hover) 0%,
+    var(--accent-red-hover) 100%
+  );
+  border-color: var(--accent-red-hover);
+  box-shadow: var(--shadow-md);
 }
 
 /* Filter panel */
 .filterPanel {
   padding: 1rem;
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
   gap: 1rem;
   display: flex;
   flex-direction: column;
@@ -143,29 +181,29 @@
   left: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #64748b;
+  color: var(--text-tertiary);
   pointer-events: none;
 }
 
 .searchInput {
   flex: 1;
   padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-secondary);
   border-radius: 0.5rem;
-  background-color: white;
+  background-color: var(--bg-primary);
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--text-primary);
   transition: all 0.15s ease;
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px var(--accent-blue-light);
 }
 
 .searchInput::placeholder {
-  color: #94a3b8;
+  color: var(--text-quaternary);
 }
 
 /* Status indicator dot */
@@ -173,7 +211,7 @@
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  background: #f59e0b;
+  background: var(--accent-yellow);
 }
 
 /* Compact filter grid */
@@ -194,10 +232,11 @@
 .filterSection {
   flex: 1;
   min-width: 200px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
   border-radius: 0.5rem;
   padding: 0.75rem;
+  transition: background-color 0.2s ease-in-out;
 }
 
 /* Filter header */
@@ -208,7 +247,7 @@
   margin-bottom: 0.5rem;
   font-weight: 600;
   font-size: 0.8rem;
-  color: #334155;
+  color: var(--text-primary);
 }
 
 /* Filter tags container */
@@ -223,24 +262,25 @@
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-secondary);
   border-radius: 0.375rem;
   font-size: 0.75rem;
-  background: white;
+  background: var(--bg-primary);
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
+  color: var(--text-primary);
 }
 
 .filterTag:hover {
-  border-color: #6366f1;
-  background: #f8fafc;
+  border-color: var(--border-focus);
+  background: var(--bg-secondary);
 }
 
 .filterTagActive {
-  background: #6366f1;
-  border-color: #6366f1;
-  color: white;
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: var(--text-inverse);
 }
 
 .hiddenCheckbox {
@@ -259,14 +299,23 @@
   flex: 1;
   min-width: 120px;
   padding: 0.375rem 0.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-secondary);
   border-radius: 0.375rem;
   font-size: 0.75rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.15s ease;
+}
+
+.compactDateInput:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  background: var(--bg-primary);
 }
 
 .dateSeparator {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
@@ -274,11 +323,18 @@
 .compactSelect {
   width: 100%;
   padding: 0.375rem 0.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-secondary);
   border-radius: 0.375rem;
   font-size: 0.75rem;
-  background: white;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.compactSelect:focus {
+  outline: none;
+  border-color: var(--border-focus);
 }
 
 /* Compact sorting section */
@@ -287,8 +343,8 @@
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-secondary);
   border-radius: 0.5rem;
   justify-content: center;
 }
@@ -302,7 +358,7 @@
 .compactSortingSection .sortingLabel {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 

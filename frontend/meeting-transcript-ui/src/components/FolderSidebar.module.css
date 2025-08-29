@@ -1,8 +1,8 @@
 /* Folder Sidebar Styles */
 
 .sidebar {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
   border-radius: 0.5rem;
   padding: 1.5rem;
   height: fit-content;
@@ -11,12 +11,13 @@
   width: 100%;
   max-width: 280px;
   min-width: 200px;
+  transition: background-color 0.2s ease-in-out;
 }
 
 .sidebarTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 1rem 0;
 }
 
@@ -49,11 +50,12 @@
   font-size: 0.75rem;
   font-weight: 500;
   padding: 0.25rem 0.5rem;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
   border-radius: 9999px;
   min-width: 1.5rem;
   text-align: center;
+  transition: background-color 0.2s ease-in-out;
 }
 
 /* Folder Icon Styles */
@@ -64,23 +66,23 @@
 }
 
 .folderIconArchive {
-  color: #dc2626;
+  color: var(--accent-red);
 }
 
 .folderIconIncoming {
-  color: #2563eb;
+  color: var(--accent-blue);
 }
 
 .folderIconProcessing {
-  color: #d97706;
+  color: var(--accent-yellow);
 }
 
 .folderIconOutgoing {
-  color: #059669;
+  color: var(--accent-green);
 }
 
 .folderIconGeneral {
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 /* Responsive design */

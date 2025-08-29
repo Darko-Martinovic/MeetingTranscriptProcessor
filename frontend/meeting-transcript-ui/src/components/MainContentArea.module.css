@@ -36,26 +36,26 @@
   justify-content: center;
   text-align: center;
   padding: 4rem 2rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .emptyIcon {
   width: 4rem;
   height: 4rem;
   margin-bottom: 1rem;
-  color: #d1d5db;
+  color: var(--border-secondary);
 }
 
 .emptyTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
   margin: 0 0 0.5rem 0;
 }
 
 .emptyDescription {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
   margin: 0;
   max-width: 400px;
   line-height: 1.5;

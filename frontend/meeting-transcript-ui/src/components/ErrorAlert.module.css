@@ -1,8 +1,8 @@
 /* Error Alert Styles */
 .errorAlert {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #dc2626;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
   padding: 1rem 1.5rem;
   border-radius: 0.5rem;
   margin-bottom: 1rem;
@@ -11,12 +11,13 @@
   align-items: center;
   font-size: 0.875rem;
   line-height: 1.5;
+  transition: background-color 0.2s ease-in-out;
 }
 
 .errorCloseButton {
   background: none;
   border: none;
-  color: #dc2626;
+  color: var(--accent-red);
   font-size: 1.25rem;
   font-weight: bold;
   cursor: pointer;

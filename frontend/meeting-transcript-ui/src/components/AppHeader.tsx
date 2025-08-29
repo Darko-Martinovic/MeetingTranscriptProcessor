@@ -8,8 +8,11 @@ import {
   Shield,
   Layers,
   CheckCircle2,
+  Sun,
+  Moon,
 } from "lucide-react";
 import type { FolderInfo, SystemStatusDto } from "../services/api";
+import { useTheme } from "../hooks/useTheme";
 import styles from "./AppHeader.module.css";
 
 interface AppHeaderProps {
@@ -39,6 +42,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onRefresh,
   getFolderHeaderIcon,
 }) => {
+  const { theme, toggleTheme } = useTheme();
+
   const statusDotClass = `${styles.statusDot} ${
     systemStatus?.isRunning ? styles.statusDotOnline : styles.statusDotOffline
   }`;
@@ -94,6 +99,17 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
             <button onClick={onShowSettings} className={styles.iconButton}>
               <Settings className="h-5 w-5" />
+            </button>
+            <button
+              onClick={toggleTheme}
+              className={styles.iconButton}
+              title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+            >
+              {theme === "light" ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Sun className="h-5 w-5" />
+              )}
             </button>
             <button
               onClick={onRefresh}

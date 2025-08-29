@@ -1,6 +1,6 @@
 /* Meeting List Header Styles */
 .meetingListHeader {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-primary);
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -16,7 +16,7 @@
 .meetingListTitle {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.4;
 }
@@ -39,14 +39,22 @@
 }
 
 .filterToggleButtonInactive {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: white;
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  background: linear-gradient(
+    135deg,
+    var(--accent-blue) 0%,
+    var(--accent-blue-hover) 100%
+  );
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-sm);
 }
 
 .filterToggleButtonInactive:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+  background: linear-gradient(
+    135deg,
+    var(--accent-blue-hover) 0%,
+    var(--accent-blue-hover) 100%
+  );
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 

@@ -1,16 +1,20 @@
 /* Meeting Details Component Styles */
 .meetingDetail {
-  background: white;
+  background: var(--bg-primary);
   border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
+  transition: background-color 0.2s ease-in-out;
 }
 
 .meetingDetailHeader {
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid var(--border-primary);
+  background: linear-gradient(
+    135deg,
+    var(--bg-secondary) 0%,
+    var(--bg-tertiary) 100%
+  );
 }
 
 .headerContent {
@@ -32,7 +36,7 @@
   background: transparent;
   border-radius: 8px;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-tertiary);
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -40,14 +44,14 @@
 }
 
 .iconButton:hover {
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .meetingDetailTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.2;
 }
@@ -57,7 +61,7 @@
   flex-wrap: wrap;
   gap: 1.5rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .meetingDetailMeta span {
@@ -84,10 +88,10 @@
 .sectionTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-primary);
 }
 
 .participants {
@@ -97,13 +101,13 @@
 }
 
 .participantTag {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.875rem;
   font-weight: 500;
-  border: 1px solid #93c5fd;
+  border: 1px solid var(--accent-blue);
 }
 
 .actionItems {
@@ -113,16 +117,16 @@
 }
 
 .actionItem {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   padding: 1.25rem;
-  background: #fafafa;
+  background: var(--bg-secondary);
   transition: all 0.2s ease;
 }
 
 .actionItem:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-color: var(--border-secondary);
+  box-shadow: var(--shadow-sm);
 }
 
 .actionItemContent {
@@ -137,7 +141,7 @@
 
 .actionItemDescription {
   font-size: 0.875rem;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0 0 0.75rem 0;
   line-height: 1.5;
 }
@@ -147,7 +151,7 @@
   flex-wrap: wrap;
   gap: 1rem;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .actionItemMeta span {
@@ -157,17 +161,17 @@
 }
 
 .meetingContent {
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 8px;
   padding: 1.5rem;
   max-height: 24rem;
   overflow-y: auto;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-primary);
 }
 
 .meetingText {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--text-primary);
   font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
     "Courier New", monospace;
   line-height: 1.6;
@@ -211,17 +215,17 @@
 }
 
 .jiraTicket {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   padding: 1.25rem;
-  background: linear-gradient(135deg, #fefefe 0%, #f8fafc 100%);
+  background: var(--bg-secondary);
   transition: all 0.2s ease;
   border-left: 4px solid #3b82f6;
 }
 
 .jiraTicket:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: var(--border-secondary);
+  box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 
@@ -293,9 +297,9 @@
 }
 
 .statusBadge {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
 }
 
 .jiraTicketContent {
@@ -306,7 +310,7 @@
 
 .jiraTicketDescription {
   font-size: 0.875rem;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.5;
 }
@@ -316,7 +320,7 @@
   flex-wrap: wrap;
   gap: 1rem;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .jiraTicketDetail {
@@ -330,7 +334,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-style: italic;
 }
 
@@ -339,9 +343,9 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-style: italic;
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  border: 2px dashed #e5e7eb;
+  border: 2px dashed var(--border-secondary);
 }

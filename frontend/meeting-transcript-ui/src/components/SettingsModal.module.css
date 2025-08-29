@@ -2,7 +2,7 @@
 .modal {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--bg-modal-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,15 +11,16 @@
 }
 
 .modalContent {
-  background: white;
+  background: var(--bg-primary);
   border-radius: 12px;
   width: 100%;
   max-width: 42rem;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-xl);
   animation: modalSlideIn 0.3s ease-out;
   margin: 1rem;
+  transition: background-color 0.2s ease-in-out;
 }
 
 @keyframes modalSlideIn {
@@ -35,7 +36,7 @@
 
 .modalHeader {
   padding: 2rem 2rem 0 2rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .headerContent {
@@ -48,7 +49,7 @@
 .modalTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin: 0;
 }
 

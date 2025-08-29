@@ -1,10 +1,11 @@
 /* App Header Styles */
 .header {
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: background-color 0.2s ease-in-out;
 }
 
 .headerContainer {
@@ -35,13 +36,13 @@
 .appIcon {
   width: 2rem;
   height: 2rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .appTitle {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -50,9 +51,10 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 0.375rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-primary);
+  transition: background-color 0.2s ease-in-out;
 }
 
 .statusDot {
@@ -63,17 +65,17 @@
 }
 
 .statusDotOnline {
-  background: #10b981;
+  background: var(--accent-green);
 }
 
 .statusDotOffline {
-  background: #ef4444;
+  background: var(--accent-red);
 }
 
 .statusText {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .uploadButton {
@@ -81,8 +83,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: #2563eb;
-  color: white;
+  background: var(--accent-blue);
+  color: var(--text-inverse);
   border: none;
   border-radius: 0.375rem;
   font-size: 0.875rem;
@@ -92,7 +94,7 @@
 }
 
 .uploadButton:hover {
-  background: #1d4ed8;
+  background: var(--accent-blue-hover);
 }
 
 .iconButton {
@@ -101,17 +103,17 @@
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: 0.375rem;
-  color: #6b7280;
+  color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .iconButton:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .iconButton:disabled {
@@ -120,7 +122,7 @@
 }
 
 .iconButtonLoading {
-  color: #2563eb;
+  color: var(--accent-blue);
 }
 
 .spinIcon {
@@ -138,23 +140,23 @@
 
 /* Folder Icon Colors */
 .folderIconArchive {
-  color: #dc2626;
+  color: var(--accent-red);
 }
 
 .folderIconIncoming {
-  color: #2563eb;
+  color: var(--accent-blue);
 }
 
 .folderIconProcessing {
-  color: #d97706;
+  color: var(--accent-yellow);
 }
 
 .folderIconOutgoing {
-  color: #059669;
+  color: var(--accent-green);
 }
 
 .folderIconGeneral {
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 /* Responsive design */
