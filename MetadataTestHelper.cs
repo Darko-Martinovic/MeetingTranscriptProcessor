@@ -5,6 +5,11 @@ using System.Threading.Tasks;
 
 namespace MeetingTranscriptProcessor.Test
 {
+    /// <summary>
+    /// Test helper for metadata serialization functionality.
+    /// This class is used for development and testing purposes only.
+    /// It is not called during normal application execution.
+    /// </summary>
     public static class MetadataTestHelper
     {
         public static async Task TestMetadataSaving()

@@ -45,9 +45,6 @@ namespace MeetingTranscriptProcessor
 
         static async Task Main(string[] args)
         {
-            // Run metadata saving test first
-            await Test.MetadataTestHelper.TestMetadataSaving();
-
             // Check if should run as web API
             bool runAsWebApi = args.Contains("--web") || args.Contains("--api") ||
                               Environment.GetEnvironmentVariable("RUN_AS_WEB_API")?.ToLower() == "true";
