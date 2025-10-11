@@ -260,9 +260,20 @@ EXAMPLES OF BAD TITLES TO AVOID:
     public bool IsConfigured()
     {
         var settings = _configService.GetAzureOpenAISettings();
-        return !string.IsNullOrEmpty(settings.Endpoint)
+
+        // Debug output to help identify the issue
+        Console.WriteLine("🔍 Azure OpenAI Configuration Debug:");
+        Console.WriteLine($"   Endpoint: '{settings.Endpoint}' (Empty: {string.IsNullOrEmpty(settings.Endpoint)})");
+        Console.WriteLine($"   ApiKey: '{settings.ApiKey?.Substring(0, Math.Min(10, settings.ApiKey?.Length ?? 0))}...' (Empty: {string.IsNullOrEmpty(settings.ApiKey)})");
+        Console.WriteLine($"   DeploymentName: '{settings.DeploymentName}' (Empty: {string.IsNullOrEmpty(settings.DeploymentName)})");
+
+        var isConfigured = !string.IsNullOrEmpty(settings.Endpoint)
             && !string.IsNullOrEmpty(settings.ApiKey)
             && !string.IsNullOrEmpty(settings.DeploymentName);
+
+        Console.WriteLine($"   IsConfigured Result: {isConfigured}");
+
+        return isConfigured;
     }
 
     /// <summary>

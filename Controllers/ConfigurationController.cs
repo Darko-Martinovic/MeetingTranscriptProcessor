@@ -193,7 +193,11 @@ namespace MeetingTranscriptProcessor.Controllers
                 {
                     IsRunning = true, // API is running if we can respond
                     AzureOpenAIConfigured = !string.IsNullOrEmpty(
-                        Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")
+                        Environment.GetEnvironmentVariable("AOAI_ENDPOINT") ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")
+                    ) && !string.IsNullOrEmpty(
+                        Environment.GetEnvironmentVariable("AOAI_APIKEY") ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY")
+                    ) && !string.IsNullOrEmpty(
+                        Environment.GetEnvironmentVariable("CHATCOMPLETION_DEPLOYMENTNAME") ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME")
                     ),
                     JiraConfigured = IsJiraConfigured(),
                     ValidationEnabled = bool.Parse(
