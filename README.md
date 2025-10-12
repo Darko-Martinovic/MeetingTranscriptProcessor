@@ -11,6 +11,14 @@ An intelligent web application that automatically processes meeting transcripts 
 - � **Fallback Mode** - Works without AI credentials using rule-based extraction
 - 🎯 **Context-Aware** - Adapts to meeting types (standup, sprint, incident, etc.) and languages (EN/FR/NL)
 
+## 🎬 Demo Video
+
+See the Meeting Transcript Processor in action:
+
+https://github.com/user-attachments/assets/cb08feaa-05fa-4988-abfb-038d2ebb02d9
+
+_Watch how the application automatically processes meeting transcripts, extracts action items using Azure OpenAI, and creates Jira tickets seamlessly._
+
 ## 🚀 Quick Start
 
 ### Prerequisites
