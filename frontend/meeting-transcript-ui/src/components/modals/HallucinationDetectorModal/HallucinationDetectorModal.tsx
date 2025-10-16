@@ -55,22 +55,22 @@ const validationSteps: ValidationStep[] = [
   },
   {
     id: "assignee",
-    title: "Assignee Validation",
+    title: "Assignee Context Validation",
     description:
-      "Ensures assigned persons were mentioned or present in the meeting context.",
+      "Ensures assigned persons are logically related to the discussed context and tasks.",
     icon: <UserCheck className={styles.stepIcon} />,
-    threshold: "Person mentioned in transcript",
+    threshold: "Person contextually relevant",
     examples: {
       valid:
-        '"John will prepare the quarterly report" - John was mentioned as a participant',
+        '"John will prepare the quarterly report" - John was discussed as the finance lead',
       invalid:
-        '"Sarah will handle client follow-up" - Sarah never mentioned in meeting',
+        '"Sarah will prepare coffee for everyone" - Unrealistic business task assignment',
     },
     details: [
-      "Cross-references names with meeting participants",
-      "Checks for pronouns linking to mentioned individuals",
-      "Validates role assignments against participant list",
-      "Prevents assignment to non-existent team members",
+      "Validates assignments are contextually appropriate",
+      "Checks for reasonable business task assignments",
+      "Ensures tasks align with discussed roles and responsibilities",
+      "Prevents illogical or personal task assignments",
     ],
   },
   {

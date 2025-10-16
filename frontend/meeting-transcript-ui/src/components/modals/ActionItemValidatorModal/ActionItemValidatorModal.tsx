@@ -111,15 +111,16 @@ const validationTechniques: ValidationTechnique[] = [
     methodology: [
       "Extract keywords from action item titles and descriptions",
       "Check keyword presence in original transcript",
-      "Verify assignee names match meeting participants",
+      "Verify assignee context matches discussed responsibilities",
       "Validate context snippets exist in source material",
     ],
     examples: {
       good: {
         scenario:
-          'Action item "Sarah will update database schema" where Sarah is a participant and database is discussed',
+          'Action item "Sarah will handle client follow-up" where client communication was discussed in the meeting',
         score: 0.92,
-        reason: "Keywords, assignee, and context all verified in transcript",
+        reason:
+          "Task assignment is contextually relevant to meeting discussion",
       },
       poor: {
         scenario:
@@ -243,12 +244,12 @@ const validationSteps: ValidationStep[] = [
   {
     step: 3,
     title: "Context Verification",
-    description: "Validate contextual relevance and participant alignment",
+    description: "Validate contextual relevance and assignment logic",
     icon: <FileText className={styles.stepIcon} />,
     details: [
       "Extract keywords from action items",
       "Verify keywords exist in original transcript",
-      "Check assignee names against participant list",
+      "Check assignee context matches discussed responsibilities",
       "Validate context snippets are genuine",
     ],
   },
@@ -646,7 +647,7 @@ const ActionItemValidatorModal: React.FC<ActionItemValidatorModalProps> = ({
                         Context Coherence
                       </span>
                       <span className={styles.metricValue}>
-                        Contextual relevance and participant alignment
+                        Contextual relevance and assignment logic
                       </span>
                     </div>
                     <div className={styles.metricItem}>

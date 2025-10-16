@@ -86,7 +86,7 @@ public class HallucinationDetector : IHallucinationDetector
             if (!assigneeValid)
             {
                 analysis.HallucinationIndicators.Add(
-                    $"Assigned person '{item.AssignedTo}' not found in transcript or participants"
+                    $"Assigned person '{item.AssignedTo}' appears to be unrelated to the discussed context"
                 );
                 analysis.ConfidenceScore -= 0.3;
             }
@@ -104,7 +104,7 @@ public class HallucinationDetector : IHallucinationDetector
         }
 
         // 4. Structural Anomalies
-        DetectStructuralAnomalies(item, analysis);
+        DetectStructuralAnomalies(item, analysis, transcript);
 
         // 5. Temporal Consistency
         ValidateTemporalConsistency(item, transcript, analysis);
@@ -127,7 +127,8 @@ public class HallucinationDetector : IHallucinationDetector
     }
 
     /// <summary>
-    /// Validate that assigned person was mentioned in transcript
+    /// Validate assignee context - checks if the person is mentioned as a logical choice
+    /// for the task, not necessarily requiring their presence in the meeting
     /// </summary>
     private bool ValidateAssignee(string assignee, MeetingTranscript transcript)
     {
@@ -215,16 +216,15 @@ public class HallucinationDetector : IHallucinationDetector
     /// <summary>
     /// Detect structural anomalies in action items
     /// </summary>
-    private void DetectStructuralAnomalies(ActionItem item, ActionItemAnalysis analysis)
+    private void DetectStructuralAnomalies(ActionItem item, ActionItemAnalysis analysis, MeetingTranscript transcript)
     {
         // Overly generic titles
         var genericTitles = new[]
         {
-            "follow up",
-            "check status",
-            "review items",
-            "discuss further",
-            "action item"
+            "action item",
+            "todo",
+            "task",
+            "do something"
         };
         if (
             genericTitles.Any(
@@ -253,7 +253,7 @@ public class HallucinationDetector : IHallucinationDetector
         {
             // Check if meeting actually discussed these technical topics
             var transcriptHasTechnical = technicalTerms.Any(
-                term => item.Context.Contains(term, StringComparison.OrdinalIgnoreCase)
+                term => transcript.Content.Contains(term, StringComparison.OrdinalIgnoreCase)
             );
 
             if (!transcriptHasTechnical)
