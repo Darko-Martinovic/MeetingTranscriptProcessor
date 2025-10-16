@@ -17,7 +17,7 @@ See the Meeting Transcript Processor in action:
 
 https://github.com/user-attachments/assets/390b85a2-f49e-4eaa-aef4-5da2269c9c62
 
-*Watch how the application automatically processes meeting transcripts, extracts action items using Azure OpenAI, and creates Jira tickets seamlessly.*
+_Watch how the application automatically processes meeting transcripts, extracts action items using Azure OpenAI, and creates Jira tickets seamlessly._
 
 ## 🚀 Quick Start
 
