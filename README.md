@@ -208,3 +208,9 @@ This project is licensed under the MIT License.
 ---
 
 **Perfect for:** Teams wanting to automate action item tracking from meeting transcripts with enterprise-grade AI validation and Jira integration.
+
+## ⚠️ Disclaimer
+
+This project was developed independently on personal equipment and in personal time.
+It is not affiliated with, endorsed by, or derived from the intellectual property of EPAM Systems or any of its clients.
+All examples, configurations, and data are generic and intended solely for demonstration and educational purposes.
