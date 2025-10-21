@@ -25,6 +25,7 @@ namespace MeetingTranscriptProcessor.Services
 
             var genericPatterns = new[]
             {
+                // English patterns
                 @"^meeting transcript$",
                 @"^meeting$",
                 @"^transcript$",
@@ -42,6 +43,33 @@ namespace MeetingTranscriptProcessor.Services
                 @"^status meeting$",
                 @"^status update$",
                 @"^update meeting$",
+                // French patterns
+                @"^transcript de réunion$",
+                @"^transcript de reunion$",
+                @"^réunion$",
+                @"^reunion$",
+                @"^transcript$",
+                @"^procès-verbal$",
+                @"^proces-verbal$",
+                @"^compte-rendu$",
+                @"^compte rendu$",
+                @"^discussion$",
+                @"^appel$",
+                @"^conférence$",
+                @"^conference$",
+                // Dutch patterns
+                @"^vergadertranscript$",
+                @"^vergader transcript$",
+                @"^vergadering$",
+                @"^transcript$",
+                @"^notulen$",
+                @"^verslag$",
+                @"^bespreking$",
+                @"^overleg$",
+                @"^meeting$",
+                @"^gesprek$",
+                @"^discussie$",
+                // Test/Demo patterns (any language)
                 @".*test.*meeting.*",
                 @".*monitor.*test.*",
                 @".*processing.*test.*",

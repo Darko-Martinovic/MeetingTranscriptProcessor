@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect } from "react";
 import { Star, ExternalLink, Calendar, User, AlertCircle } from "lucide-react";
 import type { MeetingTranscript, JiraTicketReference } from "../services/api";
 import { meetingApi } from "../services/api";
+import LanguageBadge from "./common/LanguageBadge";
 import styles from "./MeetingDetails.module.css";
 
 interface MeetingDetailsProps {
@@ -87,7 +88,10 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
           <div className={styles.meetingDetailMeta}>
             <span>Meeting Date: {formatDate(meeting.meetingDate)}</span>
             <span>Processed: {formatDate(meeting.processedAt)}</span>
-            <span>Language: {meeting.detectedLanguage}</span>
+            <div className={styles.languageSection}>
+              <span className={styles.languageLabel}>Language:</span>
+              <LanguageBadge language={meeting.detectedLanguage} size="medium" />
+            </div>
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { Archive, Inbox, Trash2 } from "lucide-react";
 import type { MeetingInfo } from "../../../services/api";
 import ConfirmationModal from "../../common/ConfirmationModal";
 import StatusBadge from "../../common/StatusBadge";
+import LanguageBadge from "../../common/LanguageBadge";
 import ActionButtons from "./ActionButtons";
 import EditableTitle from "./EditableTitle";
 import styles from "./MeetingCard.module.css";
@@ -163,6 +164,7 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
         <div className={styles.statusSection}>
           <div className={styles.statusMetadata}>
             <StatusBadge status={meeting.status} />
+            <LanguageBadge language={meeting.language} />
             <span className={styles.fileSize}>
               {formatFileSize(meeting.size)}
             </span>
