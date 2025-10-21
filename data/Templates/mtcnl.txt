@@ -1,0 +1,78 @@
+VERGADERTRANSCRIPT
+==================
+Datum: 2025-06-29
+Tijd: 16:30 CET
+Deelnemers: Jan (Bedrijfsvertegenwoordiger), Alex (Senior Architect - Extern), Michiel (Product Owner - Extern), Sarah (Ontwikkelaar - EPAM)
+Vergadertype: Procesverbetering - Documentatie
+Taal: Nederlands (gemengde vaardigheidsniveaus)
+
+TRANSCRIPT:
+-----------
+
+Jan: Goedemiddag iedereen! Ik hoop dat jullie niet te moe zijn na deze lange dag van vergaderingen.
+
+Alex: Goedenavond Jan! Eigenlijk is het productief geweest. Hoe gaat het Sarah? Klaar voor nog een discussie?
+
+Sarah: Hallo iedereen. Ja, klaar. Vandaag was inderdaad druk, maar laten we dit belangrijke onderwerp afmaken.
+
+Michiel: Hallo allemaal. De regen is eindelijk gestopt hier in Brussel, wat fijn is.
+
+Jan: Goed! Dus, laten we het Confluence template voor productie deployments bespreken. Alex, je noemde dat dit verbetering nodig heeft?
+
+Alex: Ja, precies. Het huidige template is te basic. Wanneer we applicaties naar productie verplaatsen, vooral het oude .NET Framework systeem, hebben we meer gedetailleerde informatie nodig over database scripts.
+
+Michiel: Ik ben het ermee eens. Het operaties team blijft vragen om meer details over T-SQL scripts en database wijzigingen.
+
+Sarah: Ik heb het huidige template bekeken. Het mist cruciale informatie over script uitvoering volgorde en rollback procedures.
+
+Jan: Welke specifieke verbeteringen stellen jullie voor?
+
+Alex: We hebben secties nodig voor T-SQL script details, uitvoering afhankelijkheden, en database backup vereisten. Het template zou uitgebreider moeten zijn voor SQL Server deployments.
+
+Michiel: Ja, en ook impact analyse. Soms weten we niet welke tabellen of stored procedures beïnvloed worden door de wijzigingen.
+
+Sarah: Ik kan secties toevoegen voor script validatie stappen, test procedures, en omgeving-specifieke configuraties. Dit zou het proces veel veiliger maken.
+
+Jan: Dat klinkt uitstekend. Sarah, omdat je zowel de technische vereisten als het huidige proces begrijpt, zou je in staat zijn om dit template bij te werken?
+
+Sarah: Ja, absoluut. Ik heb ervaring met productie deployments en ik weet welke informatie de database beheerders nodig hebben.
+
+Alex: Perfecte keuze. Sarah kent de SQL Server omgeving heel goed en begrijpt het .NET Framework deployment proces.
+
+Michiel: Hoe lang denk je dat dit gaat duren, Sarah?
+
+Sarah: Als ik me hierop focus, kan ik een concept klaar hebben tegen het einde van deze week. Dan kunnen we het samen reviewen en aanpassingen maken.
+
+Jan: Die tijdslijn werkt goed. Dit nieuwe template zal ons helpen deployment problemen te vermijden zoals we vorige maand hadden.
+
+Alex: Precies! Betere documentatie betekent minder productie problemen en snellere rollbacks indien nodig.
+
+Michiel: Ik zal coördineren met het operaties team om hun input te krijgen over wat ze nodig hebben in het template.
+
+Sarah: Dat zou heel nuttig zijn. Ik zal ook met David en Tom checken om te zien of ze suggesties hebben vanuit hun deployment ervaringen.
+
+Jan: Uitstekende samenwerking. Dus we maken een taak voor het bijwerken van het Confluence deployment template met verbeterde T-SQL en database informatie.
+
+Alex: Ja, en vermeld alsjeblieft dat het rollback procedures en dependency mapping moet bevatten.
+
+Michiel: Ik zal het ticket maken met al deze vereisten en het aan Sarah toewijzen.
+
+Sarah: Perfect. Ik begin hier morgenochtend mee te werken.
+
+Jan: Dank iedereen. Dit zal zeker de kwaliteit van ons deployment proces verbeteren.
+
+Alex: Bedankt voor het organiseren van deze discussie, Jan.
+
+Michiel: Tot ziens iedereen!
+
+Sarah: Dank jullie allemaal, tot ziens!
+
+ACTIEPUNTEN:
+------------
+- Maak nieuw Jira ticket: "Update Confluence productie deployment template met verbeterde T-SQL documentatie"
+- Toegewezen aan: Sarah
+- Prioriteit: Gemiddeld
+- Vervaldatum: Einde van de week (concept)
+- Beschrijving: Verbeter deployment template met T-SQL script details, uitvoering volgorde, rollback procedures, dependency mapping, en database backup vereisten
+- Samenwerking: Coördineer met operaties team voor vereisten, raadpleeg ontwikkelteam voor suggesties
+- Scope: Focus op SQL Server en .NET Framework deployment proces verbeteringen

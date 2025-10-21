@@ -1,0 +1,68 @@
+VERGADERTRANSCRIPT
+==================
+Datum: 2025-06-29
+Tijd: 15:30 CET
+Deelnemers: Jan (Bedrijfsvertegenwoordiger), Alex (Senior Architect - Extern), Michiel (Product Owner - Extern)
+Vergadertype: Bug Review - Urgente Kwestie
+Taal: Nederlands (B1-B2 niveau sprekers)
+
+TRANSCRIPT:
+-----------
+
+Jan: Hallo iedereen, bedankt voor het deelnemen aan deze urgente call. Alex, hoe was je weekend?
+
+Alex: Hallo Jan, hallo Michiel. Weekend was goed, maar ik heb wat tijd besteed aan nadenken over dit Promo Search probleem. Het is behoorlijk problematisch.
+
+Michiel: Hallo iedereen. Ja, ik krijg sinds vrijdagmiddag rapporten van de zakelijke gebruikers.
+
+Jan: Alex, kun je uitleggen wat er precies gebeurt met de Promo Search stored procedure?
+
+Alex: Natuurlijk. De stored procedure "sp_PromoSearch" geeft onjuiste resultaten terug wanneer gebruikers zoeken naar promoties op datumbereik. Soms geeft het geen resultaten terug, soms dubbele entries.
+
+Michiel: Dit veroorzaakt grote problemen in de winkels. De kassamedewerkers kunnen actieve promoties niet zien en klanten klagen.
+
+Jan: Hoe urgent is dit? Kunnen we wachten tot volgende week?
+
+Alex: Nee, nee! Dit moet onmiddellijk worden opgelost. Het beïnvloedt de dagelijkse operaties in alle Belgische winkels. De SQL Server database toont vreemd gedrag in het execution plan.
+
+Michiel: Ik ben het eens met Alex. Dit blokkeert bedrijfsoperaties. We hebben iemand nodig die SQL Server en het oude .NET Framework systeem heel goed kent.
+
+Alex: Ik denk dat Tom de beste keuze zou zijn. Hij heeft goede ervaring met stored procedures en de legacy systeemarchitectuur.
+
+Jan: Ja, Tom is heel goed met SQL Server optimalisatie. Maar is hij vandaag beschikbaar?
+
+Alex: Ik heb vanmorgen met het EPAM team gecheckt. Tom kan hier onmiddellijk mee beginnen. Hij heeft alleen toegang nodig tot de productie logs en de stored procedure broncode.
+
+Michiel: Perfect. Wat is de verwachte tijdslijn voor de fix?
+
+Alex: Als het een query optimalisatie probleem is, kan Tom het waarschijnlijk vandaag of morgenochtend fixen. Als het datacorruptie is, kan het langer duren.
+
+Jan: Laten we dit als kritiek prioriteren. Alex, kun je technische ondersteuning aan Tom bieden indien nodig?
+
+Alex: Absoluut! Ik zal de hele week beschikbaar zijn om te helpen met .NET Framework integratie en database schema vragen.
+
+Michiel: Ik zal de bedrijfsimpact monitoren en communiceren met de winkelmanagers.
+
+Jan: Uitstekend. Dus we maken een kritiek bug ticket voor Tom om de Promo Search stored procedure te onderzoeken en te fixen.
+
+Alex: Ja, en vermeld alsjeblieft dat hij het execution plan en recente database wijzigingen moet controleren. Ik vermoed dat het gerelateerd kan zijn aan de indexering strategie.
+
+Michiel: Ik zal het ticket maken direct na deze call met alle technische details die Alex noemde.
+
+Jan: Perfect. Is er nog iets anders dat we moeten bespreken?
+
+Alex: Nee, ik denk dat we een duidelijk plan hebben. Hoe eerder Tom begint, hoe beter.
+
+Michiel: Akkoord. Ik zal de ticket details naar iedereen sturen zodra het gemaakt is.
+
+Jan: Dank jullie beiden. Laten we hopen dat we dit snel kunnen oplossen!
+
+ACTIEPUNTEN:
+------------
+- Maak kritiek Jira ticket: "URGENT: Fix Promo Search stored procedure die onjuiste resultaten teruggeeft"
+- Toegewezen aan: Tom
+- Prioriteit: Kritiek
+- Startdatum: Onmiddellijk
+- Beschrijving: Onderzoek en fix sp_PromoSearch stored procedure die onjuiste resultaten teruggeeft, controleer execution plan en indexering strategie
+- Ondersteuning: Alex beschikbaar voor technische assistentie
+- Bedrijfsimpact: Beïnvloedt alle Belgische winkels, blokkeert dagelijkse operaties

@@ -1,0 +1,55 @@
+VERGADERTRANSCRIPT
+==================
+Datum: 2025-06-29
+Tijd: 14:00 CET
+Deelnemers: Jan (Bedrijfsvertegenwoordiger), Michiel (Product Owner - Extern)
+Vergadertype: Bedrijfsdiscussie - Data-analyse
+Taal: Nederlands (B1-B2 niveau sprekers)
+
+TRANSCRIPT:
+-----------
+
+Jan: Hallo Michiel, goedemiddag! Hoe gaat je dag?
+
+Michiel: Hallo Jan! Behoorlijk druk vandaag, veel vergaderingen. Hoe is het met jou? Is het mooi weer in België?
+
+Jan: Ja, het is vandaag eigenlijk zonnig, wat zeldzaam is voor deze tijd van het jaar! Anyway, laten we dit PLU data probleem bespreken dat we hebben ontvangen van GK bedrijf.
+
+Michiel: Juist, ja. Ik heb de JSON data bekeken die ze ons gisteren stuurden. Er lijken wat inconsistenties te zijn met onze huidige PLU groepen, toch?
+
+Jan: Precies. De JSON structuur ziet er correct uit, maar wanneer we proberen de PLU informatie te matchen met onze bestaande database, kunnen we de overeenkomstige PLU groepen niet vinden. Ik denk dat we een gedetailleerde analyse nodig hebben.
+
+Michiel: Ik ben het ermee eens. Dit kunnen testdata zijn of misschien is hun datastructuur anders dan wat we verwachtten. We hebben iemand technisch nodig om dit grondig te onderzoeken.
+
+Jan: Ik dacht eraan om dit toe te wijzen aan David en Jack. David heeft de architectuurkennis en Jack kan helpen met de Java implementatie omdat dit voor het nieuwe systeem is.
+
+Michiel: Perfecte keuze. David begrijpt beide systemen en Jack is sterk met Java en dataverwerking. Wat denk je dat hun deliverable zou moeten zijn?
+
+Jan: Ze zouden de JSON structuur moeten analyseren, vergelijken met onze huidige PLU groep mapping, en een gedetailleerd rapport met aanbevelingen verstrekken. Misschien kunnen ze ook suggereren hoe deze data-integratie te hanteren.
+
+Michiel: Klinkt goed. Is dit urgent of kunnen ze een week nemen om het goed te onderzoeken?
+
+Jan: Laten we ze een week geven. Het is belangrijk om het goed te doen. De GK integratie is cruciaal voor onze Q3 roadmap.
+
+Michiel: Akkoord. Ik zal een ticket hiervoor maken. Moet ik het aan zowel David als Jack toewijzen?
+
+Jan: Ja, alsjeblieft. Titel het zoiets als "Analyseer PLU JSON data van GK API integratie" en markeer het als hoge prioriteit.
+
+Michiel: Perfect. Ik zal alle context die we besproken hebben toevoegen en de JSON voorbeelden bijvoegen die ze ons stuurden.
+
+Jan: Uitstekend. Is er nog iets anders dat we vandaag moeten bespreken?
+
+Michiel: Nee, ik denk dat we alles hebben behandeld. Ik zal het ticket klaar hebben voor het einde van de dag.
+
+Jan: Perfect. Dank je Michiel, nog een fijne dag!
+
+Michiel: Jij ook Jan, tot ziens!
+
+ACTIEPUNTEN:
+------------
+- Maak nieuw Jira ticket: "Analyseer PLU JSON data van GK API integratie"
+- Toegewezen aan: David en Jack
+- Prioriteit: Hoog
+- Vervaldatum: Een week vanaf vandaag
+- Beschrijving: Analyseer JSON structuur van GK API, vergelijk met huidige PLU groep mapping, verstrek gedetailleerd rapport met integratie-aanbevelingen
+- Bijvoegen: JSON voorbeelden van GK bedrijf

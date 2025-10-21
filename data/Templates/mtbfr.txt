@@ -1,0 +1,68 @@
+TRANSCRIPT DE RÉUNION
+====================
+Date: 2025-06-29
+Heure: 15:30 CET
+Participants: Jean (Représentant Métier), Alex (Architecte Senior - Externe), Michel (Product Owner - Externe)
+Type de Réunion: Revue de Bug - Problème Urgent
+Langue: Français (locuteurs niveau B1-B2)
+
+TRANSCRIPT:
+-----------
+
+Jean: Bonjour tout le monde, merci de vous joindre à cet appel urgent. Alex, comment s'est passé votre week-end ?
+
+Alex: Bonjour Jean, bonjour Michel. Le week-end était bon, mais j'ai passé du temps à réfléchir à ce problème de Recherche Promo. C'est assez problématique.
+
+Michel: Bonjour tout le monde. Oui, je reçois des rapports des utilisateurs métier depuis vendredi après-midi.
+
+Jean: Alex, pouvez-vous expliquer ce qui se passe exactement avec la procédure stockée Recherche Promo ?
+
+Alex: Bien sûr. La procédure stockée "sp_PromoSearch" retourne des résultats incorrects quand les utilisateurs recherchent des promotions par plage de dates. Parfois elle ne retourne aucun résultat, parfois des entrées dupliquées.
+
+Michel: Cela cause des problèmes majeurs dans les magasins. Les caissiers ne peuvent pas voir les promotions actives et les clients se plaignent.
+
+Jean: À quel point c'est urgent ? Pouvons-nous attendre jusqu'à la semaine prochaine ?
+
+Alex: Non, non ! Cela doit être corrigé immédiatement. Cela affecte les opérations quotidiennes dans tous les magasins belges. La base de données SQL Server montre un comportement étrange dans le plan d'exécution.
+
+Michel: Je suis d'accord avec Alex. Cela bloque les opérations métier. Nous avons besoin de quelqu'un qui connaît très bien SQL Server et l'ancien système .NET Framework.
+
+Alex: Je pense que Tom serait le meilleur choix. Il a une bonne expérience avec les procédures stockées et l'architecture du système legacy.
+
+Jean: Oui, Tom est très bon avec l'optimisation SQL Server. Mais est-il disponible aujourd'hui ?
+
+Alex: J'ai vérifié avec l'équipe EPAM ce matin. Tom peut commencer immédiatement. Il a juste besoin d'accès aux logs de production et au code source de la procédure stockée.
+
+Michel: Parfait. Quel est le délai attendu pour la correction ?
+
+Alex: Si c'est un problème d'optimisation de requête, Tom peut probablement le corriger aujourd'hui ou demain matin. Si c'est de la corruption de données, cela pourrait prendre plus de temps.
+
+Jean: Priorisons cela comme critique. Alex, pouvez-vous fournir un support technique à Tom si nécessaire ?
+
+Alex: Absolument ! Je serai disponible toute la semaine pour aider avec l'intégration .NET Framework et les questions de schéma de base de données.
+
+Michel: Je surveillerai l'impact métier et communiquerai avec les gestionnaires de magasins.
+
+Jean: Excellent. Donc nous créons un ticket de bug critique pour que Tom enquête et corrige la procédure stockée Recherche Promo.
+
+Alex: Oui, et veuillez mentionner qu'il devrait vérifier le plan d'exécution et les changements récents de la base de données. Je soupçonne que cela pourrait être lié à la stratégie d'indexation.
+
+Michel: Je créerai le ticket juste après cet appel avec tous les détails techniques qu'Alex a mentionnés.
+
+Jean: Parfait. Y a-t-il autre chose dont nous devons discuter ?
+
+Alex: Non, je pense que nous avons un plan clair. Plus tôt Tom commence, mieux c'est.
+
+Michel: D'accord. J'enverrai les détails du ticket à tout le monde une fois qu'il sera créé.
+
+Jean: Merci à vous deux. Espérons que nous pourrons résoudre cela rapidement !
+
+ÉLÉMENTS D'ACTION:
+------------------
+- Créer un ticket Jira critique: "URGENT: Corriger la procédure stockée Recherche Promo qui retourne des résultats incorrects"
+- Assigné à: Tom
+- Priorité: Critique
+- Date de début: Immédiatement
+- Description: Enquêter et corriger la procédure stockée sp_PromoSearch qui retourne des résultats incorrects, vérifier le plan d'exécution et la stratégie d'indexation
+- Support: Alex disponible pour assistance technique
+- Impact métier: Affecte tous les magasins belges, bloque les opérations quotidiennes

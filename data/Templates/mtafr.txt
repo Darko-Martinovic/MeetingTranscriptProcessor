@@ -1,0 +1,55 @@
+TRANSCRIPT DE RÉUNION
+====================
+Date: 2025-06-29
+Heure: 14:00 CET
+Participants: Jean (Représentant Métier), Michel (Product Owner - Externe)
+Type de Réunion: Discussion Métier - Analyse de Données
+Langue: Français (locuteurs niveau B1-B2)
+
+TRANSCRIPT:
+-----------
+
+Jean: Bonjour Michel, bon après-midi ! Comment se passe votre journée ?
+
+Michel: Bonjour Jean ! Assez chargée aujourd'hui, beaucoup de réunions. Et vous ? Il fait beau en Belgique ?
+
+Jean: Oui, il y a du soleil aujourd'hui, ce qui est rare pour cette période de l'année ! Bon, discutons de ce problème de données PLU que nous avons reçu de la société GK.
+
+Michel: Exact, oui. J'ai examiné les données JSON qu'ils nous ont envoyées hier. Il semble y avoir des incohérences avec nos groupes PLU actuels, non ?
+
+Jean: Exactement. La structure JSON semble correcte, mais quand nous essayons de faire correspondre les informations PLU avec notre base de données existante, nous ne trouvons pas les groupes PLU correspondants. Je pense que nous avons besoin d'une analyse détaillée.
+
+Michel: Je suis d'accord. Ce pourrait être des données de test ou peut-être que leur structure de données est différente de ce que nous attendions. Nous avons besoin de quelqu'un de technique pour enquêter sur cela en profondeur.
+
+Jean: Je pensais assigner cela à David et Jack. David a les connaissances architecturales et Jack peut aider avec l'implémentation Java puisque c'est pour le nouveau système.
+
+Michel: Parfait choix. David comprend les deux systèmes et Jack est fort avec Java et le traitement des données. Que pensez-vous que devrait être leur livrable ?
+
+Jean: Ils devraient analyser la structure JSON, la comparer avec notre mappage de groupes PLU actuel, et fournir un rapport détaillé avec des recommandations. Peut-être qu'ils peuvent aussi suggérer comment gérer cette intégration de données.
+
+Michel: Ça sonne bien. Est-ce urgent ou peuvent-ils prendre une semaine pour enquêter correctement ?
+
+Jean: Donnons-leur une semaine. Il est important de bien faire les choses. L'intégration GK est cruciale pour notre feuille de route Q3.
+
+Michel: D'accord. Je vais créer un ticket pour cela. Dois-je l'assigner à David et Jack tous les deux ?
+
+Jean: Oui, s'il vous plaît. Intitulez-le quelque chose comme "Analyser les données JSON PLU de l'intégration API GK" et marquez-le comme haute priorité.
+
+Michel: Parfait. J'ajouterai tout le contexte que nous avons discuté et j'attacherai les échantillons JSON qu'ils nous ont envoyés.
+
+Jean: Excellent. Y a-t-il autre chose dont nous devons discuter aujourd'hui ?
+
+Michel: Non, je pense que nous avons tout couvert. J'aurai le ticket prêt d'ici la fin de la journée.
+
+Jean: Parfait. Merci Michel, passez une bonne fin de journée !
+
+Michel: Vous aussi Jean, à bientôt !
+
+ÉLÉMENTS D'ACTION:
+------------------
+- Créer un nouveau ticket Jira: "Analyser les données JSON PLU de l'intégration API GK"
+- Assigné à: David et Jack
+- Priorité: Haute
+- Date d'échéance: Une semaine à partir d'aujourd'hui
+- Description: Analyser la structure JSON de l'API GK, comparer avec le mappage actuel des groupes PLU, fournir un rapport détaillé avec des recommandations d'intégration
+- Joindre: Échantillons JSON de la société GK

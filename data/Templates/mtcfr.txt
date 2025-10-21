@@ -1,0 +1,78 @@
+TRANSCRIPT DE RÉUNION
+====================
+Date: 2025-06-29
+Heure: 16:30 CET
+Participants: Jean (Représentant Métier), Alex (Architecte Senior - Externe), Michel (Product Owner - Externe), Sarah (Développeuse - EPAM)
+Type de Réunion: Amélioration de Processus - Documentation
+Langue: Français (niveaux de maîtrise mixtes)
+
+TRANSCRIPT:
+-----------
+
+Jean: Bon après-midi tout le monde ! J'espère que vous n'êtes pas trop fatigués après cette longue journée de réunions.
+
+Alex: Bonsoir Jean ! En fait, ça a été productif. Comment allez-vous Sarah ? Prête pour une autre discussion ?
+
+Sarah: Bonjour tout le monde. Oui, prête. Aujourd'hui était effectivement chargé, mais finissons ce sujet important.
+
+Michel: Bonjour à tous. La pluie s'est enfin arrêtée ici à Bruxelles, ce qui est agréable.
+
+Jean: Bien ! Alors, discutons du modèle Confluence pour les déploiements en production. Alex, vous avez mentionné que cela nécessite des améliorations ?
+
+Alex: Oui, exactement. Le modèle actuel est trop basique. Quand nous déplaçons des applications en production, surtout l'ancien système .NET Framework, nous avons besoin d'informations plus détaillées sur les scripts de base de données.
+
+Michel: Je suis d'accord. L'équipe des opérations continue de demander plus de détails sur les scripts T-SQL et les changements de base de données.
+
+Sarah: J'ai examiné le modèle actuel. Il manque des informations cruciales sur l'ordre d'exécution des scripts et les procédures de rollback.
+
+Jean: Quelles améliorations spécifiques suggérez-vous ?
+
+Alex: Nous avons besoin de sections pour les détails des scripts T-SQL, les dépendances d'exécution, et les exigences de sauvegarde de base de données. Le modèle devrait être plus complet pour les déploiements SQL Server.
+
+Michel: Oui, et aussi l'analyse d'impact. Parfois nous ne savons pas quelles tables ou procédures stockées sont affectées par les changements.
+
+Sarah: Je peux ajouter des sections pour les étapes de validation des scripts, les procédures de test, et les configurations spécifiques à l'environnement. Cela rendrait le processus beaucoup plus sûr.
+
+Jean: Cela sonne excellent. Sarah, puisque vous comprenez à la fois les exigences techniques et le processus actuel, seriez-vous en mesure de mettre à jour ce modèle ?
+
+Sarah: Oui, absolument. J'ai de l'expérience avec les déploiements en production et je sais quelles informations les administrateurs de base de données ont besoin.
+
+Alex: Parfait choix. Sarah connaît très bien l'environnement SQL Server et comprend le processus de déploiement .NET Framework.
+
+Michel: Combien de temps pensez-vous que cela prendra, Sarah ?
+
+Sarah: Si je me concentre sur cela, je peux avoir un brouillon prêt d'ici la fin de cette semaine. Ensuite nous pouvons le réviser ensemble et faire des ajustements.
+
+Jean: Ce délai fonctionne bien. Ce nouveau modèle nous aidera à éviter les problèmes de déploiement comme nous avons eu le mois dernier.
+
+Alex: Exactement ! Une meilleure documentation signifie moins de problèmes en production et des rollbacks plus rapides si nécessaire.
+
+Michel: Je coordonnerai avec l'équipe des opérations pour obtenir leur avis sur ce dont ils ont besoin dans le modèle.
+
+Sarah: Cela serait très utile. Je vérifierai aussi avec David et Tom pour voir s'ils ont des suggestions basées sur leurs expériences de déploiement.
+
+Jean: Excellente collaboration. Donc nous créerons une tâche pour mettre à jour le modèle de déploiement Confluence avec des informations T-SQL et de base de données améliorées.
+
+Alex: Oui, et veuillez mentionner qu'il devrait inclure les procédures de rollback et le mappage des dépendances.
+
+Michel: Je créerai le ticket avec toutes ces exigences et l'assignerai à Sarah.
+
+Sarah: Parfait. Je commencerai à travailler sur cela demain matin.
+
+Jean: Merci tout le monde. Cela améliorera définitivement la qualité de notre processus de déploiement.
+
+Alex: Merci d'avoir organisé cette discussion, Jean.
+
+Michel: À bientôt tout le monde !
+
+Sarah: Merci à tous, à bientôt !
+
+ÉLÉMENTS D'ACTION:
+------------------
+- Créer un nouveau ticket Jira: "Mettre à jour le modèle de déploiement en production Confluence avec documentation T-SQL améliorée"
+- Assigné à: Sarah
+- Priorité: Moyenne
+- Date d'échéance: Fin de semaine (brouillon)
+- Description: Améliorer le modèle de déploiement avec détails des scripts T-SQL, ordre d'exécution, procédures de rollback, mappage des dépendances, et exigences de sauvegarde de base de données
+- Collaboration: Coordonner avec l'équipe des opérations pour les exigences, consulter l'équipe de développement pour les suggestions
+- Portée: Se concentrer sur les améliorations du processus de déploiement SQL Server et .NET Framework
