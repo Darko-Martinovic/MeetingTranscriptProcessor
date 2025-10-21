@@ -26,7 +26,9 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
       const loadJiraTickets = async () => {
         try {
           setLoadingTickets(true);
-          const tickets = await meetingApi.getMeetingJiraTickets(meeting.fileName);
+          const tickets = await meetingApi.getMeetingJiraTickets(
+            meeting.fileName
+          );
           setJiraTickets(tickets);
         } catch (error) {
           console.error("Failed to load JIRA tickets:", error);
@@ -44,12 +46,12 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
 
     const getPriorityColor = (priority: string) => {
       switch (priority.toLowerCase()) {
-        case 'high':
-        case 'critical':
+        case "high":
+        case "critical":
           return styles.priorityHigh;
-        case 'medium':
+        case "medium":
           return styles.priorityMedium;
-        case 'low':
+        case "low":
           return styles.priorityLow;
         default:
           return styles.priorityMedium;
@@ -58,9 +60,9 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
 
     const getTypeIcon = (type: string) => {
       switch (type.toLowerCase()) {
-        case 'bug':
+        case "bug":
           return <AlertCircle className="h-4 w-4" />;
-        case 'task':
+        case "task":
           return <User className="h-4 w-4" />;
         default:
           return <Calendar className="h-4 w-4" />;
@@ -90,7 +92,10 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
             <span>Processed: {formatDate(meeting.processedAt)}</span>
             <div className={styles.languageSection}>
               <span className={styles.languageLabel}>Language:</span>
-              <LanguageBadge language={meeting.detectedLanguage} size="medium" />
+              <LanguageBadge
+                language={meeting.detectedLanguage}
+                size="medium"
+              />
             </div>
           </div>
         </div>
@@ -167,15 +172,23 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
                         <ExternalLink className="h-4 w-4 ml-1" />
                       </div>
                       <div className={styles.jiraTicketMeta}>
-                        <span className={`${styles.priorityBadge} ${getPriorityColor(ticket.priority)}`}>
+                        <span
+                          className={`${
+                            styles.priorityBadge
+                          } ${getPriorityColor(ticket.priority)}`}
+                        >
                           {ticket.priority}
                         </span>
                         <span className={styles.typeBadge}>{ticket.type}</span>
-                        <span className={styles.statusBadge}>{ticket.status}</span>
+                        <span className={styles.statusBadge}>
+                          {ticket.status}
+                        </span>
                       </div>
                     </div>
                     <div className={styles.jiraTicketContent}>
-                      <p className={styles.jiraTicketDescription}>{ticket.title}</p>
+                      <p className={styles.jiraTicketDescription}>
+                        {ticket.title}
+                      </p>
                       <div className={styles.jiraTicketDetails}>
                         {ticket.assignedTo && (
                           <span className={styles.jiraTicketDetail}>
