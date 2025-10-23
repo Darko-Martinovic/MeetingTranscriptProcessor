@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
 using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace MeetingTranscriptProcessor.Controllers
 {
@@ -645,28 +646,53 @@ namespace MeetingTranscriptProcessor.Controllers
                     // Try to extract basic info without full processing
                     try
                     {
-                        var content = await System.IO.File.ReadAllTextAsync(file);
+                        var content = await ReadFileContentForPreview(file);
                         meetingInfo.PreviewContent =
                             content.Length > 200 ? content.Substring(0, 200) + "..." : content;
 
                         // Try to get title from metadata file first (for smart titles), then fallback to file content
                         meetingInfo.Title = await GetTitleFromMetadataOrContent(fileName, content);
 
+                        Console.WriteLine($"🔍 DEBUG GetMeetingsFromFolder - File: {fileName}");
+                        Console.WriteLine($"   📋 Title extracted: '{meetingInfo.Title}'");
+                        Console.WriteLine($"   📄 PreviewContent length: {meetingInfo.PreviewContent?.Length ?? 0}");
+
                         if (meetingInfo.Title.Length > 100)
                             meetingInfo.Title = meetingInfo.Title.Substring(0, 100) + "...";
 
-                        // Extract participants from content (basic pattern matching)
-                        meetingInfo.Participants = ExtractParticipants(content);
+                        // Try to load from metadata file for participants and JIRA tickets
+                        var transcript = await LoadTranscriptWithMetadata(fileName);
+                        if (transcript != null)
+                        {
+                            Console.WriteLine($"   ✅ Loaded metadata for {fileName}");
+                            meetingInfo.Participants = transcript.Participants ?? new List<string>();
+                            var jiraTickets = transcript.CreatedJiraTickets?.Select(t => t.TicketKey).ToList() ?? new List<string>();
+                            meetingInfo.HasJiraTickets = jiraTickets.Count > 0;
+                            meetingInfo.ActionItemCount = transcript.ActionItems?.Count ?? 0;
 
-                        // Check for Jira tickets
-                        meetingInfo.HasJiraTickets =
-                            content.Contains("JIRA")
-                            || content.Contains("Jira")
-                            || content.Contains("jira")
-                            || content.Contains("ticket");
+                            Console.WriteLine($"   👥 Participants from metadata: {meetingInfo.Participants.Count}");
+                            Console.WriteLine($"   🎫 JIRA tickets from metadata: {jiraTickets.Count}");
+                            if (jiraTickets.Count > 0)
+                            {
+                                Console.WriteLine($"   🎫 First ticket: {jiraTickets.First()}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"   ⚠️ No metadata found for {fileName}, using fallback extraction");
+                            // Extract participants from content (basic pattern matching)
+                            meetingInfo.Participants = ExtractParticipants(content);
 
-                        // Count action items
-                        meetingInfo.ActionItemCount = CountActionItems(content);
+                            // Check for Jira tickets
+                            meetingInfo.HasJiraTickets =
+                                content.Contains("JIRA")
+                                || content.Contains("Jira")
+                                || content.Contains("jira")
+                                || content.Contains("ticket");
+
+                            // Count action items
+                            meetingInfo.ActionItemCount = CountActionItems(content);
+                        }
                     }
                     catch
                     {
@@ -987,7 +1013,7 @@ namespace MeetingTranscriptProcessor.Controllers
                     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                 };
 
-                var jsonContent = JsonSerializer.Serialize(transcript, options);
+                var jsonContent = System.Text.Json.JsonSerializer.Serialize(transcript, options);
                 Console.WriteLine($"📄 JSON content length: {jsonContent.Length} characters");
                 Console.WriteLine($"🎫 JIRA tickets in JSON: {transcript.CreatedJiraTickets.Count}");
 
@@ -1132,7 +1158,7 @@ namespace MeetingTranscriptProcessor.Controllers
                         {
                             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         };
-                        var transcript = JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
+                        var transcript = System.Text.Json.JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
 
                         if (transcript != null)
                         {
@@ -1142,6 +1168,26 @@ namespace MeetingTranscriptProcessor.Controllers
                             Console.WriteLine($"   - Title: {transcript.Title}");
                             Console.WriteLine($"   - Action items count: {transcript.ActionItems?.Count ?? 0}");
                             Console.WriteLine($"   - JIRA tickets count: {transcript.CreatedJiraTickets?.Count ?? 0}");
+
+                            // Convert JSON content to readable text if it's in JSON format
+                            if (!string.IsNullOrEmpty(transcript.Content) &&
+                                transcript.Content.TrimStart().StartsWith("{"))
+                            {
+                                Console.WriteLine($"🔄 Converting JSON content to readable text...");
+                                try
+                                {
+                                    var transcriptData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(transcript.Content);
+                                    if (transcriptData?.combinedTranscript != null && transcriptData?.participants != null)
+                                    {
+                                        transcript.Content = ProcessMsTeamsTranscriptForDisplay(transcriptData);
+                                        Console.WriteLine($"✅ Successfully converted JSON to readable text ({transcript.Content.Length} chars)");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"⚠️ Failed to convert JSON content: {ex.Message}");
+                                }
+                            }
 
                             if (transcript.CreatedJiraTickets?.Count > 0)
                             {
@@ -1197,61 +1243,40 @@ namespace MeetingTranscriptProcessor.Controllers
 
             if (parts.Length >= 4)
             {
-                // Skip timestamp (YYYYMMDD_HHMMSS), status, and possibly language
-                var skipCount = 3; // timestamp + status
+                // Check if this follows the archive pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
+                if (parts[0].Length == 8 && parts[0].All(char.IsDigit) && // YYYYMMDD
+                    parts[1].Length == 6 && parts[1].All(char.IsDigit))   // HHMMSS
+                {
+                    Console.WriteLine($"🔍 Found archive pattern with timestamp prefix");
 
-                // Check if next part might be a language (like "English")
-                if (parts.Length > 4 && IsLanguageName(parts[3]))
-                {
-                    skipCount = 4; // timestamp + status + language
-                    Console.WriteLine($"🔍 Found language part '{parts[3]}', skipCount = {skipCount}");
-                }
-                else
-                {
-                    Console.WriteLine($"🔍 No language part found, skipCount = {skipCount}");
-                }
+                    // Skip timestamp (parts 0,1) and status (part 2)
+                    var skipCount = 3;
 
-                // Handle embedded timestamps in the original filename
-                // If after skipping the archive parts, we still have a timestamp pattern, include it
-                var remainingParts = parts.Skip(skipCount).ToList();
-                Console.WriteLine($"🔍 remainingParts after skip: [{string.Join(", ", remainingParts)}]");
-
-                // Check if the remaining parts start with another timestamp pattern
-                if (remainingParts.Count >= 2 &&
-                    remainingParts[0].Length == 8 && remainingParts[0].All(char.IsDigit) && // YYYYMMDD
-                    remainingParts[1].Length == 6 && remainingParts[1].All(char.IsDigit))   // HHMMSS
-                {
-                    // Include the embedded timestamp in the base filename
-                    Console.WriteLine($"🔍 Found embedded timestamp pattern");
-                    var result = string.Join("_", remainingParts);
-                    Console.WriteLine($"🔍 ExtractBaseFileName result: {result}");
-                    return result;
-                }
-                else
-                {
-                    // Check if this might be a simple timestamp prefix case
-                    // Pattern: YYYYMMDD_HHMMSS_originalname (no status/language)
-                    if (parts.Length >= 3 &&
-                        parts[0].Length == 8 && parts[0].All(char.IsDigit) && // YYYYMMDD
-                        parts[1].Length == 6 && parts[1].All(char.IsDigit))   // HHMMSS
+                    // Check if part 3 is a language name
+                    if (parts.Length > 4 && IsLanguageName(parts[3]))
                     {
-                        // This is a simple timestamp prefix, return the full filename
-                        Console.WriteLine($"🔍 Found simple timestamp prefix pattern");
-                        var result = nameWithoutExt;
-                        Console.WriteLine($"🔍 ExtractBaseFileName result: {result}");
-                        return result;
+                        skipCount = 4; // also skip language
+                        Console.WriteLine($"🔍 Found language part '{parts[3]}', skipCount = {skipCount}");
                     }
                     else
                     {
+                        Console.WriteLine($"🔍 No language part found, skipCount = {skipCount}");
+                    }
+
+                    var remainingParts = parts.Skip(skipCount).ToList();
+                    Console.WriteLine($"🔍 remainingParts after skip: [{string.Join(", ", remainingParts)}]");
+
+                    if (remainingParts.Count > 0)
+                    {
                         var result = string.Join("_", remainingParts);
-                        Console.WriteLine($"🔍 Using remaining parts: {result}");
+                        Console.WriteLine($"🔍 ExtractBaseFileName result: {result}");
                         return result;
                     }
                 }
             }
 
             // If pattern doesn't match, return as-is
-            Console.WriteLine($"🔍 No pattern match, returning as-is: {nameWithoutExt}");
+            Console.WriteLine($"🔍 No archive pattern match, returning as-is: {nameWithoutExt}");
             return nameWithoutExt;
         }
 
@@ -1288,7 +1313,7 @@ namespace MeetingTranscriptProcessor.Controllers
                         {
                             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         };
-                        var transcript = JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
+                        var transcript = System.Text.Json.JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
                         if (transcript != null && !string.IsNullOrWhiteSpace(transcript.Title))
                         {
                             return transcript.Title;
@@ -1305,6 +1330,250 @@ namespace MeetingTranscriptProcessor.Controllers
                 // If anything fails, fallback to content-based title detection
                 var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                 return lines.FirstOrDefault()?.Trim() ?? "Untitled Meeting";
+            }
+        }
+
+        /// <summary>
+        /// Reads file content for preview, handling different file types including JSON conversion
+        /// </summary>
+        private static async Task<string> ReadFileContentForPreview(string filePath)
+        {
+            try
+            {
+                var extension = Path.GetExtension(filePath).ToLowerInvariant();
+                Console.WriteLine($"🔍 ReadFileContentForPreview called for: {filePath}");
+                Console.WriteLine($"🔍 File extension: {extension}");
+
+                if (extension == ".json")
+                {
+                    // Handle JSON files - check if it's MS Teams format and convert to readable text
+                    var jsonContent = await System.IO.File.ReadAllTextAsync(filePath);
+                    Console.WriteLine($"🔍 JSON content length: {jsonContent.Length}");
+
+                    try
+                    {
+                        var transcriptData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(jsonContent);
+
+                        // Check for MS Teams/Graph API format
+                        if (transcriptData?.combinedTranscript != null && transcriptData?.participants != null)
+                        {
+                            Console.WriteLine($"✅ Detected MS Teams format, processing for preview");
+                            var convertedContent = ProcessMsTeamsTranscriptForPreview(transcriptData);
+                            Console.WriteLine($"✅ Converted content length: {convertedContent.Length}");
+                            return convertedContent;
+                        }
+
+                        Console.WriteLine($"⚠️ Not MS Teams format, checking other formats");
+                        // Try common JSON transcript formats
+                        if (transcriptData?.transcript != null)
+                        {
+                            Console.WriteLine($"🔍 Found .transcript field");
+                            return transcriptData.transcript.ToString();
+                        }
+
+                        if (transcriptData?.content != null)
+                        {
+                            Console.WriteLine($"🔍 Found .content field");
+                            return transcriptData.content.ToString();
+                        }
+
+                        if (transcriptData?.text != null)
+                        {
+                            Console.WriteLine($"🔍 Found .text field");
+                            return transcriptData.text.ToString();
+                        }
+
+                        // If no standard format, return the JSON as text
+                        Console.WriteLine($"⚠️ No recognized format, returning raw JSON");
+                        return jsonContent;
+                    }
+                    catch
+                    {
+                        // If JSON parsing fails, treat as plain text
+                        return jsonContent;
+                    }
+                }
+
+                // For other file types, read as plain text
+                return await System.IO.File.ReadAllTextAsync(filePath);
+            }
+            catch
+            {
+                return "Error reading file content";
+            }
+        }
+
+        /// <summary>
+        /// Simplified MS Teams transcript processor for preview purposes
+        /// </summary>
+        private static string ProcessMsTeamsTranscriptForPreview(dynamic transcriptData)
+        {
+            try
+            {
+                Console.WriteLine($"🔍 ProcessMsTeamsTranscriptForPreview called");
+                var result = new List<string>();
+
+                // Add header with meeting information
+                result.Add("MEETING TRANSCRIPT");
+                result.Add("=================");
+
+                if (transcriptData.meetingTitle != null)
+                {
+                    result.Add($"Title: {transcriptData.meetingTitle}");
+                    Console.WriteLine($"🔍 Added title: {transcriptData.meetingTitle}");
+                }
+
+                if (transcriptData.startTime != null)
+                {
+                    result.Add($"Date: {transcriptData.startTime}");
+                    Console.WriteLine($"🔍 Added start time: {transcriptData.startTime}");
+                }
+
+                if (transcriptData.locale != null)
+                {
+                    result.Add($"Language: {transcriptData.locale}");
+                }
+
+                // Add participants
+                if (transcriptData.participants != null)
+                {
+                    result.Add("Participants:");
+                    foreach (var participant in transcriptData.participants)
+                    {
+                        if (participant.displayName != null)
+                        {
+                            result.Add($"- {participant.displayName}");
+                        }
+                    }
+                }
+
+                result.Add("");
+                result.Add("--------------------------------------------------------------");
+                result.Add("");
+
+                // Convert first few transcript segments to readable format for preview
+                if (transcriptData.combinedTranscript != null)
+                {
+                    int segmentCount = 0;
+                    foreach (var segment in transcriptData.combinedTranscript)
+                    {
+                        // Skip system messages
+                        if (segment.speaker?.id == "system")
+                            continue;
+
+                        var speakerName = segment.speaker?.displayName?.ToString() ?? "Unknown Speaker";
+                        var text = segment.text?.ToString() ?? "";
+
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            result.Add($"{speakerName}: {text}");
+                            result.Add("");
+                            segmentCount++;
+
+                            // Limit preview to first 5 segments
+                            if (segmentCount >= 5) break;
+                        }
+                    }
+                }
+
+                return string.Join("\n", result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing MS Teams transcript for preview: {ex.Message}");
+                // Fallback to raw JSON
+                return Newtonsoft.Json.JsonConvert.SerializeObject(transcriptData, Newtonsoft.Json.Formatting.Indented);
+            }
+        }
+
+        /// <summary>
+        /// Full MS Teams transcript processor for complete meeting display
+        /// </summary>
+        private static string ProcessMsTeamsTranscriptForDisplay(dynamic transcriptData)
+        {
+            try
+            {
+                Console.WriteLine($"🔍 ProcessMsTeamsTranscriptForDisplay called");
+                var result = new List<string>();
+
+                // Add header with meeting information
+                result.Add("MEETING TRANSCRIPT");
+                result.Add("=================");
+                result.Add("");
+
+                if (transcriptData.meetingTitle != null)
+                {
+                    result.Add($"Title: {transcriptData.meetingTitle}");
+                }
+
+                if (transcriptData.startTime != null)
+                {
+                    result.Add($"Date: {transcriptData.startTime}");
+                }
+
+                if (transcriptData.endTime != null)
+                {
+                    result.Add($"End: {transcriptData.endTime}");
+                }
+
+                if (transcriptData.locale != null)
+                {
+                    result.Add($"Language: {transcriptData.locale}");
+                }
+
+                // Add participants
+                if (transcriptData.participants != null)
+                {
+                    result.Add("");
+                    result.Add("Participants:");
+                    foreach (var participant in transcriptData.participants)
+                    {
+                        if (participant.displayName != null)
+                        {
+                            result.Add($"- {participant.displayName?.ToString()}");
+                        }
+                    }
+                }
+
+                result.Add("");
+                result.Add("--------------------------------------------------------------");
+                result.Add("");
+
+                // Convert ALL transcript segments to readable format
+                if (transcriptData.combinedTranscript != null)
+                {
+                    foreach (var segment in transcriptData.combinedTranscript)
+                    {
+                        // Skip system messages
+                        if (segment.speaker?.id?.ToString() == "system")
+                            continue;
+
+                        var speakerName = segment.speaker?.displayName?.ToString() ?? "Unknown Speaker";
+                        var text = segment.text?.ToString() ?? "";
+                        var timestamp = segment.timestamp?.ToString() ?? "";
+
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            if (!string.IsNullOrWhiteSpace(timestamp))
+                            {
+                                result.Add($"[{timestamp}] {speakerName}: {text}");
+                            }
+                            else
+                            {
+                                result.Add($"{speakerName}: {text}");
+                            }
+                            result.Add("");
+                        }
+                    }
+                }
+
+                return string.Join("\n", result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing MS Teams transcript for display: {ex.Message}");
+                // Fallback to raw JSON
+                return Newtonsoft.Json.JsonConvert.SerializeObject(transcriptData, Newtonsoft.Json.Formatting.Indented);
             }
         }
     }

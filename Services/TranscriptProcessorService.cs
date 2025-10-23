@@ -71,7 +71,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             }
 
             // Extract metadata from content
-            ExtractMetadata(transcript);
+            await ExtractMetadata(transcript);
 
             // Extract action items using AI
             await ExtractActionItemsAsync(transcript);
@@ -127,6 +127,12 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             var jsonContent = await File.ReadAllTextAsync(filePath);
             var transcriptData = JsonConvert.DeserializeObject<dynamic>(jsonContent);
 
+            // Check for MS Teams/Graph API format
+            if (transcriptData?.combinedTranscript != null && transcriptData?.participants != null)
+            {
+                return ProcessMsTeamsTranscript(transcriptData);
+            }
+
             // Try common JSON transcript formats
             if (transcriptData?.transcript != null)
             {
@@ -150,6 +156,84 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         {
             // If JSON parsing fails, treat as plain text
             return await File.ReadAllTextAsync(filePath);
+        }
+    }
+
+    /// <summary>
+    /// Processes MS Teams/Graph API style transcript format
+    /// </summary>
+    private static string ProcessMsTeamsTranscript(dynamic transcriptData)
+    {
+        try
+        {
+            var result = new List<string>();
+
+            // Add header with meeting information
+            result.Add("MEETING TRANSCRIPT");
+            result.Add("=================");
+
+            if (transcriptData.meetingTitle != null)
+            {
+                result.Add($"Title: {transcriptData.meetingTitle}");
+            }
+
+            if (transcriptData.startTime != null)
+            {
+                result.Add($"Date: {transcriptData.startTime}");
+            }
+
+            if (transcriptData.locale != null)
+            {
+                result.Add($"Language: {transcriptData.locale}");
+            }
+
+            // Add participants
+            if (transcriptData.participants != null)
+            {
+                result.Add("Participants:");
+                foreach (var participant in transcriptData.participants)
+                {
+                    if (participant.displayName != null)
+                    {
+                        result.Add($"- {participant.displayName}");
+                    }
+                }
+            }
+
+            result.Add("");
+            result.Add("--------------------------------------------------------------");
+            result.Add("");
+
+            // Convert transcript segments to readable format
+            if (transcriptData.combinedTranscript != null)
+            {
+                foreach (var segment in transcriptData.combinedTranscript)
+                {
+                    // Skip system messages
+                    if (segment.speaker?.id == "system")
+                        continue;
+
+                    var speakerName = segment.speaker?.displayName ?? "Unknown Speaker";
+                    var text = segment.text ?? "";
+
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        result.Add($"{speakerName}: {text}");
+                        result.Add("");
+                    }
+                }
+            }
+
+            result.Add("--------------------------------------------------------------");
+            result.Add("(End of Transcript)");
+
+            return string.Join("\n", result);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing MS Teams transcript: {ex.Message}");
+            // Fallback to raw JSON
+            return JsonConvert.SerializeObject(transcriptData, Formatting.Indented);
         }
     }
 
@@ -188,10 +272,18 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     /// <summary>
     /// Extracts metadata from transcript content
     /// </summary>
-    private void ExtractMetadata(MeetingTranscript transcript)
+    private async Task ExtractMetadata(MeetingTranscript transcript)
     {
         try
         {
+            // Check if the original file is JSON and extract metadata directly from it
+            var extension = Path.GetExtension(transcript.FileName).ToLowerInvariant();
+            if (extension == ".json")
+            {
+                await ExtractJsonMetadata(transcript);
+                return;
+            }
+
             // Extract title from first line or header
             var lines = transcript.Content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length > 0)
@@ -222,6 +314,111 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             _logger?.LogError(ex, "Error extracting metadata");
             // Continue processing even if metadata extraction fails
         }
+    }
+
+    /// <summary>
+    /// Extracts metadata directly from JSON transcript files (MS Teams, etc.)
+    /// </summary>
+    private async Task ExtractJsonMetadata(MeetingTranscript transcript)
+    {
+        try
+        {
+            // Read the original JSON file
+            var filePath = Path.Combine(Path.GetDirectoryName(transcript.FileName) ?? "", transcript.FileName);
+            if (!File.Exists(filePath))
+            {
+                // If file path doesn't exist, look in common directories
+                var directories = new[] { "data/Incoming", "data/Processing", "data/Archive" };
+                foreach (var dir in directories)
+                {
+                    var testPath = Path.Combine(dir, transcript.FileName);
+                    if (File.Exists(testPath))
+                    {
+                        filePath = testPath;
+                        break;
+                    }
+                }
+            }
+
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine($"⚠️ Could not find JSON file for metadata extraction: {transcript.FileName}");
+                return;
+            }
+
+            var jsonContent = await File.ReadAllTextAsync(filePath);
+            var jsonData = JsonConvert.DeserializeObject<dynamic>(jsonContent);
+
+            // Extract title
+            if (jsonData?.meetingTitle != null)
+            {
+                transcript.Title = jsonData.meetingTitle.ToString();
+            }
+
+            // Extract meeting date from startTime
+            if (jsonData?.startTime != null)
+            {
+                if (DateTime.TryParse(jsonData.startTime.ToString(), out DateTime meetingDate))
+                {
+                    transcript.MeetingDate = meetingDate.Date;
+                }
+            }
+
+            // Extract participants from participants array
+            if (jsonData?.participants != null)
+            {
+                var participants = new List<string>();
+                foreach (var participant in jsonData.participants)
+                {
+                    if (participant?.displayName != null)
+                    {
+                        var displayName = participant.displayName.ToString();
+                        if (!string.IsNullOrWhiteSpace(displayName))
+                        {
+                            participants.Add(displayName);
+                        }
+                    }
+                }
+                transcript.Participants = participants;
+            }
+
+            // Extract language from locale
+            if (jsonData?.locale != null)
+            {
+                var locale = jsonData.locale.ToString();
+                transcript.DetectedLanguage = MapLocaleToLanguageCode(locale);
+            }
+
+            // Set project key
+            transcript.ProjectKey = ExtractProjectKey(
+                transcript.FileName,
+                transcript.Content,
+                Environment.GetEnvironmentVariable("JIRA_PROJECT_KEY")
+            );
+
+            Console.WriteLine($"📋 Extracted JSON metadata - Title: {transcript.Title}, Participants: {transcript.Participants.Count}, Language: {transcript.DetectedLanguage}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error extracting JSON metadata: {ex.Message}");
+            _logger?.LogError(ex, "Error extracting JSON metadata");
+        }
+    }
+
+    /// <summary>
+    /// Maps locale strings to language codes
+    /// </summary>
+    private static string MapLocaleToLanguageCode(string locale)
+    {
+        return locale.ToLowerInvariant() switch
+        {
+            "en-us" or "en-gb" or "en-ca" or "en-au" => "en",
+            "fr-fr" or "fr-ca" => "fr",
+            "nl-nl" or "nl-be" => "nl",
+            "de-de" or "de-at" => "de",
+            "es-es" or "es-mx" => "es",
+            _ => locale.Split('-')[0] // Use first part as fallback
+        };
     }
 
     /// <summary>

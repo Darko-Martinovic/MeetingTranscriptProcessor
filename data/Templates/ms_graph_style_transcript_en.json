@@ -1,0 +1,398 @@
+{
+  "meetingTitle": "Integration and Observability Review",
+  "startTime": "2025-10-17T11:00:00Z",
+  "endTime": "2025-10-17T11:30:00Z",
+  "locale": "en-US",
+  "participants": [
+    {
+      "id": "user-john",
+      "displayName": "John"
+    },
+    {
+      "id": "user-mike",
+      "displayName": "Mike"
+    },
+    {
+      "id": "user-david",
+      "displayName": "David"
+    },
+    {
+      "id": "user-sarah",
+      "displayName": "Sarah"
+    },
+    {
+      "id": "user-alex",
+      "displayName": "Alex"
+    },
+    {
+      "id": "user-emma",
+      "displayName": "Emma"
+    },
+    {
+      "id": "user-laura",
+      "displayName": "Laura"
+    }
+  ],
+  "combinedTranscript": [
+    {
+      "id": "seg001",
+      "timestamp": "00:00:02.000",
+      "speaker": {
+        "id": "system",
+        "displayName": "System"
+      },
+      "text": "Recording started.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg002",
+      "timestamp": "00:00:09.000",
+      "speaker": {
+        "id": "user-john",
+        "displayName": "John"
+      },
+      "text": "Good morning everyone, thanks for joining. Let's focus on the GK API ingestion pipeline and the product data mismatches we've seen in the StoreBridge logs over the last few days.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg003",
+      "timestamp": "00:00:17.000",
+      "speaker": {
+        "id": "user-mike",
+        "displayName": "Mike"
+      },
+      "text": "Morning John. Yeah, this has been raised by multiple stores; some prices and descriptions aren't updating even though the nightly batch runs completed.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg004",
+      "timestamp": "00:00:26.000",
+      "speaker": {
+        "id": "user-david",
+        "displayName": "David"
+      },
+      "text": "I checked yesterday's Azure Service Bus ingestion logs. Messages were received, but around twelve percent failed during transformation in the Processing microservice; retries happened, then they went to the dead-letter queue.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg005",
+      "timestamp": "00:00:36.000",
+      "speaker": {
+        "id": "user-sarah",
+        "displayName": "Sarah"
+      },
+      "text": "Right, the logs show serialization errors around the PLU and GTIN mapping. Some payloads carry both, and our transformation doesn't consistently pick the correct one.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg006",
+      "timestamp": "00:00:47.000",
+      "speaker": {
+        "id": "user-alex",
+        "displayName": "Alex"
+      },
+      "text": "That's consistent with integration tests. We changed mapping when GK added GTIN, but backward compatibility wasn't fully verified. The schema validator may be too lenient.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg007",
+      "timestamp": "00:00:54.000",
+      "speaker": {
+        "id": "user-laura",
+        "displayName": "Laura"
+      },
+      "text": "From operations, this creates data quality issues in stores; outdated promo prices force manual overrides, and store managers are, um, frustrated.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg008",
+      "timestamp": "00:01:02.000",
+      "speaker": {
+        "id": "user-john",
+        "displayName": "John"
+      },
+      "text": "Okay, so both technical and operational angles. David, do we know how many stores are affected?",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg009",
+      "timestamp": "00:01:11.000",
+      "speaker": {
+        "id": "user-david",
+        "displayName": "David"
+      },
+      "text": "Approximately thirty five percent in Belgium and about ten percent in Romania. The affected records cluster in Seasonal Promotions and Private Label categories.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg010",
+      "timestamp": "00:01:21.000",
+      "speaker": {
+        "id": "user-mike",
+        "displayName": "Mike"
+      },
+      "text": "This matches business reports. GK mentioned some payloads miss a PLU when a product only has GTIN. We should see if our ingestion can accept that instead of rejecting it.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg011",
+      "timestamp": "00:01:32.000",
+      "speaker": {
+        "id": "user-sarah",
+        "displayName": "Sarah"
+      },
+      "text": "I can adjust the mapping to use GTIN as a fallback when PLU is missing, but we must check that downstream joins in the pricing table still work.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg012",
+      "timestamp": "00:01:39.000",
+      "speaker": {
+        "id": "user-alex",
+        "displayName": "Alex"
+      },
+      "text": "Please verify the interaction between ProductSyncWorker and PricingUpdateHandler; both write to the same SQL Server table and could create duplicates in race conditions.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg013",
+      "timestamp": "00:01:47.000",
+      "speaker": {
+        "id": "user-emma",
+        "displayName": "Emma"
+      },
+      "text": "Before code changes, I'd like to replicate failing cases in QA. Then we can validate transformation fixes and observability in parallel.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg014",
+      "timestamp": "00:01:56.000",
+      "speaker": {
+        "id": "user-david",
+        "displayName": "David"
+      },
+      "text": "On observability, we lack correlation between ingestion and processing spans. If we add OpenTelemetry trace IDs to message properties, we can follow each message end to end in Application Insights.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg015",
+      "timestamp": "00:02:06.000",
+      "speaker": {
+        "id": "user-sarah",
+        "displayName": "Sarah"
+      },
+      "text": "That would help a lot. I'll need an example for injecting and extracting those IDs in our .NET workers.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg016",
+      "timestamp": "00:02:17.000",
+      "speaker": {
+        "id": "user-alex",
+        "displayName": "Alex"
+      },
+      "text": "No problem. We already use the OpenTelemetry SDK; we just need to propagate the trace context when sending and receiving messages—configuration more than refactor.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg017",
+      "timestamp": "00:02:24.000",
+      "speaker": {
+        "id": "user-laura",
+        "displayName": "Laura"
+      },
+      "text": "Once we have that, operations can monitor the full message lifecycle and spot bottlenecks before they escalate.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg018",
+      "timestamp": "00:02:32.000",
+      "speaker": {
+        "id": "user-john",
+        "displayName": "John"
+      },
+      "text": "Excellent. Mike, could you refresh the business-side Confluence page for the GK integration once the fix is in staging? It's getting a bit out of date.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg019",
+      "timestamp": "00:02:41.000",
+      "speaker": {
+        "id": "user-mike",
+        "displayName": "Mike"
+      },
+      "text": "Sure, I'll update it and include sample payloads after Sarah's changes land in staging.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg020",
+      "timestamp": "00:02:51.000",
+      "speaker": {
+        "id": "user-emma",
+        "displayName": "Emma"
+      },
+      "text": "I'll prepare a regression test plan, including negative scenarios like malformed payloads or missing category codes so the system degrades gracefully.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg021",
+      "timestamp": "00:03:02.000",
+      "speaker": {
+        "id": "user-david",
+        "displayName": "David"
+      },
+      "text": "I'll also create a dashboard in Application Insights that shows transformation failures per store and per payload type, so we can see if the fix actually improves things.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg022",
+      "timestamp": "00:03:09.000",
+      "speaker": {
+        "id": "user-alex",
+        "displayName": "Alex"
+      },
+      "text": "Let's review deployment as well. The last hotfix had downtime because rollback steps weren't clear. We need better sequencing of SQL scripts in release docs.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg023",
+      "timestamp": "00:03:17.000",
+      "speaker": {
+        "id": "user-sarah",
+        "displayName": "Sarah"
+      },
+      "text": "I can extend the Confluence deployment template we discussed last month; it's still missing rollback verification and dependency mapping sections.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg024",
+      "timestamp": "00:03:26.000",
+      "speaker": {
+        "id": "user-john",
+        "displayName": "John"
+      },
+      "text": "Perfect. That will help during the release freeze period.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg025",
+      "timestamp": "00:03:36.000",
+      "speaker": {
+        "id": "user-mike",
+        "displayName": "Mike"
+      },
+      "text": "One more thing: we should align with GK on schema versioning. If more changes are coming, we need early notice. I'll contact their integration lead this week.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg026",
+      "timestamp": "00:03:47.000",
+      "speaker": {
+        "id": "user-laura",
+        "displayName": "Laura"
+      },
+      "text": "Please do. It's risky to operate on assumptions about their payloads.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg027",
+      "timestamp": "00:03:54.000",
+      "speaker": {
+        "id": "user-alex",
+        "displayName": "Alex"
+      },
+      "text": "After we finalize mapping logic, let's roll out to three pilot stores first, then go system wide.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg028",
+      "timestamp": "00:04:02.000",
+      "speaker": {
+        "id": "user-emma",
+        "displayName": "Emma"
+      },
+      "text": "I'll draft the test checklist and validation steps for that pilot. We can reuse the QA dataset from the previous sprint.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg029",
+      "timestamp": "00:04:11.000",
+      "speaker": {
+        "id": "user-john",
+        "displayName": "John"
+      },
+      "text": "Great. Let's aim for debugging by Wednesday, QA by Friday, and a rollout plan early next week.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg030",
+      "timestamp": "00:04:21.000",
+      "speaker": {
+        "id": "user-mike",
+        "displayName": "Mike"
+      },
+      "text": "Sounds good.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg031",
+      "timestamp": "00:04:32.000",
+      "speaker": {
+        "id": "user-sarah",
+        "displayName": "Sarah"
+      },
+      "text": "I'll start looking into the ProductSyncWorker this afternoon and sync with David on tracing setup.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg032",
+      "timestamp": "00:04:39.000",
+      "speaker": {
+        "id": "user-david",
+        "displayName": "David"
+      },
+      "text": "I'll send the environment variables and an example snippet for telemetry propagation right after this call.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg033",
+      "timestamp": "00:04:47.000",
+      "speaker": {
+        "id": "user-alex",
+        "displayName": "Alex"
+      },
+      "text": "Once we're stable, we'll close the older PLU–GTIN tickets as obsolete.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg034",
+      "timestamp": "00:04:56.000",
+      "speaker": {
+        "id": "user-laura",
+        "displayName": "Laura"
+      },
+      "text": "Good plan. This should improve reliability and transparency in production.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg035",
+      "timestamp": "00:05:06.000",
+      "speaker": {
+        "id": "user-john",
+        "displayName": "John"
+      },
+      "text": "Alright, thanks everyone. Let's regroup mid next week to review progress and confirm readiness for deployment.",
+      "confidence": 0.95
+    },
+    {
+      "id": "seg036",
+      "timestamp": "00:05:17.000",
+      "speaker": {
+        "id": "system",
+        "displayName": "System"
+      },
+      "text": "Recording stopped.",
+      "confidence": 0.95
+    }
+  ]
+}
