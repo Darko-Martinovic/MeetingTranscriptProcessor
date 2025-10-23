@@ -40,6 +40,35 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
 
     // Memoized participants extraction
     const participants = useMemo(() => {
+      // First try to extract multi-line participant lists (bullet format)
+      const multiLineMatch = meeting.previewContent.match(
+        /Participants?:\s*\n((?:\s*[-•]\s*[^\n]+(?:\n|$))+)/i
+      );
+
+      if (multiLineMatch) {
+        const lines = multiLineMatch[1].split("\n");
+        const extractedParticipants: string[] = [];
+
+        lines.forEach((line) => {
+          const trimmedLine = line.trim();
+          if (trimmedLine.startsWith("-") || trimmedLine.startsWith("•")) {
+            const participant = trimmedLine.substring(1).trim();
+            if (participant) {
+              // Clean up participant name (remove role descriptions in parentheses)
+              const cleanName = participant.replace(/\s*\([^)]*\)/, "").trim();
+              if (cleanName) {
+                extractedParticipants.push(cleanName);
+              }
+            }
+          }
+        });
+
+        if (extractedParticipants.length > 0) {
+          return extractedParticipants.slice(0, 5); // Limit to 5 for card display
+        }
+      }
+
+      // Fallback: single-line format
       const participantMatch = meeting.previewContent.match(
         /Participants?:\s*([^\n]+)/i
       );

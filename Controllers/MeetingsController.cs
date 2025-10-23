@@ -165,12 +165,18 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             try
             {
+                Console.WriteLine($"🎯 GetMeeting called for fileName: {fileName}");
+
                 // Try to load from metadata file first (has JIRA ticket references)
                 var transcript = await LoadTranscriptWithMetadata(fileName);
                 if (transcript != null)
                 {
+                    Console.WriteLine($"✅ Loaded transcript from metadata successfully");
+                    Console.WriteLine($"📊 Returning transcript with {transcript.CreatedJiraTickets?.Count ?? 0} JIRA tickets");
                     return Ok(transcript);
                 }
+
+                Console.WriteLine($"⚠️ No metadata found, falling back to processing original file");
 
                 // Fallback to processing the original file
                 var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
@@ -178,17 +184,22 @@ namespace MeetingTranscriptProcessor.Controllers
                 foreach (var path in allPaths)
                 {
                     var filePath = Path.Combine(path, fileName);
+                    Console.WriteLine($"🔍 Checking fallback path: {filePath}");
                     if (System.IO.File.Exists(filePath))
                     {
+                        Console.WriteLine($"📄 Found file, processing transcript...");
                         transcript = await _transcriptProcessor.ProcessTranscriptAsync(filePath);
+                        Console.WriteLine($"✅ Processed transcript, returning result");
                         return Ok(transcript);
                     }
                 }
 
+                Console.WriteLine($"❌ Meeting file not found in any directory");
                 return NotFound(new { error = "Meeting file not found" });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Error in GetMeeting: {ex.Message}");
                 return StatusCode(500, new { error = ex.Message });
             }
         }
@@ -198,13 +209,27 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             try
             {
+                Console.WriteLine($"🎫 GetMeetingJiraTickets called for fileName: {fileName}");
+
                 // Try to load from metadata file first
                 var transcript = await LoadTranscriptWithMetadata(fileName);
                 if (transcript != null)
                 {
+                    Console.WriteLine($"✅ Loaded transcript from metadata for tickets");
+                    Console.WriteLine($"🎫 Found {transcript.CreatedJiraTickets?.Count ?? 0} JIRA tickets");
+
+                    if (transcript.CreatedJiraTickets?.Count > 0)
+                    {
+                        foreach (var ticket in transcript.CreatedJiraTickets)
+                        {
+                            Console.WriteLine($"   - Ticket: {ticket.TicketKey} | {ticket.Title}");
+                        }
+                    }
+
                     return Ok(transcript.CreatedJiraTickets);
                 }
 
+                Console.WriteLine($"❌ No metadata found for JIRA tickets, returning empty list");
                 // Fallback: return empty list if no metadata found
                 return Ok(new List<JiraTicketReference>());
             }
@@ -1071,6 +1096,26 @@ namespace MeetingTranscriptProcessor.Controllers
                 // Search in all directories for metadata file
                 var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
 
+                // First, let's list all files in the archive directory for debugging
+                Console.WriteLine($"📁 Listing all files in archive directory ({_archivePath}):");
+                try
+                {
+                    var archiveFiles = Directory.GetFiles(_archivePath);
+                    foreach (var file in archiveFiles)
+                    {
+                        var archiveFileName = Path.GetFileName(file);
+                        Console.WriteLine($"   📄 Archive file: {archiveFileName}");
+                        if (archiveFileName.EndsWith(".meta.json"))
+                        {
+                            Console.WriteLine($"      🎯 Found metadata file: {archiveFileName}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"   ❌ Error listing archive files: {ex.Message}");
+                }
+
                 foreach (var path in allPaths)
                 {
                     var metadataPath = Path.Combine(path, metadataFileName);
@@ -1081,11 +1126,41 @@ namespace MeetingTranscriptProcessor.Controllers
                     {
                         Console.WriteLine($"✅ Found metadata file at: {metadataPath}");
                         var jsonContent = await System.IO.File.ReadAllTextAsync(metadataPath);
+                        Console.WriteLine($"📄 Metadata file size: {jsonContent.Length} characters");
+
                         var options = new JsonSerializerOptions
                         {
                             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                         };
                         var transcript = JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
+
+                        if (transcript != null)
+                        {
+                            Console.WriteLine($"✅ Successfully deserialized transcript");
+                            Console.WriteLine($"📊 Transcript data:");
+                            Console.WriteLine($"   - ID: {transcript.Id}");
+                            Console.WriteLine($"   - Title: {transcript.Title}");
+                            Console.WriteLine($"   - Action items count: {transcript.ActionItems?.Count ?? 0}");
+                            Console.WriteLine($"   - JIRA tickets count: {transcript.CreatedJiraTickets?.Count ?? 0}");
+
+                            if (transcript.CreatedJiraTickets?.Count > 0)
+                            {
+                                Console.WriteLine($"🎫 JIRA tickets found:");
+                                foreach (var ticket in transcript.CreatedJiraTickets)
+                                {
+                                    Console.WriteLine($"   - {ticket.TicketKey}: {ticket.Title}");
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine($"❌ No JIRA tickets found in transcript!");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"❌ Failed to deserialize transcript from metadata");
+                        }
+
                         return transcript;
                     }
                 }
@@ -1102,6 +1177,10 @@ namespace MeetingTranscriptProcessor.Controllers
 
         /// <summary>
         /// Extracts base filename by removing timestamp prefix
+        /// <summary>
+        /// Extracts the base filename from archived filename
+        /// Handles patterns like: YYYYMMDD_HHMMSS_status_language_originalname
+        /// Also handles complex cases like: YYYYMMDD_HHMMSS_status_language_YYYYMMDD_HHMMSS_originalname
         /// </summary>
         private static string ExtractBaseFileName(string fileName)
         {
@@ -1111,22 +1190,68 @@ namespace MeetingTranscriptProcessor.Controllers
             // Pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
             // We want to extract the original name part
             var parts = nameWithoutExt.Split('_');
+
+            Console.WriteLine($"🔍 ExtractBaseFileName input: {fileName}");
+            Console.WriteLine($"🔍 nameWithoutExt: {nameWithoutExt}");
+            Console.WriteLine($"🔍 parts: [{string.Join(", ", parts)}] (count: {parts.Length})");
+
             if (parts.Length >= 4)
             {
                 // Skip timestamp (YYYYMMDD_HHMMSS), status, and possibly language
-                // Join the remaining parts as the original filename
                 var skipCount = 3; // timestamp + status
 
                 // Check if next part might be a language (like "English")
                 if (parts.Length > 4 && IsLanguageName(parts[3]))
                 {
                     skipCount = 4; // timestamp + status + language
+                    Console.WriteLine($"🔍 Found language part '{parts[3]}', skipCount = {skipCount}");
+                }
+                else
+                {
+                    Console.WriteLine($"🔍 No language part found, skipCount = {skipCount}");
                 }
 
-                return string.Join("_", parts.Skip(skipCount));
+                // Handle embedded timestamps in the original filename
+                // If after skipping the archive parts, we still have a timestamp pattern, include it
+                var remainingParts = parts.Skip(skipCount).ToList();
+                Console.WriteLine($"🔍 remainingParts after skip: [{string.Join(", ", remainingParts)}]");
+
+                // Check if the remaining parts start with another timestamp pattern
+                if (remainingParts.Count >= 2 &&
+                    remainingParts[0].Length == 8 && remainingParts[0].All(char.IsDigit) && // YYYYMMDD
+                    remainingParts[1].Length == 6 && remainingParts[1].All(char.IsDigit))   // HHMMSS
+                {
+                    // Include the embedded timestamp in the base filename
+                    Console.WriteLine($"🔍 Found embedded timestamp pattern");
+                    var result = string.Join("_", remainingParts);
+                    Console.WriteLine($"🔍 ExtractBaseFileName result: {result}");
+                    return result;
+                }
+                else
+                {
+                    // Check if this might be a simple timestamp prefix case
+                    // Pattern: YYYYMMDD_HHMMSS_originalname (no status/language)
+                    if (parts.Length >= 3 &&
+                        parts[0].Length == 8 && parts[0].All(char.IsDigit) && // YYYYMMDD
+                        parts[1].Length == 6 && parts[1].All(char.IsDigit))   // HHMMSS
+                    {
+                        // This is a simple timestamp prefix, return the full filename
+                        Console.WriteLine($"🔍 Found simple timestamp prefix pattern");
+                        var result = nameWithoutExt;
+                        Console.WriteLine($"🔍 ExtractBaseFileName result: {result}");
+                        return result;
+                    }
+                    else
+                    {
+                        var result = string.Join("_", remainingParts);
+                        Console.WriteLine($"🔍 Using remaining parts: {result}");
+                        return result;
+                    }
+                }
             }
 
             // If pattern doesn't match, return as-is
+            Console.WriteLine($"🔍 No pattern match, returning as-is: {nameWithoutExt}");
             return nameWithoutExt;
         }
 

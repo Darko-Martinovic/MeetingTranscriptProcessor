@@ -1,2 +1,0 @@
-dotnet run --web
-5173 port

@@ -1,0 +1,88 @@
+MEETING TRANSCRIPT
+=================
+Date: 2025-10-17
+Time: 11:00 CET
+Participants:
+- John (Business Representative)
+- Alex (Senior Architect)
+- Mike (Product Owner)
+- Sarah (Developer, EPAM)
+- David (Data Engineer)
+- Emma (QA Lead)
+- Laura (Operations Manager)
+
+Meeting Type: Technical Review – Integration and Observability
+Language: English (natural B2–C1 business speech)
+
+--------------------------------------------------------------
+
+John: Good morning everyone! Thanks for joining. Let’s focus on the GK API ingestion pipeline and the product data mismatches we’ve seen in the StoreBridge logs over the last few days.
+
+Mike: Morning, John. Yes, this issue has been raised by multiple stores. They’re noticing that some product prices and descriptions aren’t updating even though the nightly batch runs are completed successfully.
+
+David: I checked yesterday’s ingestion logs from Azure Service Bus. The messages were received, but about 12% failed during transformation in the Processing microservice. The retry policy kicked in, but those messages eventually went to the dead-letter queue.
+
+Sarah: I saw that too. The logs show serialization errors when handling the PLU–GTIN mapping. It looks like some payloads contain both, and our transformation script doesn’t always pick the right one.
+
+Alex: That’s consistent with what we saw during the integration test phase. The mapping logic changed when GK added the GTIN field, and we didn’t fully verify backward compatibility. I’m worried that our schema validator might not be strict enough.
+
+Laura: From the operations perspective, this creates data quality issues. Some stores still display outdated promo prices, which triggers manual interventions. It’s causing frustration among store managers.
+
+John: Understood. So we have both a technical and operational angle here. David, do we have metrics on how many stores are affected?
+
+David: Roughly 35% of Belgian stores and 10% of Romanian ones. The affected records seem to belong to the “Seasonal Promotions” and “Private Label” product categories.
+
+Mike: This aligns with business reports. The GK team told us that some of their payloads have missing PLU identifiers when a product only has a GTIN. We should check if our ingestion rules can handle that gracefully instead of rejecting it.
+
+Sarah: I can adjust the mapping logic to use GTIN as a fallback when PLU is missing, but we’ll need to ensure that doesn’t break downstream joins in the pricing table.
+
+Alex: Yes, make sure to verify how the ProductSyncWorker interacts with the PricingUpdateHandler. They both write into the same SQL Server table, and conflicts there could create duplicate entries.
+
+Emma: Before any code changes, I suggest we replicate the failing cases in the QA environment. That way, we can test both the transformation logic and the observability improvements in parallel.
+
+David: Good point. Speaking of observability — right now, we don’t have correlation between ingestion and processing spans. If we add OpenTelemetry trace IDs to message properties, we could follow each message end-to-end in Application Insights.
+
+Sarah: That would make debugging much easier. I’ll need an example of how to inject and extract those IDs in our .NET workers though.
+
+Alex: I can help with that. It’s just a matter of passing the trace context when sending messages. We already use the OpenTelemetry SDK, so it’s a configuration update rather than a major refactor.
+
+Laura: Once this is in place, we can finally monitor the full message lifecycle. That would help operations spot bottlenecks before they escalate.
+
+John: Excellent. Mike, could you update the business documentation once we confirm the fix? The GK integration page on Confluence is getting outdated.
+
+Mike: Sure, I’ll refresh it and include examples of the new payloads once Sarah’s changes are in staging.
+
+Emma: And I’ll prepare a regression test plan. We should also include negative cases — like malformed payloads or missing category codes — to make sure the system degrades gracefully.
+
+David: Agreed. I’ll create a new dashboard in Application Insights to track transformation failures per store and per payload type. That’ll give us visibility on whether the fix really improves things.
+
+Alex: Let’s also review the deployment process. The last hotfix caused downtime because the rollback steps weren’t clear. We need better sequencing of SQL scripts in the release documentation.
+
+Sarah: I can update the Confluence deployment template we discussed last month. It still lacks a section for rollback verification and dependency mapping.
+
+John: Perfect. That will help both developers and ops during the release freeze period.
+
+Mike: One more thing — we should align with GK about schema versioning. If they plan more changes, we need early notification. I’ll contact their integration lead this week to confirm the roadmap.
+
+Laura: Please do. It’s becoming risky to rely on assumptions about their payloads.
+
+Alex: Right. And once we finalize the new mapping logic, let’s run a limited rollout to three pilot stores before enabling it system-wide.
+
+Emma: I’ll prepare the test checklist and validation steps for that rollout. We can reuse the QA dataset we already have from the previous sprint.
+
+John: Excellent collaboration, everyone. Let’s aim to have the debugging completed by Wednesday, QA testing by Friday, and the rollout plan finalized early next week.
+
+Mike: Sounds like a solid timeline.
+
+Sarah: I’ll start investigating the codebase this afternoon and sync with David for tracing setup.
+
+David: I’ll send you the environment variables needed for telemetry propagation right after this meeting.
+
+Alex: Great. Once everything is stable, we can close the old tickets related to PLU–GTIN mapping as obsolete.
+
+Laura: Good plan. This should improve both reliability and transparency in our production pipeline.
+
+John: Alright, thank you all. Let’s regroup mid-next week to review progress and confirm readiness for deployment. Nice work, team!
+
+--------------------------------------------------------------
+(End of Transcript)

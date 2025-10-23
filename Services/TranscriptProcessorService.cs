@@ -696,7 +696,39 @@ Focus on:
     {
         var participants = new List<string>();
 
-        // Look for participant patterns
+        // First try to extract multi-line participant lists (bullet format)
+        var multiLinePattern = @"participants?:\s*\n((?:\s*[-•]\s*[^\n]+(?:\n|$))+)";
+        var multiLineMatch = Regex.Match(content, multiLinePattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+
+        if (multiLineMatch.Success)
+        {
+            var lines = multiLineMatch.Groups[1].Value.Split('\n');
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+                if (trimmedLine.StartsWith("-") || trimmedLine.StartsWith("•"))
+                {
+                    var participant = trimmedLine.Substring(1).Trim();
+                    if (!string.IsNullOrEmpty(participant))
+                    {
+                        // Clean up participant name (remove role descriptions in parentheses)
+                        var cleanName = Regex.Replace(participant, @"\s*\([^)]*\)", "").Trim();
+                        if (!string.IsNullOrEmpty(cleanName))
+                        {
+                            participants.Add(cleanName);
+                        }
+                    }
+                }
+            }
+
+            // If we found participants in multi-line format, return them
+            if (participants.Any())
+            {
+                return participants.Distinct().ToList();
+            }
+        }
+
+        // Fallback: Look for single-line participant patterns
         var participantPatterns = new[]
         {
             @"participants?:\s*([^\n]+)",
@@ -728,11 +760,9 @@ Focus on:
         }
 
         return participants.Distinct().ToList();
-    }
-
-    /// <summary>
-    /// Extracts project key from content
-    /// </summary>
+    }    /// <summary>
+         /// Extracts project key from content
+         /// </summary>
     private static string ExtractProjectKey(string fileName, string content, string? defaultProjectKey = null)
     {
         // Look for project key patterns
