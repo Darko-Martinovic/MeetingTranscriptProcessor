@@ -1,7 +1,6 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback } from "react";
 import { Star, ExternalLink, Calendar, User, AlertCircle } from "lucide-react";
-import type { MeetingTranscript, JiraTicketReference } from "../services/api";
-import { meetingApi } from "../services/api";
+import type { MeetingTranscript } from "../services/api";
 import LanguageBadge from "./common/LanguageBadge";
 import styles from "./MeetingDetails.module.css";
 
@@ -14,35 +13,12 @@ interface MeetingDetailsProps {
 
 const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
   ({ meeting, onBack, onToggleFavorite, isFavorite }) => {
-    const [jiraTickets, setJiraTickets] = useState<JiraTicketReference[]>([]);
-    const [loadingTickets, setLoadingTickets] = useState(false);
+    // Use JIRA tickets directly from the meeting object since they're already loaded
+    const jiraTickets = meeting.createdJiraTickets || [];
 
     const formatDate = useCallback((dateString: string): string => {
       return new Date(dateString).toLocaleString();
     }, []);
-
-    // Load JIRA tickets when component mounts
-    useEffect(() => {
-      const loadJiraTickets = async () => {
-        try {
-          setLoadingTickets(true);
-          const tickets = await meetingApi.getMeetingJiraTickets(
-            meeting.fileName
-          );
-          setJiraTickets(tickets);
-        } catch (error) {
-          console.error("Failed to load JIRA tickets:", error);
-          // Check if tickets are available in the meeting object
-          if (meeting.createdJiraTickets) {
-            setJiraTickets(meeting.createdJiraTickets);
-          }
-        } finally {
-          setLoadingTickets(false);
-        }
-      };
-
-      loadJiraTickets();
-    }, [meeting.fileName, meeting.createdJiraTickets]);
 
     const getPriorityColor = (priority: string) => {
       switch (priority.toLowerCase()) {
@@ -152,9 +128,7 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
             <h3 className={styles.sectionTitle}>
               Created JIRA Tickets ({jiraTickets.length})
             </h3>
-            {loadingTickets ? (
-              <div className={styles.loading}>Loading JIRA tickets...</div>
-            ) : jiraTickets.length > 0 ? (
+            {jiraTickets.length > 0 ? (
               <div className={styles.jiraTickets}>
                 {jiraTickets.map((ticket) => (
                   <div key={ticket.ticketKey} className={styles.jiraTicket}>
