@@ -203,10 +203,10 @@ const App: React.FC = () => {
     try {
       setLoading(true);
       await meetingApi.uploadMeeting(file);
-      
+
       // Close upload modal immediately after successful upload
       setShowUpload(false);
-      
+
       // Refresh the incoming folder if it's selected
       const incomingFolder = folders.find(
         (f) => f.type === FolderType.Incoming
@@ -229,10 +229,10 @@ const App: React.FC = () => {
         meetingApi.uploadMeeting(file)
       );
       await Promise.all(uploadPromises);
-      
+
       // Close upload modal immediately after successful uploads
       setShowUpload(false);
-      
+
       // Refresh the incoming folder if it's selected
       const incomingFolder = folders.find(
         (f) => f.type === FolderType.Incoming
@@ -250,14 +250,14 @@ const App: React.FC = () => {
 
   const handleProcessingComplete = async (fileName: string) => {
     console.log(`Processing completed for: ${fileName}`);
-    
+
     // Refresh the current folder to show updated meetings
     if (selectedFolder) {
       await loadMeetingsInFolder(selectedFolder);
     }
-    
+
     // If we're not viewing the archive folder, switch to it to show the completed file
-    const archiveFolder = folders.find(f => f.type === FolderType.Archive);
+    const archiveFolder = folders.find((f) => f.type === FolderType.Archive);
     if (archiveFolder && selectedFolder?.type !== FolderType.Archive) {
       setSelectedFolder(archiveFolder);
       await loadMeetingsInFolder(archiveFolder);

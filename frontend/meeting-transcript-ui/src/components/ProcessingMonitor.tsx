@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import type { ProcessingQueue } from '../services/api';
-import { ProcessingStage, processingApi } from '../services/api';
-import './ProcessingMonitor.css';
+import React, { useState, useEffect } from "react";
+import type { ProcessingQueue } from "../services/api";
+import { ProcessingStage, processingApi } from "../services/api";
+import "./ProcessingMonitor.css";
 
 interface ProcessingMonitorProps {
   onProcessingComplete?: (fileName: string) => void;
 }
 
-const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingComplete }) => {
-  const [processingQueue, setProcessingQueue] = useState<ProcessingQueue | null>(null);
+const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({
+  onProcessingComplete,
+}) => {
+  const [processingQueue, setProcessingQueue] =
+    useState<ProcessingQueue | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [autoCloseTimer, setAutoCloseTimer] = useState<NodeJS.Timeout | null>(null);
+  const [autoCloseTimer, setAutoCloseTimer] = useState<NodeJS.Timeout | null>(
+    null
+  );
   const [completedFiles, setCompletedFiles] = useState<Set<string>>(new Set());
   const [autoCloseCountdown, setAutoCloseCountdown] = useState<number>(0);
 
@@ -19,34 +24,44 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
     const fetchProcessingQueue = async () => {
       try {
         const queue = await processingApi.getProcessingQueue();
-        setProcessingQueue(prevQueue => {
+        setProcessingQueue((prevQueue) => {
           // Check for newly completed files
           if (prevQueue) {
-            const prevCompleted = new Set(prevQueue.recentlyCompleted.map(item => item.fileName));
-            const currentCompleted = new Set(queue.recentlyCompleted.map(item => item.fileName));
-            
-            // Find files that just completed
-            const newlyCompleted = [...currentCompleted].filter(fileName => 
-              !prevCompleted.has(fileName) && !completedFiles.has(fileName)
+            const prevCompleted = new Set(
+              prevQueue.recentlyCompleted.map((item) => item.fileName)
             );
-            
+            const currentCompleted = new Set(
+              queue.recentlyCompleted.map((item) => item.fileName)
+            );
+
+            // Find files that just completed
+            const newlyCompleted = [...currentCompleted].filter(
+              (fileName) =>
+                !prevCompleted.has(fileName) && !completedFiles.has(fileName)
+            );
+
             // Notify parent of completed files
-            newlyCompleted.forEach(fileName => {
+            newlyCompleted.forEach((fileName) => {
               onProcessingComplete?.(fileName);
-              setCompletedFiles(prev => new Set([...prev, fileName]));
+              setCompletedFiles((prev) => new Set([...prev, fileName]));
             });
           }
-          
+
           return queue;
         });
         setError(null);
-        
+
         // Show monitor if there's active processing or recent activity
-        const hasActivity = queue.currentlyProcessing.length > 0 || queue.recentlyCompleted.length > 0;
+        const hasActivity =
+          queue.currentlyProcessing.length > 0 ||
+          queue.recentlyCompleted.length > 0;
         setIsVisible(hasActivity);
-        
+
         // Auto-close logic: if no active processing and we have completed items, start timer
-        if (queue.currentlyProcessing.length === 0 && queue.recentlyCompleted.length > 0) {
+        if (
+          queue.currentlyProcessing.length === 0 &&
+          queue.recentlyCompleted.length > 0
+        ) {
           if (!autoCloseTimer) {
             setAutoCloseCountdown(10); // Start countdown at 10 seconds
             const timer = setTimeout(() => {
@@ -65,8 +80,8 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
           }
         }
       } catch (err) {
-        setError('Failed to load processing status');
-        console.error('Error fetching processing queue:', err);
+        setError("Failed to load processing status");
+        console.error("Error fetching processing queue:", err);
       }
     };
 
@@ -78,7 +93,7 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
 
     // Countdown timer for auto-close
     const countdownInterval = setInterval(() => {
-      setAutoCloseCountdown(prev => {
+      setAutoCloseCountdown((prev) => {
         if (prev > 1) {
           return prev - 1;
         }
@@ -97,45 +112,58 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
 
   const getStageDisplayName = (stage: number): string => {
     switch (stage) {
-      case ProcessingStage.Queued: return 'Queued';
-      case ProcessingStage.Starting: return 'Starting';
-      case ProcessingStage.ReadingFile: return 'Reading File';
-      case ProcessingStage.ExtractingActionItems: return 'Extracting Actions';
-      case ProcessingStage.CreatingJiraTickets: return 'Creating JIRA Tickets';
-      case ProcessingStage.SavingMetadata: return 'Saving Metadata';
-      case ProcessingStage.Archiving: return 'Archiving';
-      case ProcessingStage.Completed: return 'Completed';
-      case ProcessingStage.Failed: return 'Failed';
-      default: return 'Unknown';
+      case ProcessingStage.Queued:
+        return "Queued";
+      case ProcessingStage.Starting:
+        return "Starting";
+      case ProcessingStage.ReadingFile:
+        return "Reading File";
+      case ProcessingStage.ExtractingActionItems:
+        return "Extracting Actions";
+      case ProcessingStage.CreatingJiraTickets:
+        return "Creating JIRA Tickets";
+      case ProcessingStage.SavingMetadata:
+        return "Saving Metadata";
+      case ProcessingStage.Archiving:
+        return "Archiving";
+      case ProcessingStage.Completed:
+        return "Completed";
+      case ProcessingStage.Failed:
+        return "Failed";
+      default:
+        return "Unknown";
     }
   };
 
-  const getDetailedStageMessage = (status: { 
-    stage: number; 
-    statusMessage?: string; 
-    metrics?: { 
-      jiraTicketsCreated?: number; 
-      actionItemsExtracted?: number; 
-      detectedLanguage?: string; 
-    } 
+  const getDetailedStageMessage = (status: {
+    stage: number;
+    statusMessage?: string;
+    metrics?: {
+      jiraTicketsCreated?: number;
+      actionItemsExtracted?: number;
+      detectedLanguage?: string;
+    };
   }): string => {
     switch (status.stage) {
       case ProcessingStage.CreatingJiraTickets:
-        if (status.metrics?.jiraTicketsCreated && status.metrics?.actionItemsExtracted) {
+        if (
+          status.metrics?.jiraTicketsCreated &&
+          status.metrics?.actionItemsExtracted
+        ) {
           return `Creating JIRA tickets... (${status.metrics.jiraTicketsCreated}/${status.metrics.actionItemsExtracted} completed)`;
         }
-        return 'Creating JIRA tickets...';
+        return "Creating JIRA tickets...";
       case ProcessingStage.ExtractingActionItems:
         if (status.metrics?.actionItemsExtracted) {
           return `Extracted ${status.metrics.actionItemsExtracted} action items`;
         }
-        return 'Analyzing transcript and extracting action items...';
+        return "Analyzing transcript and extracting action items...";
       case ProcessingStage.ReadingFile:
-        return 'Reading and parsing transcript file...';
+        return "Reading and parsing transcript file...";
       case ProcessingStage.SavingMetadata:
-        return 'Saving meeting metadata and ticket references...';
+        return "Saving meeting metadata and ticket references...";
       case ProcessingStage.Archiving:
-        return 'Moving file to archive folder...';
+        return "Moving file to archive folder...";
       default:
         return status.statusMessage || getStageDisplayName(status.stage);
     }
@@ -143,16 +171,26 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
 
   const getStageColor = (stage: number): string => {
     switch (stage) {
-      case ProcessingStage.Queued: return '#fbbf24'; // amber
-      case ProcessingStage.Starting: return '#60a5fa'; // blue
-      case ProcessingStage.ReadingFile: return '#34d399'; // emerald
-      case ProcessingStage.ExtractingActionItems: return '#a78bfa'; // violet
-      case ProcessingStage.CreatingJiraTickets: return '#fb7185'; // rose
-      case ProcessingStage.SavingMetadata: return '#fbbf24'; // amber
-      case ProcessingStage.Archiving: return '#94a3b8'; // slate
-      case ProcessingStage.Completed: return '#10b981'; // emerald
-      case ProcessingStage.Failed: return '#ef4444'; // red
-      default: return '#6b7280'; // gray
+      case ProcessingStage.Queued:
+        return "#fbbf24"; // amber
+      case ProcessingStage.Starting:
+        return "#60a5fa"; // blue
+      case ProcessingStage.ReadingFile:
+        return "#34d399"; // emerald
+      case ProcessingStage.ExtractingActionItems:
+        return "#a78bfa"; // violet
+      case ProcessingStage.CreatingJiraTickets:
+        return "#fb7185"; // rose
+      case ProcessingStage.SavingMetadata:
+        return "#fbbf24"; // amber
+      case ProcessingStage.Archiving:
+        return "#94a3b8"; // slate
+      case ProcessingStage.Completed:
+        return "#10b981"; // emerald
+      case ProcessingStage.Failed:
+        return "#ef4444"; // red
+      default:
+        return "#6b7280"; // gray
     }
   };
 
@@ -161,7 +199,7 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
     const end = endTime ? new Date(endTime) : new Date();
     const diffMs = end.getTime() - start.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
-    
+
     if (diffSecs < 60) return `${diffSecs}s`;
     const diffMins = Math.floor(diffSecs / 60);
     const remainingSecs = diffSecs % 60;
@@ -175,8 +213,8 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
       const queue = await processingApi.getProcessingQueue();
       setProcessingQueue(queue);
     } catch (err) {
-      setError('Failed to clear completed history');
-      console.error('Error clearing completed:', err);
+      setError("Failed to clear completed history");
+      console.error("Error clearing completed:", err);
     }
   };
 
@@ -198,7 +236,7 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
             </span>
           )}
           {processingQueue && processingQueue.recentlyCompleted.length > 0 && (
-            <button 
+            <button
               onClick={handleClearCompleted}
               className="clear-button"
               title="Clear completed history"
@@ -206,7 +244,7 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
               🧹 Clear
             </button>
           )}
-          <button 
+          <button
             onClick={() => {
               setIsVisible(false);
               if (autoCloseTimer) {
@@ -235,16 +273,21 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
           {/* Currently Processing */}
           {processingQueue.currentlyProcessing.length > 0 && (
             <div className="processing-section">
-              <h4>Currently Processing ({processingQueue.currentlyProcessing.length})</h4>
+              <h4>
+                Currently Processing (
+                {processingQueue.currentlyProcessing.length})
+              </h4>
               {processingQueue.currentlyProcessing.map((status) => (
                 <div key={status.id} className="processing-item active">
                   <div className="processing-item-header">
-                    <span className="processing-file-name">{status.fileName}</span>
+                    <span className="processing-file-name">
+                      {status.fileName}
+                    </span>
                     <span className="processing-id">ID: {status.id}</span>
                   </div>
                   <div className="processing-item-details">
                     <div className="processing-stage">
-                      <span 
+                      <span
                         className="stage-indicator"
                         style={{ backgroundColor: getStageColor(status.stage) }}
                       />
@@ -252,18 +295,22 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
                     </div>
                     <div className="processing-progress">
                       <div className="progress-bar">
-                        <div 
+                        <div
                           className="progress-fill"
                           style={{ width: `${status.progressPercentage}%` }}
                         />
                       </div>
-                      <span className="progress-text">{status.progressPercentage}%</span>
+                      <span className="progress-text">
+                        {status.progressPercentage}%
+                      </span>
                     </div>
                     <div className="processing-duration">
                       {formatDuration(status.startedAt)}
                     </div>
                   </div>
-                  <div className="processing-message">{getDetailedStageMessage(status)}</div>
+                  <div className="processing-message">
+                    {getDetailedStageMessage(status)}
+                  </div>
                   {status.hasError && status.errorMessage && (
                     <div className="processing-error-message">
                       <span className="error-icon">❌</span>
@@ -278,16 +325,25 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
           {/* Recently Completed */}
           {processingQueue.recentlyCompleted.length > 0 && (
             <div className="processing-section">
-              <h4>Recently Completed ({processingQueue.recentlyCompleted.length})</h4>
+              <h4>
+                Recently Completed ({processingQueue.recentlyCompleted.length})
+              </h4>
               {processingQueue.recentlyCompleted.map((status) => (
-                <div key={status.id} className={`processing-item completed ${status.hasError ? 'error' : 'success'}`}>
+                <div
+                  key={status.id}
+                  className={`processing-item completed ${
+                    status.hasError ? "error" : "success"
+                  }`}
+                >
                   <div className="processing-item-header">
-                    <span className="processing-file-name">{status.fileName}</span>
+                    <span className="processing-file-name">
+                      {status.fileName}
+                    </span>
                     <span className="processing-id">ID: {status.id}</span>
                   </div>
                   <div className="processing-item-details">
                     <div className="processing-stage">
-                      <span 
+                      <span
                         className="stage-indicator"
                         style={{ backgroundColor: getStageColor(status.stage) }}
                       />
@@ -296,16 +352,23 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
                     <div className="processing-metrics">
                       {status.metrics && (
                         <>
-                          <span className="metric">📋 {status.metrics.actionItemsExtracted} actions</span>
-                          <span className="metric">🎫 {status.metrics.jiraTicketsCreated} tickets</span>
+                          <span className="metric">
+                            📋 {status.metrics.actionItemsExtracted} actions
+                          </span>
+                          <span className="metric">
+                            🎫 {status.metrics.jiraTicketsCreated} tickets
+                          </span>
                           {status.metrics.detectedLanguage && (
-                            <span className="metric">🌐 {status.metrics.detectedLanguage}</span>
+                            <span className="metric">
+                              🌐 {status.metrics.detectedLanguage}
+                            </span>
                           )}
                         </>
                       )}
                     </div>
                     <div className="processing-duration">
-                      {status.completedAt && formatDuration(status.startedAt, status.completedAt)}
+                      {status.completedAt &&
+                        formatDuration(status.startedAt, status.completedAt)}
                     </div>
                   </div>
                   {status.hasError && status.errorMessage && (
@@ -319,12 +382,13 @@ const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingCompl
             </div>
           )}
 
-          {processingQueue.currentlyProcessing.length === 0 && processingQueue.recentlyCompleted.length === 0 && (
-            <div className="processing-empty">
-              <span className="empty-icon">💤</span>
-              No recent processing activity
-            </div>
-          )}
+          {processingQueue.currentlyProcessing.length === 0 &&
+            processingQueue.recentlyCompleted.length === 0 && (
+              <div className="processing-empty">
+                <span className="empty-icon">💤</span>
+                No recent processing activity
+              </div>
+            )}
         </div>
       )}
     </div>
