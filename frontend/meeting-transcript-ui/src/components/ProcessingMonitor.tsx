@@ -3,21 +3,67 @@ import type { ProcessingQueue } from '../services/api';
 import { ProcessingStage, processingApi } from '../services/api';
 import './ProcessingMonitor.css';
 
-const ProcessingMonitor: React.FC = () => {
+interface ProcessingMonitorProps {
+  onProcessingComplete?: (fileName: string) => void;
+}
+
+const ProcessingMonitor: React.FC<ProcessingMonitorProps> = ({ onProcessingComplete }) => {
   const [processingQueue, setProcessingQueue] = useState<ProcessingQueue | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoCloseTimer, setAutoCloseTimer] = useState<NodeJS.Timeout | null>(null);
+  const [completedFiles, setCompletedFiles] = useState<Set<string>>(new Set());
+  const [autoCloseCountdown, setAutoCloseCountdown] = useState<number>(0);
 
   useEffect(() => {
     const fetchProcessingQueue = async () => {
       try {
         const queue = await processingApi.getProcessingQueue();
-        setProcessingQueue(queue);
+        setProcessingQueue(prevQueue => {
+          // Check for newly completed files
+          if (prevQueue) {
+            const prevCompleted = new Set(prevQueue.recentlyCompleted.map(item => item.fileName));
+            const currentCompleted = new Set(queue.recentlyCompleted.map(item => item.fileName));
+            
+            // Find files that just completed
+            const newlyCompleted = [...currentCompleted].filter(fileName => 
+              !prevCompleted.has(fileName) && !completedFiles.has(fileName)
+            );
+            
+            // Notify parent of completed files
+            newlyCompleted.forEach(fileName => {
+              onProcessingComplete?.(fileName);
+              setCompletedFiles(prev => new Set([...prev, fileName]));
+            });
+          }
+          
+          return queue;
+        });
         setError(null);
         
         // Show monitor if there's active processing or recent activity
         const hasActivity = queue.currentlyProcessing.length > 0 || queue.recentlyCompleted.length > 0;
         setIsVisible(hasActivity);
+        
+        // Auto-close logic: if no active processing and we have completed items, start timer
+        if (queue.currentlyProcessing.length === 0 && queue.recentlyCompleted.length > 0) {
+          if (!autoCloseTimer) {
+            setAutoCloseCountdown(10); // Start countdown at 10 seconds
+            const timer = setTimeout(() => {
+              setIsVisible(false);
+              setAutoCloseTimer(null);
+              setAutoCloseCountdown(0);
+            }, 10000); // Auto-close after 10 seconds of no activity
+            setAutoCloseTimer(timer);
+          }
+        } else {
+          // Clear timer if processing is active
+          if (autoCloseTimer) {
+            clearTimeout(autoCloseTimer);
+            setAutoCloseTimer(null);
+            setAutoCloseCountdown(0);
+          }
+        }
       } catch (err) {
         setError('Failed to load processing status');
         console.error('Error fetching processing queue:', err);
@@ -27,13 +73,27 @@ const ProcessingMonitor: React.FC = () => {
     // Initial fetch
     fetchProcessingQueue();
 
-    // Poll every 2 seconds for updates
-    const intervalId = setInterval(fetchProcessingQueue, 2000);
+    // Poll every 1 second for more responsive updates
+    const intervalId = setInterval(fetchProcessingQueue, 1000);
+
+    // Countdown timer for auto-close
+    const countdownInterval = setInterval(() => {
+      setAutoCloseCountdown(prev => {
+        if (prev > 1) {
+          return prev - 1;
+        }
+        return 0;
+      });
+    }, 1000);
 
     return () => {
       clearInterval(intervalId);
+      clearInterval(countdownInterval);
+      if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+      }
     };
-  }, []);
+  }, [onProcessingComplete, autoCloseTimer, completedFiles]);
 
   const getStageDisplayName = (stage: number): string => {
     switch (stage) {
@@ -47,6 +107,37 @@ const ProcessingMonitor: React.FC = () => {
       case ProcessingStage.Completed: return 'Completed';
       case ProcessingStage.Failed: return 'Failed';
       default: return 'Unknown';
+    }
+  };
+
+  const getDetailedStageMessage = (status: { 
+    stage: number; 
+    statusMessage?: string; 
+    metrics?: { 
+      jiraTicketsCreated?: number; 
+      actionItemsExtracted?: number; 
+      detectedLanguage?: string; 
+    } 
+  }): string => {
+    switch (status.stage) {
+      case ProcessingStage.CreatingJiraTickets:
+        if (status.metrics?.jiraTicketsCreated && status.metrics?.actionItemsExtracted) {
+          return `Creating JIRA tickets... (${status.metrics.jiraTicketsCreated}/${status.metrics.actionItemsExtracted} completed)`;
+        }
+        return 'Creating JIRA tickets...';
+      case ProcessingStage.ExtractingActionItems:
+        if (status.metrics?.actionItemsExtracted) {
+          return `Extracted ${status.metrics.actionItemsExtracted} action items`;
+        }
+        return 'Analyzing transcript and extracting action items...';
+      case ProcessingStage.ReadingFile:
+        return 'Reading and parsing transcript file...';
+      case ProcessingStage.SavingMetadata:
+        return 'Saving meeting metadata and ticket references...';
+      case ProcessingStage.Archiving:
+        return 'Moving file to archive folder...';
+      default:
+        return status.statusMessage || getStageDisplayName(status.stage);
     }
   };
 
@@ -101,6 +192,11 @@ const ProcessingMonitor: React.FC = () => {
           Processing Activity
         </h3>
         <div className="processing-controls">
+          {autoCloseCountdown > 0 && (
+            <span className="auto-close-countdown" title="Auto-closing in...">
+              🕒 {autoCloseCountdown}s
+            </span>
+          )}
           {processingQueue && processingQueue.recentlyCompleted.length > 0 && (
             <button 
               onClick={handleClearCompleted}
@@ -111,7 +207,14 @@ const ProcessingMonitor: React.FC = () => {
             </button>
           )}
           <button 
-            onClick={() => setIsVisible(false)}
+            onClick={() => {
+              setIsVisible(false);
+              if (autoCloseTimer) {
+                clearTimeout(autoCloseTimer);
+                setAutoCloseTimer(null);
+                setAutoCloseCountdown(0);
+              }
+            }}
             className="close-button"
             title="Hide processing monitor"
           >
@@ -160,7 +263,7 @@ const ProcessingMonitor: React.FC = () => {
                       {formatDuration(status.startedAt)}
                     </div>
                   </div>
-                  <div className="processing-message">{status.statusMessage}</div>
+                  <div className="processing-message">{getDetailedStageMessage(status)}</div>
                   {status.hasError && status.errorMessage && (
                     <div className="processing-error-message">
                       <span className="error-icon">❌</span>
