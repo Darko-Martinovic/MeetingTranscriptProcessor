@@ -130,14 +130,14 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.5rem 1rem;
   background: linear-gradient(
     135deg,
     var(--accent-red) 0%,
     var(--accent-red-hover) 100%
   );
   color: var(--text-inverse);
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   font-weight: 600;
   font-size: 0.875rem;
   border: 1px solid var(--accent-red);
