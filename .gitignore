@@ -35,6 +35,8 @@ data/Archive/*
 appsettings.json
 appsettings.*.json
 secrets.json
+config/azure-openai.json
+config/jira.json
 
 # NuGet
 *.nupkg

@@ -1,0 +1,11 @@
+{
+  "endpoint": "https://your-resource-name.openai.azure.com",
+  "apiKey": "your-azure-openai-api-key-here",
+  "deploymentName": "gpt-4o",
+  "maxTokens": 4000,
+  "temperature": 0.1,
+  "topP": 0.95,
+  "apiVersion": "2024-02-15-preview",
+  "systemPrompt": "You are an expert assistant that analyzes meeting transcripts and extracts actionable items. You respond in valid JSON format.",
+  "customPrompt": ""
+}
