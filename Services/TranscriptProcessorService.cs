@@ -897,8 +897,8 @@ Focus on:
     {
         var participants = new List<string>();
 
-        // First try to extract multi-line participant lists (bullet format)
-        var multiLinePattern = @"participants?:\s*\n((?:\s*[-•]\s*[^\n]+(?:\n|$))+)";
+        // First try to extract multi-line participant lists (bullet format) - multi-language
+        var multiLinePattern = @"(?:participants?|attendees?|deelnemers?|aanwezigen?):\s*\n((?:\s*[-•]\s*[^\n]+(?:\n|$))+)";
         var multiLineMatch = Regex.Match(content, multiLinePattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
         if (multiLineMatch.Success)
@@ -929,12 +929,15 @@ Focus on:
             }
         }
 
-        // Fallback: Look for single-line participant patterns
+        // Fallback: Look for single-line participant patterns (multi-language support)
         var participantPatterns = new[]
         {
             @"participants?:\s*([^\n]+)",
             @"attendees?:\s*([^\n]+)",
-            @"present:\s*([^\n]+)"
+            @"present:\s*([^\n]+)",
+            @"deelnemers?:\s*([^\n]+)",        // Dutch
+            @"participants?\s*:\s*([^\n]+)",   // French variation
+            @"aanwezigen?:\s*([^\n]+)"         // Dutch alternative
         };
 
         foreach (var pattern in participantPatterns)
@@ -942,10 +945,28 @@ Focus on:
             var match = Regex.Match(content, pattern, RegexOptions.IgnoreCase);
             if (match.Success)
             {
+                Console.WriteLine($"🔍 Participant pattern matched: {pattern}");
+                Console.WriteLine($"🔍 Extracted value: {match.Groups[1].Value.Substring(0, Math.Min(100, match.Groups[1].Value.Length))}");
+
                 var participantList = match.Groups[1].Value;
-                participants.AddRange(participantList.Split(',', ';')
+                // Split by comma or semicolon and clean up participant names
+                var rawParticipants = participantList.Split(',', ';')
                     .Select(p => p.Trim())
-                    .Where(p => !string.IsNullOrEmpty(p)));
+                    .Where(p => !string.IsNullOrEmpty(p))
+                    .ToList();
+
+                Console.WriteLine($"🔍 Raw participants count: {rawParticipants.Count}");
+
+                foreach (var participant in rawParticipants)
+                {
+                    // Remove role descriptions in parentheses and extract just the name
+                    var cleanName = Regex.Replace(participant, @"\s*\([^)]*\)", "").Trim();
+                    if (!string.IsNullOrEmpty(cleanName))
+                    {
+                        participants.Add(cleanName);
+                        Console.WriteLine($"   ✓ Added participant: {cleanName}");
+                    }
+                }
                 break;
             }
         }
@@ -953,17 +974,42 @@ Focus on:
         // If no explicit participants found, look for speaker names
         if (!participants.Any())
         {
+            Console.WriteLine("⚠️ No participants found from patterns, using speaker fallback");
+
+            // Common metadata field names to exclude (multi-language)
+            var metadataFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Date", "Time", "Location", "Participants", "Attendees", "Meeting", "Subject", "Agenda",
+                "Datum", "Tijd", "Locatie", "Deelnemers", "Aanwezigen", "Vergadering", "Onderwerp",
+                "Vergadertype", "Taal", "Type", "Language", "Meeting Type"
+            };
+
             var speakerMatches = Regex.Matches(content, @"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*):", RegexOptions.Multiline);
-            participants.AddRange(speakerMatches.Cast<Match>()
+            var fallbackParticipants = speakerMatches.Cast<Match>()
                 .Select(m => m.Groups[1].Value.Trim())
+                .Where(name => !metadataFields.Contains(name)) // Exclude metadata fields
                 .Distinct()
-                .Take(10)); // Limit to reasonable number
+                .Take(10) // Limit to reasonable number
+                .ToList();
+
+            Console.WriteLine($"   Found {fallbackParticipants.Count} speakers from fallback");
+            foreach (var speaker in fallbackParticipants)
+            {
+                participants.Add(speaker);
+                Console.WriteLine($"   ✓ Added speaker: {speaker}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"✅ Found {participants.Count} participants from patterns, skipping fallback");
         }
 
         return participants.Distinct().ToList();
-    }    /// <summary>
-         /// Extracts project key from content
-         /// </summary>
+    }
+
+    /// <summary>
+    /// Extracts project key from content
+    /// </summary>
     private static string ExtractProjectKey(string fileName, string content, string? defaultProjectKey = null)
     {
         // Look for project key patterns
