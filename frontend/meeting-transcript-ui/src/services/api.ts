@@ -47,6 +47,8 @@ export interface MeetingTranscript {
   actionItems: ActionItem[];
   createdJiraTickets: JiraTicketReference[];
   status: TranscriptStatus;
+  tokensUsed?: number;
+  estimatedCost?: number;
 }
 
 export interface JiraTicketReference {

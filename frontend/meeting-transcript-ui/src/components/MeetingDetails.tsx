@@ -66,6 +66,13 @@ const MeetingDetails: React.FC<MeetingDetailsProps> = React.memo(
           <div className={styles.meetingDetailMeta}>
             <span>Meeting Date: {formatDate(meeting.meetingDate)}</span>
             <span>Processed: {formatDate(meeting.processedAt)}</span>
+            {meeting.tokensUsed !== undefined && meeting.tokensUsed > 0 && (
+              <span>Tokens Used: {meeting.tokensUsed.toLocaleString()}</span>
+            )}
+            {meeting.estimatedCost !== undefined &&
+              meeting.estimatedCost > 0 && (
+                <span>Estimated Cost: ${meeting.estimatedCost.toFixed(4)}</span>
+              )}
             <div className={styles.languageSection}>
               <span className={styles.languageLabel}>Language:</span>
               <LanguageBadge

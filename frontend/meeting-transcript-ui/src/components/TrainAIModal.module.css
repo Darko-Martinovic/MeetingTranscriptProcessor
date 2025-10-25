@@ -127,11 +127,34 @@
   margin-top: 2rem;
 }
 
-.resultsSection h3 {
-  margin: 0 0 1rem 0;
+.resultsSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.resultsSummary h3 {
+  margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.metricsDisplay {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.metric {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.metric strong {
+  color: var(--accent-purple, #8b5cf6);
+  font-weight: 600;
 }
 
 .resultsTable {

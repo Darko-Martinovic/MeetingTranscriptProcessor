@@ -4,6 +4,16 @@ using System.Text.Json;
 namespace MeetingTranscriptProcessor.Services;
 
 /// <summary>
+/// Result of Azure OpenAI processing with usage metrics
+/// </summary>
+public class OpenAIResult
+{
+    public string Content { get; set; } = string.Empty;
+    public int TokensUsed { get; set; }
+    public decimal EstimatedCost { get; set; }
+}
+
+/// <summary>
 /// Service for processing transcript content using Azure OpenAI
 /// </summary>
 public class AzureOpenAIService : IAzureOpenAIService, IDisposable
@@ -32,12 +42,18 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
     /// <summary>
     /// Processes transcript content using Azure OpenAI to extract action items
     /// </summary>
-    public async Task<string> ProcessTranscriptAsync(string prompt)
+    public async Task<OpenAIResult> ProcessTranscriptAsync(string prompt)
     {
         if (!IsConfigured())
         {
             _logger?.LogWarning("Azure OpenAI not configured, using fallback processing");
-            return await ProcessWithFallbackAsync(prompt);
+            var fallbackResult = await ProcessWithFallbackAsync(prompt);
+            return new OpenAIResult
+            {
+                Content = fallbackResult,
+                TokensUsed = 0,
+                EstimatedCost = 0
+            };
         }
 
         try
@@ -81,6 +97,9 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var responseData = JsonSerializer.Deserialize<JsonElement>(responseContent);
 
+                string resultContent = "";
+                int tokensUsed = 0;
+
                 if (
                     responseData.TryGetProperty("choices", out var choices)
                     && choices.GetArrayLength() > 0
@@ -92,13 +111,31 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
                         && message.TryGetProperty("content", out var messageContent)
                     )
                     {
-                        var result = messageContent.GetString() ?? "";
-                        Console.WriteLine("✅ Azure OpenAI analysis completed");
-                        return result;
+                        resultContent = messageContent.GetString() ?? "";
                     }
                 }
 
-                throw new InvalidOperationException("Unexpected response format from Azure OpenAI");
+                // Extract token usage
+                if (responseData.TryGetProperty("usage", out var usage))
+                {
+                    if (usage.TryGetProperty("total_tokens", out var totalTokens))
+                    {
+                        tokensUsed = totalTokens.GetInt32();
+                    }
+                }
+
+                // Calculate estimated cost (GPT-4 pricing: ~$0.03/1K prompt tokens, ~$0.06/1K completion tokens)
+                // For simplicity, using average of $0.045/1K tokens
+                decimal estimatedCost = (tokensUsed / 1000m) * 0.045m;
+
+                Console.WriteLine($"✅ Azure OpenAI analysis completed - Tokens: {tokensUsed}, Cost: ${estimatedCost:F4}");
+
+                return new OpenAIResult
+                {
+                    Content = resultContent,
+                    TokensUsed = tokensUsed,
+                    EstimatedCost = estimatedCost
+                };
             }
             else
             {
@@ -110,7 +147,13 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
                 Console.WriteLine($"❌ Azure OpenAI API error: {response.StatusCode}");
 
                 // Fallback to local processing
-                return await ProcessWithFallbackAsync(prompt);
+                var fallbackResult = await ProcessWithFallbackAsync(prompt);
+                return new OpenAIResult
+                {
+                    Content = fallbackResult,
+                    TokensUsed = 0,
+                    EstimatedCost = 0
+                };
             }
         }
         catch (Exception ex)
@@ -119,7 +162,13 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
             Console.WriteLine($"❌ Azure OpenAI error: {ex.Message}");
 
             // Fallback to local processing
-            return await ProcessWithFallbackAsync(prompt);
+            var fallbackResult = await ProcessWithFallbackAsync(prompt);
+            return new OpenAIResult
+            {
+                Content = fallbackResult,
+                TokensUsed = 0,
+                EstimatedCost = 0
+            };
         }
     }
 

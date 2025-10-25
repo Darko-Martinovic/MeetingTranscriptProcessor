@@ -5,7 +5,7 @@ namespace MeetingTranscriptProcessor.Services;
 /// </summary>
 public interface IAzureOpenAIService : IDisposable
 {
-    Task<string> ProcessTranscriptAsync(string prompt);
+    Task<OpenAIResult> ProcessTranscriptAsync(string prompt);
     Task<string> FormatJiraTicketAsync(string title, string description, string context, string participants);
     bool IsConfigured();
 }

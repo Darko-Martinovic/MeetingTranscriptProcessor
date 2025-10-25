@@ -18,6 +18,8 @@ namespace MeetingTranscriptProcessor.Models
         public List<ActionItem> ActionItems { get; set; } = new();
         public List<JiraTicketReference> CreatedJiraTickets { get; set; } = new();
         public TranscriptStatus Status { get; set; } = TranscriptStatus.New;
+        public int? TokensUsed { get; set; }
+        public decimal? EstimatedCost { get; set; }
     }
 
     /// <summary>

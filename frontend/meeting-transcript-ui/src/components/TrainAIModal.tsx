@@ -33,6 +33,8 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
   const [feedback, setFeedback] = useState<FeedbackType>(null);
   const [customPrompt, setCustomPrompt] = useState("");
   const [updatingPrompt, setUpdatingPrompt] = useState(false);
+  const [tokensUsed, setTokensUsed] = useState<number>(0);
+  const [estimatedCost, setEstimatedCost] = useState<number>(0);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -41,6 +43,8 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
       setActionItems([]);
       setFeedback(null);
       setCustomPrompt("");
+      setTokensUsed(0);
+      setEstimatedCost(0);
     }
   };
 
@@ -66,6 +70,8 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
 
       const data = await response.json();
       setActionItems(data.actionItems || []);
+      setTokensUsed(data.tokensUsed || 0);
+      setEstimatedCost(data.estimatedCost || 0);
     } catch (error) {
       console.error("Error processing transcript:", error);
       alert("Failed to process transcript. Please try again.");
@@ -177,7 +183,23 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
           {/* Results Grid */}
           {actionItems.length > 0 && (
             <div className={styles.resultsSection}>
-              <h3>Extracted Action Items</h3>
+              <div className={styles.resultsSummary}>
+                <h3>Extracted Action Items ({actionItems.length})</h3>
+                <div className={styles.metricsDisplay}>
+                  {tokensUsed > 0 && (
+                    <span className={styles.metric}>
+                      Tokens Used:{" "}
+                      <strong>{tokensUsed.toLocaleString()}</strong>
+                    </span>
+                  )}
+                  {estimatedCost > 0 && (
+                    <span className={styles.metric}>
+                      Estimated Cost:{" "}
+                      <strong>${estimatedCost.toFixed(4)}</strong>
+                    </span>
+                  )}
+                </div>
+              </div>
               <div className={styles.resultsTable}>
                 <table>
                   <thead>

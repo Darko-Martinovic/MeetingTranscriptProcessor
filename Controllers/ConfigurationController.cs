@@ -28,7 +28,7 @@ namespace MeetingTranscriptProcessor.Controllers
                 {
                     AzureOpenAI = new AzureOpenAIDto
                     {
-                        Endpoint = azureOpenAI.Endpoint,
+                        Endpoint = azureOpenAI.Endpoint ?? string.Empty,
                         DeploymentName = azureOpenAI.DeploymentName,
                         ApiVersion = azureOpenAI.ApiVersion,
                         IsConfigured =

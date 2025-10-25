@@ -50,6 +50,8 @@ public class TrainingController : ControllerBase
                 var result = new TrainingResult
                 {
                     FileName = file.FileName,
+                    TokensUsed = transcript.TokensUsed ?? 0,
+                    EstimatedCost = transcript.EstimatedCost ?? 0,
                     ActionItems = transcript.ActionItems.Select((item, index) => new TrainingActionItem
                     {
                         Id = item.Id.ToString(),
@@ -117,6 +119,8 @@ public class TrainingResult
 {
     public string FileName { get; set; } = string.Empty;
     public List<TrainingActionItem> ActionItems { get; set; } = new();
+    public int TokensUsed { get; set; }
+    public decimal EstimatedCost { get; set; }
 }
 
 public class TrainingActionItem

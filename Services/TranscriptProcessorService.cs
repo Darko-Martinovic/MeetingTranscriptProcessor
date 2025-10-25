@@ -464,7 +464,11 @@ public class TranscriptProcessorService : ITranscriptProcessorService
 
             // 2. Extract action items with AI using chosen prompt
             var aiResponse = await _aiService.ProcessTranscriptAsync(promptToUse);
-            aiExtracted = ParseActionItemsFromAIResponse(aiResponse, transcript);
+            aiExtracted = ParseActionItemsFromAIResponse(aiResponse.Content, transcript);
+
+            // Save token usage and cost to transcript
+            transcript.TokensUsed = aiResponse.TokensUsed;
+            transcript.EstimatedCost = aiResponse.EstimatedCost;
 
             // 3. Get rule-based extraction for comparison/validation (if validation enabled)
             if (_enableValidation)

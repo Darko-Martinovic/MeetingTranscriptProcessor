@@ -730,19 +730,19 @@ Respond with ONLY the clean title, nothing else. No JSON, no quotes, just the cl
             var cleanTitle = await _aiService.ProcessTranscriptAsync(cleanupPrompt);
 
             // Clean up any extra formatting from AI response
-            cleanTitle = cleanTitle.Trim().Trim('"').Trim();
+            var titleText = cleanTitle.Content.Trim().Trim('"').Trim();
 
             // Ensure it's not empty and not too long
-            if (string.IsNullOrEmpty(cleanTitle) || cleanTitle.Length > 80)
+            if (string.IsNullOrEmpty(titleText) || titleText.Length > 80)
             {
-                cleanTitle = "Complete meeting action item";
+                titleText = "Complete meeting action item";
             }
 
-            Console.WriteLine($"✅ Title cleaned: '{originalTicket.Title}' → '{cleanTitle}'");
+            Console.WriteLine($"✅ Title cleaned: '{originalTicket.Title}' → '{titleText}'");
 
             return new FormattedTicket
             {
-                Title = cleanTitle,
+                Title = titleText,
                 Description = originalTicket.Description,
                 Priority = originalTicket.Priority,
                 Type = originalTicket.Type,
