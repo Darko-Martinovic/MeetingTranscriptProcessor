@@ -801,7 +801,7 @@ namespace MeetingTranscriptProcessor.Controllers
             var participants = new List<string>();
             var lines = content.Split('\n');
 
-            // Look for patterns like "Participants:", "Attendees:", etc.
+            // Look for patterns like "Participants:", "Attendees:", "Deelnemers:", etc. (multi-language support)
             foreach (var line in lines)
             {
                 var lowerLine = line.ToLower().Trim();
@@ -810,15 +810,31 @@ namespace MeetingTranscriptProcessor.Controllers
                     || lowerLine.StartsWith("attendees:")
                     || lowerLine.StartsWith("present:")
                     || lowerLine.StartsWith("meeting participants:")
+                    || lowerLine.StartsWith("deelnemers:")      // Dutch
+                    || lowerLine.StartsWith("aanwezigen:")      // Dutch (alternative)
+                    || lowerLine.StartsWith("participants:")    // French (same as English)
+                    || lowerLine.StartsWith("présents:")        // French
                 )
                 {
                     var participantsPart = line.Substring(line.IndexOf(':') + 1).Trim();
-                    var names = participantsPart
+
+                    // Split by comma, semicolon, or ampersand
+                    var rawNames = participantsPart
                         .Split(new[] { ',', ';', '&' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(p => p.Trim())
                         .Where(p => !string.IsNullOrEmpty(p))
                         .ToList();
-                    participants.AddRange(names);
+
+                    // Clean up participant names by removing role descriptions in parentheses
+                    foreach (var name in rawNames)
+                    {
+                        // Remove role descriptions like "(Product Owner - Extern)" and extract just the name
+                        var cleanName = System.Text.RegularExpressions.Regex.Replace(name, @"\s*\([^)]*\)", "").Trim();
+                        if (!string.IsNullOrEmpty(cleanName))
+                        {
+                            participants.Add(cleanName);
+                        }
+                    }
                     break;
                 }
             }

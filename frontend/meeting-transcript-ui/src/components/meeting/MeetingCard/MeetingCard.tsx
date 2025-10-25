@@ -40,13 +40,19 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
 
     // Memoized participants extraction
     const participants = useMemo(() => {
-      // First try to extract multi-line participant lists (bullet format)
+      // First, use participants from the API response if available (from metadata)
+      if (meeting.participants && meeting.participants.length > 0) {
+        return meeting.participants.slice(0, 5); // Limit to 5 for card display
+      }
+
+      // Fallback: Extract from preview content for files without metadata
+      // Try multi-line participant lists (bullet format) with multi-language support
       const multiLineMatch = meeting.previewContent.match(
-        /Participants?:\s*\n((?:\s*[-•]\s*[^\n]+(?:\n|$))+)/i
+        /(Participants?|Attendees?|Deelnemers?|Aanwezigen?|Présents?):\s*\n((?:\s*[-•]\s*[^\n]+(?:\n|$))+)/i
       );
 
       if (multiLineMatch) {
-        const lines = multiLineMatch[1].split("\n");
+        const lines = multiLineMatch[2].split("\n");
         const extractedParticipants: string[] = [];
 
         lines.forEach((line) => {
@@ -68,19 +74,26 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
         }
       }
 
-      // Fallback: single-line format
+      // Fallback: single-line format with multi-language support
       const participantMatch = meeting.previewContent.match(
-        /Participants?:\s*([^\n]+)/i
+        /(Participants?|Attendees?|Deelnemers?|Aanwezigen?|Présents?):\s*([^\n]+)/i
       );
       if (participantMatch) {
-        return participantMatch[1]
+        return participantMatch[2]
           .split(",")
-          .map((p) => p.trim())
+          .map((p) => {
+            // Clean up participant name (remove role descriptions in parentheses)
+            const cleanName = p
+              .trim()
+              .replace(/\s*\([^)]*\)/, "")
+              .trim();
+            return cleanName;
+          })
           .filter((p) => p.length > 0)
           .slice(0, 5);
       }
       return [];
-    }, [meeting.previewContent]);
+    }, [meeting.participants, meeting.previewContent]);
 
     // Utility functions
     const formatFileSize = useCallback((bytes: number): string => {
