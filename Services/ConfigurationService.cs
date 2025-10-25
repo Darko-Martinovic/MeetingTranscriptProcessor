@@ -87,6 +87,27 @@ public class ConfigurationService : IConfigurationService
         }
     }
 
+    public async Task SaveAzureOpenAISettingsAsync(AzureOpenAISettings settings)
+    {
+        try
+        {
+            Directory.CreateDirectory(_configDirectory);
+
+            // Update in-memory configuration
+            _configuration.AzureOpenAI = settings;
+
+            // Save to disk
+            await SaveConfigurationSectionAsync("azure-openai.json", settings);
+
+            _logger?.LogInformation("Azure OpenAI settings saved successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to save Azure OpenAI settings");
+            throw;
+        }
+    }
+
     /// <summary>
     /// Gets a formatted prompt for action item extraction
     /// </summary>

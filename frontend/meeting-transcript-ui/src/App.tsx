@@ -15,6 +15,7 @@ import FolderSidebar from "./components/FolderSidebar";
 import MainContentArea from "./components/MainContentArea";
 import ErrorAlert from "./components/ErrorAlert";
 import UploadModal from "./components/UploadModal";
+import TrainAIModal from "./components/TrainAIModal";
 import SettingsModal from "./components/SettingsModal";
 import WorkflowModal from "./components/WorkflowModal";
 import ProcessingMonitor from "./components/ProcessingMonitor";
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showWorkflow, setShowWorkflow] = useState(false);
+  const [showTrainAI, setShowTrainAI] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showHallucinationDetector, setShowHallucinationDetector] =
     useState(false);
@@ -126,6 +128,19 @@ const App: React.FC = () => {
         setLoading(true);
         const foldersData = await meetingApi.getFolders();
         setFolders(foldersData);
+
+        // Automatically select Archive folder and load its meetings on initial load
+        const archiveFolder = foldersData.find(
+          (f) => f.type === FolderType.Archive
+        );
+        if (archiveFolder && !selectedFolder) {
+          const defaultFilter: MeetingFilter = {
+            sortBy: "date",
+            sortOrder: "desc",
+          };
+          setCurrentFilter(defaultFilter);
+          await loadMeetingsInFolder(archiveFolder, defaultFilter);
+        }
       } catch (err) {
         setError("Failed to load folders");
         console.error(err);
@@ -408,6 +423,7 @@ const App: React.FC = () => {
         onShowUpload={() => setShowUpload(true)}
         onShowSettings={() => setShowSettings(true)}
         onShowWorkflow={() => setShowWorkflow(true)}
+        onShowTrainAI={() => setShowTrainAI(true)}
         onShowHallucinationDetector={() => setShowHallucinationDetector(true)}
         onShowConsistencyManager={() => setShowConsistencyManager(true)}
         onShowActionItemValidator={() => setShowActionItemValidator(true)}
@@ -462,6 +478,9 @@ const App: React.FC = () => {
 
       {/* Workflow Modal */}
       {showWorkflow && <WorkflowModal onClose={() => setShowWorkflow(false)} />}
+
+      {/* Train AI Modal */}
+      {showTrainAI && <TrainAIModal onClose={() => setShowTrainAI(false)} />}
 
       {/* Hallucination Detector Modal */}
       {showHallucinationDetector && (

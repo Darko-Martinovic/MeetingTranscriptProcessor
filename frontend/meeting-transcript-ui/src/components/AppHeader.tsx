@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Sun,
   Moon,
+  Brain,
 } from "lucide-react";
 import type { FolderInfo, SystemStatusDto } from "../services/api";
 import { useTheme } from "../contexts/ThemeContext";
@@ -22,6 +23,7 @@ interface AppHeaderProps {
   onShowUpload: () => void;
   onShowSettings: () => void;
   onShowWorkflow: () => void;
+  onShowTrainAI: () => void;
   onShowHallucinationDetector: () => void;
   onShowConsistencyManager: () => void;
   onShowActionItemValidator: () => void;
@@ -36,6 +38,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onShowUpload,
   onShowSettings,
   onShowWorkflow,
+  onShowTrainAI,
   onShowHallucinationDetector,
   onShowConsistencyManager,
   onShowActionItemValidator,
@@ -72,6 +75,14 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             <button onClick={onShowUpload} className={styles.uploadButton}>
               <Upload className="h-4 w-4" />
               <span>Upload</span>
+            </button>
+            <button
+              onClick={onShowTrainAI}
+              className={styles.trainButton}
+              title="Train AI with feedback"
+            >
+              <Brain className="h-4 w-4" />
+              <span>Train AI</span>
             </button>
             <button onClick={onShowWorkflow} className={styles.iconButton}>
               <Workflow className="h-5 w-5" />

@@ -45,6 +45,15 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
             Console.WriteLine("🤖 Calling Azure OpenAI for transcript analysis...");
 
             var settings = _configService.GetAzureOpenAISettings();
+
+            // Merge system prompt with custom prompt if available
+            var systemPrompt = settings.SystemPrompt;
+            if (!string.IsNullOrWhiteSpace(settings.CustomPrompt))
+            {
+                systemPrompt = $"{settings.SystemPrompt}\n\nAdditional guidance based on training feedback:\n{settings.CustomPrompt}";
+                Console.WriteLine("📝 Using merged system + custom prompt");
+            }
+
             var requestBody = new
             {
                 messages = new[]
@@ -52,7 +61,7 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
                     new
                     {
                         role = "system",
-                        content = settings.SystemPrompt
+                        content = systemPrompt
                     },
                     new { role = "user", content = prompt }
                 },

@@ -52,6 +52,11 @@ public class AzureOpenAISettings
     /// </summary>
     [DefaultValue("You are an expert assistant that analyzes meeting transcripts and extracts actionable items. You respond in valid JSON format.")]
     public string SystemPrompt { get; set; } = "You are an expert assistant that analyzes meeting transcripts and extracts actionable items. You respond in valid JSON format.";
+
+    /// <summary>
+    /// Custom prompt to fine-tune AI behavior based on user feedback
+    /// </summary>
+    public string? CustomPrompt { get; set; }
 }
 
 /// <summary>

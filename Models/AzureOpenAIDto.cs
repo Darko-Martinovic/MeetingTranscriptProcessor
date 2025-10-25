@@ -9,5 +9,7 @@ namespace MeetingTranscriptProcessor.Models
         public string DeploymentName { get; set; } = string.Empty;
         public string ApiVersion { get; set; } = string.Empty;
         public bool IsConfigured { get; set; }
+        public string? SystemPrompt { get; set; }
+        public string? CustomPrompt { get; set; }
     }
 }

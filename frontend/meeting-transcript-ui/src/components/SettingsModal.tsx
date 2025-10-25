@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { configurationApi } from "../services/api";
 import type { ConfigurationDto } from "../services/api";
+import PromptsTab from "./PromptsTab";
 import AzureOpenAITab from "./AzureOpenAITab";
 import ExtractionTab from "./ExtractionTab";
 import JiraTab from "./JiraTab";
@@ -11,7 +12,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState("azure");
+  const [activeTab, setActiveTab] = useState("prompts");
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<ConfigurationDto | null>(null);
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
@@ -45,6 +46,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       alert("Azure OpenAI configuration updated successfully!");
     } catch {
       alert("Failed to update Azure OpenAI configuration");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updatePrompts = async (formData: FormData) => {
+    try {
+      setLoading(true);
+      const customPrompt = formData.get("customPrompt") as string;
+
+      await configurationApi.updatePrompts({
+        customPrompt,
+      });
+      await loadConfiguration();
+      alert("Prompts configuration updated successfully!");
+    } catch {
+      alert("Failed to update prompts configuration");
     } finally {
       setLoading(false);
     }
@@ -123,6 +141,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
           <div className={styles.tabs}>
             <button
+              onClick={() => setActiveTab("prompts")}
+              className={`${styles.tab} ${
+                activeTab === "prompts" ? styles.tabActive : ""
+              }`}
+            >
+              Prompts
+            </button>
+            <button
               onClick={() => setActiveTab("azure")}
               className={`${styles.tab} ${
                 activeTab === "azure" ? styles.tabActive : ""
@@ -150,6 +176,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         </div>
 
         <div className={styles.modalBody}>
+          {activeTab === "prompts" && (
+            <PromptsTab
+              config={config}
+              loading={loading}
+              onSubmit={updatePrompts}
+            />
+          )}
+
           {activeTab === "azure" && (
             <AzureOpenAITab
               config={config}

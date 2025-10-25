@@ -15,6 +15,7 @@ public interface IConfigurationService
     PromptSettings GetPromptSettings();
     void ReloadConfiguration();
     Task SaveConfigurationAsync();
+    Task SaveAzureOpenAISettingsAsync(AzureOpenAISettings settings);
     string GetExtractionPrompt(MeetingTranscript transcript, string? meetingType = null, string? language = null);
     string GetSystemPrompt(string? language = null);
 }

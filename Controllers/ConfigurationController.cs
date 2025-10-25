@@ -33,7 +33,9 @@ namespace MeetingTranscriptProcessor.Controllers
                         ApiVersion = azureOpenAI.ApiVersion,
                         IsConfigured =
                             !string.IsNullOrEmpty(azureOpenAI.Endpoint)
-                            && !string.IsNullOrEmpty(azureOpenAI.ApiKey)
+                            && !string.IsNullOrEmpty(azureOpenAI.ApiKey),
+                        SystemPrompt = azureOpenAI.SystemPrompt,
+                        CustomPrompt = azureOpenAI.CustomPrompt
                     },
                     Extraction = new ExtractionDto
                     {
@@ -104,6 +106,27 @@ namespace MeetingTranscriptProcessor.Controllers
                 _configurationService.ReloadConfiguration();
 
                 return Ok(new { message = "Azure OpenAI configuration updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpPut("prompts")]
+        public async Task<ActionResult> UpdatePromptsConfiguration([FromBody] PromptsUpdateDto dto)
+        {
+            try
+            {
+                var settings = _configurationService.GetAzureOpenAISettings();
+
+                // Update custom prompt
+                settings.CustomPrompt = dto.CustomPrompt;
+
+                // Save to configuration file
+                await _configurationService.SaveAzureOpenAISettingsAsync(settings);
+
+                return Ok(new { message = "Prompts configuration updated successfully" });
             }
             catch (Exception ex)
             {

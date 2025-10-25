@@ -91,10 +91,11 @@ export const ProcessingStage = {
   SavingMetadata: 5,
   Archiving: 6,
   Completed: 7,
-  Failed: 8
+  Failed: 8,
 } as const;
 
-export type ProcessingStage = typeof ProcessingStage[keyof typeof ProcessingStage];
+export type ProcessingStage =
+  (typeof ProcessingStage)[keyof typeof ProcessingStage];
 
 export interface ProcessingQueue {
   currentlyProcessing: ProcessingStatus[];
@@ -124,6 +125,8 @@ export interface AzureOpenAIDto {
   deploymentName: string;
   apiVersion: string;
   isConfigured: boolean;
+  systemPrompt?: string;
+  customPrompt?: string;
 }
 
 export interface ExtractionDto {
@@ -244,7 +247,9 @@ export const meetingApi = {
     return response.data;
   },
 
-  getMeetingJiraTickets: async (fileName: string): Promise<JiraTicketReference[]> => {
+  getMeetingJiraTickets: async (
+    fileName: string
+  ): Promise<JiraTicketReference[]> => {
     const response = await api.get(
       `/meetings/meeting/${encodeURIComponent(fileName)}/tickets`
     );
@@ -305,7 +310,9 @@ export const processingApi = {
   },
 
   getProcessingStatus: async (id: string): Promise<ProcessingStatus> => {
-    const response = await api.get(`/processing/status/${encodeURIComponent(id)}`);
+    const response = await api.get(
+      `/processing/status/${encodeURIComponent(id)}`
+    );
     return response.data;
   },
 
@@ -348,6 +355,11 @@ export const configurationApi = {
     defaultProject?: string;
   }) => {
     const response = await api.put("/configuration/jira", config);
+    return response.data;
+  },
+
+  updatePrompts: async (config: { customPrompt?: string }) => {
+    const response = await api.put("/configuration/prompts", config);
     return response.data;
   },
 

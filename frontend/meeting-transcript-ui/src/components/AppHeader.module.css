@@ -148,6 +148,25 @@
   background: var(--accent-blue-hover);
 }
 
+.trainButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent-purple, #8b5cf6);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trainButton:hover {
+  background: var(--accent-purple-hover, #7c3aed);
+}
+
 .iconButton {
   display: flex;
   align-items: center;
@@ -231,6 +250,10 @@
   }
 
   .uploadButton span {
+    display: none;
+  }
+
+  .trainButton span {
     display: none;
   }
 
