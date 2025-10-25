@@ -13,6 +13,7 @@ This directory contains configuration files for the MeetingTranscriptProcessor a
 **Never commit files containing real API keys or secrets to Git!**
 
 The following files are automatically ignored by Git:
+
 - `config/azure-openai.json`
 - `config/jira.json`
 
