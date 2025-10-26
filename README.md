@@ -7,7 +7,7 @@ An intelligent web application that automatically processes meeting transcripts 
 - 🤖 **AI-Powered Extraction** - Uses Azure OpenAI with advanced validation (hallucination detection, consistency management)
 - 🎫 **Jira Integration** - Automatically creates tickets from action items
 - � **Modern Web UI** - React frontend with folder management, filtering, and batch upload
-- � **Multi-format Support** - Processes .txt, .md, .json, .xml, .docx, and .pdf files
+- � **Multi-format Support** - Processes .txt, .md, .json, .xml, .docx, .pdf, and .vtt files
 - � **Fallback Mode** - Works without AI credentials using rule-based extraction
 - 🎯 **Context-Aware** - Adapts to meeting types (standup, sprint, incident, etc.) and languages (EN/FR/NL)
 
@@ -136,6 +136,7 @@ ENABLE_CONSISTENCY_MANAGEMENT=true
 - Text files (.txt, .md)
 - JSON/XML (.json, .xml)
 - Documents (.docx, .pdf)
+- WebVTT (.vtt) - MS Teams recording transcripts
 
 ### Sample Transcript
 

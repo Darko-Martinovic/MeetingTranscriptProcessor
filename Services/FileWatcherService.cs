@@ -212,6 +212,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
             ".xml" => true,
             ".docx" => true,
             ".pdf" => true,
+            ".vtt" => true,
             _ => false
         };
     }

@@ -15,6 +15,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     private readonly IConsistencyManager _consistencyManager;
     private readonly IConfigurationService _configService;
     private readonly SmartTitleGeneratorService _titleGenerator;
+    private readonly WebVttParserService _vttParser;
     private readonly ILogger? _logger;
 
     // Validation service control settings - loaded from environment
@@ -38,6 +39,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         _consistencyManager = consistencyManager ?? throw new ArgumentNullException(nameof(consistencyManager));
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _titleGenerator = titleGenerator ?? throw new ArgumentNullException(nameof(titleGenerator));
+        _vttParser = new WebVttParserService();
         _logger = logger;
 
         // Load validation settings from environment variables
@@ -104,7 +106,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     /// <summary>
     /// Reads content from various file types
     /// </summary>
-    private static async Task<string> ReadFileContentAsync(string filePath)
+    private async Task<string> ReadFileContentAsync(string filePath)
     {
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
@@ -113,6 +115,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             ".txt" or ".md" => await File.ReadAllTextAsync(filePath),
             ".json" => await ReadJsonContentAsync(filePath),
             ".xml" => await ReadXmlContentAsync(filePath),
+            ".vtt" => await ReadVttContentAsync(filePath),
             _ => await File.ReadAllTextAsync(filePath) // Fallback to text
         };
     }
@@ -270,6 +273,34 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     }
 
     /// <summary>
+    /// Reads WebVTT (Web Video Text Tracks) transcript files - common format for MS Teams recordings
+    /// </summary>
+    private async Task<string> ReadVttContentAsync(string filePath)
+    {
+        try
+        {
+            var vttContent = await File.ReadAllTextAsync(filePath);
+
+            // Convert VTT format to readable transcript using the parser
+            var readableTranscript = _vttParser.ParseWebVtt(vttContent);
+
+            if (string.IsNullOrWhiteSpace(readableTranscript))
+            {
+                // Fallback to raw content if parsing fails
+                return vttContent;
+            }
+
+            return readableTranscript;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing VTT file: {ex.Message}");
+            // Fallback to raw file content
+            return await File.ReadAllTextAsync(filePath);
+        }
+    }
+
+    /// <summary>
     /// Extracts metadata from transcript content
     /// </summary>
     private async Task ExtractMetadata(MeetingTranscript transcript)
@@ -288,15 +319,25 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             var lines = transcript.Content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length > 0)
             {
-                transcript.Title =
-                    ExtractTitle(lines[0]) ?? Path.GetFileNameWithoutExtension(transcript.FileName);
+                // For VTT files, use filename as title since first line is speaker dialog
+                if (extension == ".vtt")
+                {
+                    transcript.Title = Path.GetFileNameWithoutExtension(transcript.FileName)
+                        .Replace("_", " ")
+                        .Replace("-", " ");
+                }
+                else
+                {
+                    transcript.Title =
+                        ExtractTitle(lines[0]) ?? Path.GetFileNameWithoutExtension(transcript.FileName);
+                }
             }
 
             // Extract meeting date
             transcript.MeetingDate = ExtractMeetingDate(transcript.Content) ?? DateTime.UtcNow.Date;
 
             // Extract participants
-            transcript.Participants = ExtractParticipants(transcript.Content);
+            transcript.Participants = ExtractParticipants(transcript.Content, transcript.FileName);
 
             // Extract project key from filename or content
             transcript.ProjectKey = ExtractProjectKey(
@@ -893,9 +934,17 @@ Focus on:
     /// <summary>
     /// Extracts participants from content
     /// </summary>
-    private static List<string> ExtractParticipants(string content)
+    private List<string> ExtractParticipants(string content, string? fileName = null)
     {
         var participants = new List<string>();
+
+        // Check if this is a VTT file - if so, we need to extract from the original VTT content
+        // Note: At this point, content has already been converted to readable format,
+        // but we can detect VTT by checking if it was converted from VTT format
+        bool isVttContent = fileName != null && Path.GetExtension(fileName).Equals(".vtt", StringComparison.OrdinalIgnoreCase);
+
+        // For VTT files, rely on speaker pattern since content is already converted
+        // The existing fallback speaker pattern will work well for VTT-converted content
 
         // First try to extract multi-line participant lists (bullet format) - multi-language
         var multiLinePattern = @"(?:participants?|attendees?|deelnemers?|aanwezigen?):\s*\n((?:\s*[-•]\s*[^\n]+(?:\n|$))+)";

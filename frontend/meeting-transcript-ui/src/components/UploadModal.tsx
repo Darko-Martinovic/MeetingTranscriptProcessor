@@ -19,7 +19,15 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const handleFileSelect = (files: File[] | File) => {
-    const allowedTypes = [".txt", ".md", ".json", ".xml", ".docx", ".pdf"];
+    const allowedTypes = [
+      ".txt",
+      ".md",
+      ".json",
+      ".xml",
+      ".docx",
+      ".pdf",
+      ".vtt",
+    ];
     const filesToProcess = Array.isArray(files) ? files : [files];
 
     const validFiles = filesToProcess.filter((file) => {
@@ -93,12 +101,12 @@ const UploadModal: React.FC<UploadModalProps> = ({
             Drag and drop files here, or click to select
           </p>
           <p className={styles.uploadSubtext}>
-            Supported: .txt, .md, .json, .xml, .docx, .pdf (Multiple files
+            Supported: .txt, .md, .json, .xml, .docx, .pdf, .vtt (Multiple files
             allowed)
           </p>
           <input
             type="file"
-            accept=".txt,.md,.json,.xml,.docx,.pdf"
+            accept=".txt,.md,.json,.xml,.docx,.pdf,.vtt"
             onChange={handleFileInput}
             className={styles.uploadInput}
             id="file-input"

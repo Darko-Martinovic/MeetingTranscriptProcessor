@@ -248,7 +248,7 @@ namespace MeetingTranscriptProcessor.Controllers
                 if (file == null || file.Length == 0)
                     return BadRequest(new { error = "No file provided" });
 
-                var allowedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf" };
+                var allowedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf", ".vtt" };
                 var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
                 if (!allowedExtensions.Contains(fileExtension))
@@ -259,75 +259,22 @@ namespace MeetingTranscriptProcessor.Controllers
 
                 Directory.CreateDirectory(_incomingPath);
 
-                // Save the uploaded file
+                // Save the uploaded file to Incoming folder
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
 
-                // Process the file immediately (extract action items and create JIRA tickets)
-                try
+                Console.WriteLine($"� File uploaded: {fileName}");
+                Console.WriteLine($"⏳ File will be processed automatically by background service");
+
+                // Return immediately - let FileWatcherService process the file
+                return Ok(new
                 {
-                    Console.WriteLine($"🔄 Processing uploaded file: {fileName}");
-
-                    // Process transcript to extract action items
-                    var transcript = await _transcriptProcessor.ProcessTranscriptAsync(filePath);
-
-                    if (transcript.Status == TranscriptStatus.Error)
-                    {
-                        Console.WriteLine($"❌ Processing failed for: {fileName}");
-                        return Ok(new
-                        {
-                            message = "File uploaded but processing failed",
-                            fileName,
-                            status = "error"
-                        });
-                    }
-
-                    Console.WriteLine($"✅ Transcript processed. Action items: {transcript.ActionItems.Count}");
-
-                    // Process action items and create JIRA tickets
-                    var jiraResult = await _jiraTicketService.ProcessActionItemsAsync(transcript);
-                    Console.WriteLine($"✅ JIRA processing complete. Tickets created: {jiraResult.TicketsCreated}");
-                    Console.WriteLine($"DEBUG: After JIRA processing - Success: {jiraResult.Success}, Tickets created: {jiraResult.TicketsCreated}");
-                    Console.WriteLine($"DEBUG: Transcript JIRA tickets count: {transcript.CreatedJiraTickets.Count}");
-
-                    // Archive the processed file FIRST
-                    Console.WriteLine($"� Archiving file: {fileName}");
-                    Console.WriteLine($"DEBUG: About to archive file: {filePath}");
-                    var archivedFilePath = ArchiveFile(filePath, jiraResult.Success ? "success" : "error", transcript.DetectedLanguage);
-                    Console.WriteLine($"DEBUG: File archived. Archived path: '{archivedFilePath}'");
-                    Console.WriteLine($"DEBUG: Archived path is null/empty: {string.IsNullOrEmpty(archivedFilePath)}");
-
-                    // Save transcript metadata (including JIRA ticket references) AFTER archiving
-                    if (!string.IsNullOrEmpty(archivedFilePath))
-                    {
-                        Console.WriteLine($"� Saving transcript metadata for archived file: {Path.GetFileName(archivedFilePath)}");
-                        await SaveTranscriptMetadataAsync(transcript, archivedFilePath);
-                    }
-
-                    return Ok(new
-                    {
-                        message = "File uploaded and processed successfully",
-                        fileName,
-                        status = "processed",
-                        actionItemsFound = transcript.ActionItems.Count,
-                        jiraTicketsCreated = jiraResult.TicketsCreated,
-                        jiraTicketsUpdated = jiraResult.TicketsUpdated
-                    });
-                }
-                catch (Exception processingEx)
-                {
-                    // If processing fails, still return success for upload but indicate processing error
-                    Console.WriteLine($"❌ Error processing file {fileName}: {processingEx.Message}");
-                    return Ok(new
-                    {
-                        message = "File uploaded but processing failed",
-                        fileName,
-                        status = "upload_success_processing_failed",
-                        error = processingEx.Message
-                    });
-                }
+                    message = "File uploaded successfully and queued for processing",
+                    fileName,
+                    status = "uploaded"
+                });
             }
             catch (Exception ex)
             {
@@ -557,7 +504,7 @@ namespace MeetingTranscriptProcessor.Controllers
                 if (!Directory.Exists(folderPath))
                     return 0;
 
-                var supportedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf" };
+                var supportedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf", ".vtt" };
                 var files = Directory
                     .GetFiles(folderPath)
                     .Where(
@@ -586,7 +533,7 @@ namespace MeetingTranscriptProcessor.Controllers
                 if (!Directory.Exists(folderPath))
                     return meetings;
 
-                var supportedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf" };
+                var supportedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf", ".vtt" };
                 var files = Directory
                     .GetFiles(folderPath)
                     .Where(

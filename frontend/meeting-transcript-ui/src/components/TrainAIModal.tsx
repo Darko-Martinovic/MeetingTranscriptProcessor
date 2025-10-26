@@ -153,7 +153,7 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
               <input
                 type="file"
                 id="train-file"
-                accept=".txt,.md,.json,.xml,.docx,.pdf"
+                accept=".txt,.md,.json,.xml,.docx,.pdf,.vtt"
                 onChange={handleFileChange}
                 className={styles.fileInput}
               />
