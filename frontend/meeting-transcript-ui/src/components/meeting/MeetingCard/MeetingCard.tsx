@@ -40,10 +40,24 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
 
     // Memoized participants extraction
     const participants = useMemo(() => {
+      console.log(
+        "🔍 MeetingCard - Extracting participants for:",
+        meeting.fileName
+      );
+      console.log("🔍 meeting.participants:", meeting.participants);
+      console.log("🔍 meeting.participants type:", typeof meeting.participants);
+      console.log(
+        "🔍 meeting.participants length:",
+        meeting.participants?.length
+      );
+
       // First, use participants from the API response if available (from metadata)
       if (meeting.participants && meeting.participants.length > 0) {
+        console.log("✅ Using participants from API:", meeting.participants);
         return meeting.participants.slice(0, 5); // Limit to 5 for card display
       }
+
+      console.log("⚠️ No participants from API, trying fallback extraction");
 
       // Fallback: Extract from preview content for files without metadata
       // Try multi-line participant lists (bullet format) with multi-language support
@@ -93,7 +107,7 @@ const MeetingCard: React.FC<MeetingCardProps> = React.memo(
           .slice(0, 5);
       }
       return [];
-    }, [meeting.participants, meeting.previewContent]);
+    }, [meeting.participants, meeting.previewContent, meeting.fileName]);
 
     // Utility functions
     const formatFileSize = useCallback((bytes: number): string => {

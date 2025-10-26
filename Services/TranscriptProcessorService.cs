@@ -367,32 +367,16 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             var lines = transcript.Content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length > 0)
             {
-                // For VTT and DOCX files, use filename as title since content may be in different languages
-                // or first line may be speaker dialog
+                // For VTT and DOCX files, use a generic title so SmartTitleGenerator will create an AI title
+                // (first line is often speaker dialog in native language, not a proper title)
                 if (extension == ".vtt" || extension == ".docx")
                 {
-                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - Original filename: {transcript.FileName}");
-                    
-                    // Extract base filename, removing archive timestamp prefix if present
-                    var cleanFileName = ExtractBaseFileNameFromArchive(transcript.FileName);
-                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - After ExtractBaseFileNameFromArchive: {cleanFileName}");
-                    
-                    // Also remove trailing language codes from the filename (e.g., "transcript_fr" -> "transcript")
-                    cleanFileName = RemoveTrailingLanguageCode(cleanFileName);
-                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - After RemoveTrailingLanguageCode: {cleanFileName}");
-                    
-                    // Also remove common transcript suffixes that might remain
-                    cleanFileName = RemoveCommonSuffixes(cleanFileName);
-                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - After RemoveCommonSuffixes: {cleanFileName}");
-                    
-                    transcript.Title = cleanFileName
-                        .Replace("_", " ")
-                        .Replace("-", " ")
-                        .Trim();
-                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - Final title: {transcript.Title}");
+                    transcript.Title = "Meeting Transcript"; // Generic title will be replaced by AI
                 }
                 else
                 {
+                    // For other formats, try to extract title from content first
+                    // The SmartTitleGeneratorService will replace generic titles later with AI-generated ones
                     transcript.Title =
                         ExtractTitle(lines[0]) ?? Path.GetFileNameWithoutExtension(transcript.FileName);
                 }
@@ -1104,15 +1088,45 @@ Focus on:
                 "Vergadertype", "Taal", "Type", "Language", "Meeting Type"
             };
 
-            var speakerMatches = Regex.Matches(content, @"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*):", RegexOptions.Multiline);
-            var fallbackParticipants = speakerMatches.Cast<Match>()
+            Console.WriteLine($"🔍 Searching for speaker patterns in content...");
+            
+            // Try multiple speaker patterns:
+            // 1. Standard format: "Name: text"
+            // 2. VTT converted format: "Name HH:MM:SS.mmm"
+            var speakerPatterns = new[]
+            {
+                @"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*):\s*(.+)$",  // Name: text
+                @"^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+\d{2}:\d{2}:\d{2}\.\d{3}$"  // Name HH:MM:SS.mmm
+            };
+            
+            var allMatches = new List<Match>();
+            foreach (var pattern in speakerPatterns)
+            {
+                var matches = Regex.Matches(content, pattern, RegexOptions.Multiline);
+                Console.WriteLine($"🔍 Pattern '{pattern}' found {matches.Count} matches");
+                allMatches.AddRange(matches.Cast<Match>());
+            }
+            
+            Console.WriteLine($"🔍 Found {allMatches.Count} total potential speaker matches");
+            
+            // Show first few matches for debugging
+            var matchCount = 0;
+            foreach (var match in allMatches.Take(5))
+            {
+                var speakerName = match.Groups[1].Value;
+                var restOfLine = match.Groups.Count > 2 ? match.Groups[2].Value : match.Value.Substring(speakerName.Length);
+                Console.WriteLine($"   🔍 Match {matchCount + 1}: '{speakerName}' - context: '{restOfLine.Substring(0, Math.Min(50, restOfLine.Length))}...'");
+                matchCount++;
+            }
+            
+            var fallbackParticipants = allMatches
                 .Select(m => m.Groups[1].Value.Trim())
                 .Where(name => !metadataFields.Contains(name)) // Exclude metadata fields
                 .Distinct()
                 .Take(10) // Limit to reasonable number
                 .ToList();
 
-            Console.WriteLine($"   Found {fallbackParticipants.Count} speakers from fallback");
+            Console.WriteLine($"   Found {fallbackParticipants.Count} speakers from fallback (after filtering)");
             foreach (var speaker in fallbackParticipants)
             {
                 participants.Add(speaker);
