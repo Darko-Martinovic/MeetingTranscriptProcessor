@@ -1,0 +1,103 @@
+WEBVTT
+
+00:00:09.000 --> 00:00:17.000
+<v John>Good morning everyone, thanks for joining. Let's focus on the GK API ingestion pipeline and the product data mismatches we've seen in the StoreBridge logs over the last few days.</v>
+
+00:00:17.000 --> 00:00:26.000
+<v Mike>Morning John. Yeah, this has been raised by multiple stores; some prices and descriptions aren't updating even though the nightly batch runs completed.</v>
+
+00:00:26.000 --> 00:00:36.000
+<v David>I checked yesterday's Azure Service Bus ingestion logs. Messages were received, but around twelve percent failed during transformation in the Processing microservice; retries happened, then they went to the dead-letter queue.</v>
+
+00:00:36.000 --> 00:00:47.000
+<v Sarah>Right, the logs show serialization errors around the PLU and GTIN mapping. Some payloads carry both, and our transformation doesn't consistently pick the correct one.</v>
+
+00:00:47.000 --> 00:00:54.000
+<v Alex>That's consistent with integration tests. We changed mapping when GK added GTIN, but backward compatibility wasn't fully verified. The schema validator may be too lenient.</v>
+
+00:00:54.000 --> 00:01:02.000
+<v Laura>From operations, this creates data quality issues in stores; outdated promo prices force manual overrides, and store managers are, um, frustrated.</v>
+
+00:01:02.000 --> 00:01:11.000
+<v John>Okay, so both technical and operational angles. David, do we know how many stores are affected?</v>
+
+00:01:11.000 --> 00:01:21.000
+<v David>Approximately thirty five percent in Belgium and about ten percent in Romania. The affected records cluster in Seasonal Promotions and Private Label categories.</v>
+
+00:01:21.000 --> 00:01:32.000
+<v Mike>This matches business reports. GK mentioned some payloads miss a PLU when a product only has GTIN. We should see if our ingestion can accept that instead of rejecting it.</v>
+
+00:01:32.000 --> 00:01:39.000
+<v Sarah>I can adjust the mapping to use GTIN as a fallback when PLU is missing, but we must check that downstream joins in the pricing table still work.</v>
+
+00:01:39.000 --> 00:01:47.000
+<v Alex>Please verify the interaction between ProductSyncWorker and PricingUpdateHandler; both write to the same SQL Server table and could create duplicates in race conditions.</v>
+
+00:01:47.000 --> 00:01:56.000
+<v Emma>Before code changes, I'd like to replicate failing cases in QA. Then we can validate transformation fixes and observability in parallel.</v>
+
+00:01:56.000 --> 00:02:06.000
+<v David>On observability, we lack correlation between ingestion and processing spans. If we add OpenTelemetry trace IDs to message properties, we can follow each message end to end in Application Insights.</v>
+
+00:02:06.000 --> 00:02:17.000
+<v Sarah>That would help a lot. I'll need an example for injecting and extracting those IDs in our .NET workers.</v>
+
+00:02:17.000 --> 00:02:24.000
+<v Alex>No problem. We already use the OpenTelemetry SDK; we just need to propagate the trace context when sending and receiving messages—configuration more than refactor.</v>
+
+00:02:24.000 --> 00:02:32.000
+<v Laura>Once we have that, operations can monitor the full message lifecycle and spot bottlenecks before they escalate.</v>
+
+00:02:32.000 --> 00:02:41.000
+<v John>Excellent. Mike, could you refresh the business-side Confluence page for the GK integration once the fix is in staging? It's getting a bit out of date.</v>
+
+00:02:41.000 --> 00:02:51.000
+<v Mike>Sure, I'll update it and include sample payloads after Sarah's changes land in staging.</v>
+
+00:02:51.000 --> 00:03:02.000
+<v Emma>I'll prepare a regression test plan, including negative scenarios like malformed payloads or missing category codes so the system degrades gracefully.</v>
+
+00:03:02.000 --> 00:03:09.000
+<v David>I'll also create a dashboard in Application Insights that shows transformation failures per store and per payload type, so we can see if the fix actually improves things.</v>
+
+00:03:09.000 --> 00:03:17.000
+<v Alex>Let's review deployment as well. The last hotfix had downtime because rollback steps weren't clear. We need better sequencing of SQL scripts in release docs.</v>
+
+00:03:17.000 --> 00:03:26.000
+<v Sarah>I can extend the Confluence deployment template we discussed last month; it's still missing rollback verification and dependency mapping sections.</v>
+
+00:03:26.000 --> 00:03:36.000
+<v John>Perfect. That will help during the release freeze period.</v>
+
+00:03:36.000 --> 00:03:47.000
+<v Mike>One more thing: we should align with GK on schema versioning. If more changes are coming, we need early notice. I'll contact their integration lead this week.</v>
+
+00:03:47.000 --> 00:03:54.000
+<v Laura>Please do. It's risky to operate on assumptions about their payloads.</v>
+
+00:03:54.000 --> 00:04:02.000
+<v Alex>After we finalize mapping logic, let's roll out to three pilot stores first, then go system wide.</v>
+
+00:04:02.000 --> 00:04:11.000
+<v Emma>I'll draft the test checklist and validation steps for that pilot. We can reuse the QA dataset from the previous sprint.</v>
+
+00:04:11.000 --> 00:04:21.000
+<v John>Great. Let's aim for debugging by Wednesday, QA by Friday, and a rollout plan early next week.</v>
+
+00:04:21.000 --> 00:04:32.000
+<v Mike>Sounds good.</v>
+
+00:04:32.000 --> 00:04:39.000
+<v Sarah>I'll start looking into the ProductSyncWorker this afternoon and sync with David on tracing setup.</v>
+
+00:04:39.000 --> 00:04:47.000
+<v David>I'll send the environment variables and an example snippet for telemetry propagation right after this call.</v>
+
+00:04:47.000 --> 00:04:56.000
+<v Alex>Once we're stable, we'll close the older PLU—GTIN tickets as obsolete.</v>
+
+00:04:56.000 --> 00:05:06.000
+<v Laura>Good plan. This should improve reliability and transparency in production.</v>
+
+00:05:06.000 --> 00:05:17.000
+<v John>Alright, thanks everyone. Let's regroup mid next week to review progress and confirm readiness for deployment.</v>

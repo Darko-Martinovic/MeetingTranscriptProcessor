@@ -1,0 +1,104 @@
+WEBVTT
+
+00:00:09.000 --> 00:00:17.000
+<v John>Bonjour à tous, merci de vous joindre à nous. Concentrons-nous sur le pipeline d'ingestion de l'API GK et les incohérences de données produit que nous avons constatées dans les journaux StoreBridge ces derniers jours.</v>
+
+00:00:17.000 --> 00:00:26.000
+<v Mike>Bonjour John. Oui, cela a été signalé par plusieurs magasins ; certains prix et descriptions ne se mettent pas à jour même si les traitements par lots nocturnes sont terminés.</v>
+
+00:00:26.000 --> 00:00:36.000
+<v David>J'ai vérifié les journaux d'ingestion d'Azure Service Bus d'hier. Les messages ont été reçus, mais environ douze pour cent ont échoué lors de la transformation dans le microservice de traitement ; des nouvelles tentatives ont eu lieu, puis ils sont allés dans la file d'attente des lettres mortes.</v>
+
+00:00:36.000 --> 00:00:47.000
+<v Sarah>Exact, les journaux montrent des erreurs de sérialisation autour du mappage PLU et GTIN. Certaines charges utiles contiennent les deux, et notre transformation ne sélectionne pas systématiquement le bon.</v>
+
+00:00:47.000 --> 00:00:54.000
+<v Alex>C'est cohérent avec les tests d'intégration. Nous avons modifié le mappage lorsque GK a ajouté le GTIN, mais la rétrocompatibilité n'a pas été entièrement vérifiée. Le validateur de schéma est peut-être trop indulgent.</v>
+
+00:00:54.000 --> 00:01:02.000
+<v Laura>Du point de vue des opérations, cela crée des problèmes de qualité des données dans les magasins ; les prix promotionnels obsolètes nécessitent des remplacements manuels, et les responsables de magasin sont, euh, frustrés.</v>
+
+00:01:02.000 --> 00:01:11.000
+<v John>D'accord, donc des aspects techniques et opérationnels. David, savons-nous combien de magasins sont affectés ?</v>
+
+00:01:11.000 --> 00:01:21.000
+<v David>Environ trente-cinq pour cent en Belgique et environ dix pour cent en Roumanie. Les enregistrements affectés se regroupent dans les catégories Promotions saisonnières et Marques de distributeur.</v>
+
+00:01:21.000 --> 00:01:32.000
+<v Mike>Cela correspond aux rapports commerciaux. GK a mentionné que certaines charges utiles ne comportent pas de PLU lorsqu'un produit n'a qu'un GTIN. Nous devrions voir si notre ingestion peut accepter cela au lieu de le rejeter.</v>
+
+00:01:32.000 --> 00:01:39.000
+<v Sarah>Je peux ajuster le mappage pour utiliser le GTIN comme solution de repli lorsque le PLU est manquant, mais nous devons vérifier que les jointures en aval dans la table de tarification fonctionnent toujours.</v>
+
+00:01:39.000 --> 00:01:47.000
+<v Alex>Veuillez vérifier l'interaction entre ProductSyncWorker et PricingUpdateHandler ; les deux écrivent dans la même table SQL Server et pourraient créer des doublons dans des conditions de concurrence.</v>
+
+00:01:47.000 --> 00:01:56.000
+<v Emma>Avant les modifications de code, j'aimerais reproduire les cas d'échec en assurance qualité. Ensuite, nous pourrons valider les correctifs de transformation et l'observabilité en parallèle.</v>
+
+00:01:56.000 --> 00:02:06.000
+<v David>Concernant l'observabilité, nous manquons de corrélation entre les intervalles d'ingestion et de traitement. Si nous ajoutons des ID de trace OpenTelemetry aux propriétés des messages, nous pouvons suivre chaque message de bout en bout dans Application Insights.</v>
+
+00:02:06.000 --> 00:02:17.000
+<v Sarah>Cela aiderait beaucoup. J'aurai besoin d'un exemple pour injecter et extraire ces ID dans nos workers .NET.</v>
+
+00:02:17.000 --> 00:02:24.000
+<v Alex>Pas de problème. Nous utilisons déjà le SDK OpenTelemetry ; nous devons simplement propager le contexte de trace lors de l'envoi et de la réception de messages — configuration plutôt que refactorisation.</v>
+
+00:02:24.000 --> 00:02:32.000
+<v Laura>Une fois que nous aurons cela, les opérations pourront surveiller le cycle de vie complet des messages et repérer les goulots d'étranglement avant qu'ils ne s'aggravent.</v>
+
+00:02:32.000 --> 00:02:41.000
+<v John>Excellent. Mike, pourrais-tu actualiser la page Confluence côté métier pour l'intégration GK une fois que le correctif sera en staging ? Elle devient un peu obsolète.</v>
+
+00:02:41.000 --> 00:02:51.000
+<v Mike>Bien sûr, je la mettrai à jour et j'inclurai des exemples de charges utiles après que les modifications de Sarah arrivent en staging.</v>
+
+00:02:51.000 --> 00:03:02.000
+<v Emma>Je préparerai un plan de tests de régression, incluant des scénarios négatifs comme des charges utiles malformées ou des codes de catégorie manquants afin que le système se dégrade gracieusement.</v>
+
+00:03:02.000 --> 00:03:09.000
+<v David>Je créerai également un tableau de bord dans Application Insights qui montre les échecs de transformation par magasin et par type de charge utile, afin que nous puissions voir si le correctif améliore réellement les choses.</v>
+
+00:03:09.000 --> 00:03:17.000
+<v Alex>Révisons également le déploiement. Le dernier correctif urgent a entraîné un temps d'arrêt car les étapes de restauration n'étaient pas claires. Nous avons besoin d'un meilleur séquençage des scripts SQL dans les documents de publication.</v>
+
+00:03:17.000 --> 00:03:26.000
+<v Sarah>Je peux étendre le modèle de déploiement Confluence dont nous avons discuté le mois dernier ; il manque encore les sections de vérification de restauration et de cartographie des dépendances.</v>
+
+00:03:26.000 --> 00:03:36.000
+<v John>Parfait. Cela aidera pendant la période de gel des versions.</v>
+
+00:03:36.000 --> 00:03:47.000
+<v Mike>Encore une chose : nous devrions nous aligner avec GK sur le versionnement du schéma. Si d'autres modifications arrivent, nous avons besoin d'un préavis. Je contacterai leur responsable d'intégration cette semaine.</v>
+
+00:03:47.000 --> 00:03:54.000
+<v Laura>Faites-le s'il vous plaît. Il est risqué de fonctionner sur des hypothèses concernant leurs charges utiles.</v>
+
+00:03:54.000 --> 00:04:02.000
+<v Alex>Après avoir finalisé la logique de mappage, déployons d'abord dans trois magasins pilotes, puis à l'échelle du système.</v>
+
+00:04:02.000 --> 00:04:11.000
+<v Emma>Je rédigerai la liste de contrôle des tests et les étapes de validation pour ce pilote. Nous pouvons réutiliser l'ensemble de données d'assurance qualité du sprint précédent.</v>
+
+00:04:11.000 --> 00:04:21.000
+<v John>Très bien. Visons le débogage d'ici mercredi, l'assurance qualité d'ici vendredi et un plan de déploiement en début de semaine prochaine.</v>
+
+00:04:21.000 --> 00:04:32.000
+<v Mike>Ça me va.</v>
+
+00:04:32.000 --> 00:04:39.000
+<v Sarah>Je vais commencer à examiner le ProductSyncWorker cet après-midi et me synchroniser avec David sur la configuration du traçage.</v>
+
+00:04:39.000 --> 00:04:47.000
+<v David>J'enverrai les variables d'environnement et un exemple d'extrait pour la propagation de la télémétrie juste après cet appel.</v>
+
+00:04:47.000 --> 00:04:56.000
+<v Alex>Once we're stable, we'll close the older PLU–GTIN tickets as obsolete.</v>
+
+00:04:56.000 --> 00:05:06.000
+<v Laura>Bon plan. Cela devrait améliorer la fiabilité et la transparence en production.</v>
+
+00:05:06.000 --> 00:05:17.000
+<v John>D'accord, merci à tous. Regroupons-nous au milieu de la semaine prochaine pour examiner les progrès et confirmer la préparation au déploiement.</v>
+

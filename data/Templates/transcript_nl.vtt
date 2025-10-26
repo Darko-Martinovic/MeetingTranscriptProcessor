@@ -1,0 +1,104 @@
+WEBVTT
+
+00:00:09.000 --> 00:00:17.000
+<v John>Goedemorgen allemaal, bedankt voor het aansluiten. Laten we ons concentreren op de GK API-ingestiepijplijn en de productgegevensdiscrepanties die we de afgelopen dagen in de StoreBridge-logs hebben gezien.</v>
+
+00:00:17.000 --> 00:00:26.000
+<v Mike>Morgen John. Ja, dit is gemeld door meerdere winkels; sommige prijzen en beschrijvingen worden niet bijgewerkt, ook al zijn de nachtelijke batchuitvoeringen voltooid.</v>
+
+00:00:26.000 --> 00:00:36.000
+<v David>Ik heb de ingestielogboeken van Azure Service Bus van gisteren gecontroleerd. Berichten werden ontvangen, maar ongeveer twaalf procent is mislukt tijdens transformatie in de verwerkingsmicroservice; nieuwe pogingen hebben plaatsgevonden, daarna gingen ze naar de wachtrij voor onbestelbare berichten.</v>
+
+00:00:36.000 --> 00:00:47.000
+<v Sarah>Juist, de logs tonen serialisatiefouten rond de PLU- en GTIN-mapping. Sommige payloads bevatten beide, en onze transformatie kiest niet consistent de juiste.</v>
+
+00:00:47.000 --> 00:00:54.000
+<v Alex>Dat is consistent met integratietests. We hebben de mapping gewijzigd toen GK GTIN toevoegde, maar achterwaartse compatibiliteit is niet volledig geverifieerd. De schemavalidator is misschien te toegeeflijk.</v>
+
+00:00:54.000 --> 00:01:02.000
+<v Laura>Vanuit operationeel oogpunt creëert dit gegevenskwaliteitsproblemen in winkels; verouderde promoprijzen dwingen tot handmatige overschrijvingen, en winkelmanagers zijn, eh, gefrustreerd.</v>
+
+00:01:02.000 --> 00:01:11.000
+<v John>Oké, dus zowel technische als operationele aspecten. David, weten we hoeveel winkels zijn getroffen?</v>
+
+00:01:11.000 --> 00:01:21.000
+<v David>Ongeveer vijfendertig procent in België en ongeveer tien procent in Roemenië. De getroffen records clusteren in de categorieën Seizoensgebonden Promoties en Huismerk.</v>
+
+00:01:21.000 --> 00:01:32.000
+<v Mike>Dit komt overeen met bedrijfsrapporten. GK vermeldde dat sommige payloads een PLU missen wanneer een product alleen een GTIN heeft. We moeten kijken of onze ingestie dat kan accepteren in plaats van het af te wijzen.</v>
+
+00:01:32.000 --> 00:01:39.000
+<v Sarah>Ik kan de mapping aanpassen om GTIN als terugvaloptie te gebruiken wanneer PLU ontbreekt, maar we moeten controleren of downstream joins in de prijstabel nog steeds werken.</v>
+
+00:01:39.000 --> 00:01:47.000
+<v Alex>Verifieer alstublieft de interactie tussen ProductSyncWorker en PricingUpdateHandler; beide schrijven naar dezelfde SQL Server-tabel en kunnen duplicaten creëren bij race-condities.</v>
+
+00:01:47.000 --> 00:01:56.000
+<v Emma>Voor codewijzigingen wil ik graag falende gevallen repliceren in QA. Dan kunnen we transformatiecorrecties en observeerbaarheid parallel valideren.</v>
+
+00:01:56.000 --> 00:02:06.000
+<v David>Wat betreft observeerbaarheid, missen we correlatie tussen ingestie- en verwerkingsspannen. Als we OpenTelemetry trace-ID's toevoegen aan berichteigenschappen, kunnen we elk bericht van begin tot eind volgen in Application Insights.</v>
+
+00:02:06.000 --> 00:02:17.000
+<v Sarah>Dat zou veel helpen. Ik heb een voorbeeld nodig voor het injecteren en extraheren van die ID's in onze .NET-workers.</v>
+
+00:02:17.000 --> 00:02:24.000
+<v Alex>Geen probleem. We gebruiken al de OpenTelemetry SDK; we hoeven alleen de trace-context te propageren bij het verzenden en ontvangen van berichten—configuratie meer dan refactoring.</v>
+
+00:02:24.000 --> 00:02:32.000
+<v Laura>Zodra we dat hebben, kunnen operaties de volledige berichtlevenscyclus monitoren en knelpunten opsporen voordat ze escaleren.</v>
+
+00:02:32.000 --> 00:02:41.000
+<v John>Uitstekend. Mike, kun je de Confluence-pagina aan de bedrijfskant voor de GK-integratie vernieuwen zodra de fix in staging staat? Het wordt een beetje verouderd.</v>
+
+00:02:41.000 --> 00:02:51.000
+<v Mike>Zeker, ik zal het bijwerken en voorbeeldpayloads toevoegen nadat Sarah's wijzigingen in staging zijn geland.</v>
+
+00:02:51.000 --> 00:03:02.000
+<v Emma>Ik zal een regressietestplan voorbereiden, inclusief negatieve scenario's zoals misvormde payloads of ontbrekende categoriecodes zodat het systeem netjes degradeert.</v>
+
+00:03:02.000 --> 00:03:09.000
+<v David>Ik zal ook een dashboard maken in Application Insights dat transformatiefouten per winkel en per payloadtype toont, zodat we kunnen zien of de fix de zaken daadwerkelijk verbetert.</v>
+
+00:03:09.000 --> 00:03:17.000
+<v Alex>Laten we de implementatie ook bekijken. De laatste hotfix had downtime omdat rollback-stappen niet duidelijk waren. We hebben betere sequencing van SQL-scripts nodig in release-documenten.</v>
+
+00:03:17.000 --> 00:03:26.000
+<v Sarah>Ik kan de Confluence-implementatiesjabloon uitbreiden die we vorige maand hebben besproken; het mist nog steeds rollback-verificatie en afhankelijkheidsmappingsecties.</v>
+
+00:03:26.000 --> 00:03:36.000
+<v John>Perfect. Dat zal helpen tijdens de release freeze-periode.</v>
+
+00:03:36.000 --> 00:03:47.000
+<v Mike>Nog één ding: we moeten ons afstemmen met GK over schemaversioning. Als er meer wijzigingen komen, hebben we vroege kennisgeving nodig. Ik zal deze week contact opnemen met hun integratieleider.</v>
+
+00:03:47.000 --> 00:03:54.000
+<v Laura>Doe dat alsjeblieft. Het is riskant om te werken op basis van aannames over hun payloads.</v>
+
+00:03:54.000 --> 00:04:02.000
+<v Alex>Nadat we de mapping-logica hebben afgerond, laten we eerst uitrollen naar drie proefwinkels, daarna systeembreed gaan.</v>
+
+00:04:02.000 --> 00:04:11.000
+<v Emma>Ik zal de testchecklist en validatiestappen voor die pilot opstellen. We kunnen de QA-dataset van de vorige sprint hergebruiken.</v>
+
+00:04:11.000 --> 00:04:21.000
+<v John>Geweldig. Laten we streven naar debugging op woensdag, QA op vrijdag, en een uitrolplan begin volgende week.</v>
+
+00:04:21.000 --> 00:04:32.000
+<v Mike>Klinkt goed.</v>
+
+00:04:32.000 --> 00:04:39.000
+<v Sarah>Ik zal vanmiddag beginnen met het onderzoeken van de ProductSyncWorker en synchroniseren met David over de tracing-setup.</v>
+
+00:04:39.000 --> 00:04:47.000
+<v David>Ik stuur de omgevingsvariabelen en een voorbeeldfragment voor telemetriepropagatie direct na dit gesprek.</v>
+
+00:04:47.000 --> 00:04:56.000
+<v Alex>Once we're stable, we'll close the older PLU–GTIN tickets as obsolete.</v>
+
+00:04:56.000 --> 00:05:06.000
+<v Laura>Goed plan. Dit zou de betrouwbaarheid en transparantie in productie moeten verbeteren.</v>
+
+00:05:06.000 --> 00:05:17.000
+<v John>Oké, bedankt iedereen. Laten we midden volgende week opnieuw samenkomen om de voortgang te bekijken en de gereedheid voor implementatie te bevestigen.</v>
+
