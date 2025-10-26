@@ -294,7 +294,17 @@ namespace MeetingTranscriptProcessor.Controllers
                     var filePath = Path.Combine(path, fileName);
                     if (System.IO.File.Exists(filePath))
                     {
+                        // Delete the transcript file
                         System.IO.File.Delete(filePath);
+                        
+                        // Also delete the corresponding metadata file if it exists
+                        var baseFileName = ExtractBaseFileName(fileName);
+                        var metadataPath = Path.Combine(path, $"{baseFileName}.meta.json");
+                        if (System.IO.File.Exists(metadataPath))
+                        {
+                            System.IO.File.Delete(metadataPath);
+                        }
+                        
                         return Ok(new { message = "Meeting deleted successfully" });
                     }
                 }

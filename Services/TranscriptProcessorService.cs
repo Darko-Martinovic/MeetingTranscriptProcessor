@@ -1,6 +1,8 @@
 using MeetingTranscriptProcessor.Models;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace MeetingTranscriptProcessor.Services;
 
@@ -116,6 +118,7 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             ".json" => await ReadJsonContentAsync(filePath),
             ".xml" => await ReadXmlContentAsync(filePath),
             ".vtt" => await ReadVttContentAsync(filePath),
+            ".docx" => await ReadDocxContentAsync(filePath),
             _ => await File.ReadAllTextAsync(filePath) // Fallback to text
         };
     }
@@ -301,6 +304,51 @@ public class TranscriptProcessorService : ITranscriptProcessorService
     }
 
     /// <summary>
+    /// Reads DOCX files and extracts text content
+    /// </summary>
+    private async Task<string> ReadDocxContentAsync(string filePath)
+    {
+        try
+        {
+            using var doc = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(filePath, false);
+            if (doc.MainDocumentPart == null)
+            {
+                return string.Empty;
+            }
+
+            var body = doc.MainDocumentPart.Document.Body;
+            if (body == null)
+            {
+                return string.Empty;
+            }
+
+            var paragraphs = body.Descendants<DocumentFormat.OpenXml.Wordprocessing.Paragraph>();
+            var lines = new List<string>();
+            
+            foreach (var para in paragraphs)
+            {
+                var text = para.InnerText;
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    // Preserve paragraph structure for better parsing
+                    lines.Add(text);
+                }
+            }
+            
+            // Join with newlines to preserve structure for participant detection
+            var textContent = string.Join("\n", lines);
+
+            return textContent;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing DOCX file: {ex.Message}");
+            // Fallback to empty string rather than binary data
+            return $"[Error reading DOCX file: {ex.Message}]";
+        }
+    }
+
+    /// <summary>
     /// Extracts metadata from transcript content
     /// </summary>
     private async Task ExtractMetadata(MeetingTranscript transcript)
@@ -319,12 +367,29 @@ public class TranscriptProcessorService : ITranscriptProcessorService
             var lines = transcript.Content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             if (lines.Length > 0)
             {
-                // For VTT files, use filename as title since first line is speaker dialog
-                if (extension == ".vtt")
+                // For VTT and DOCX files, use filename as title since content may be in different languages
+                // or first line may be speaker dialog
+                if (extension == ".vtt" || extension == ".docx")
                 {
-                    transcript.Title = Path.GetFileNameWithoutExtension(transcript.FileName)
+                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - Original filename: {transcript.FileName}");
+                    
+                    // Extract base filename, removing archive timestamp prefix if present
+                    var cleanFileName = ExtractBaseFileNameFromArchive(transcript.FileName);
+                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - After ExtractBaseFileNameFromArchive: {cleanFileName}");
+                    
+                    // Also remove trailing language codes from the filename (e.g., "transcript_fr" -> "transcript")
+                    cleanFileName = RemoveTrailingLanguageCode(cleanFileName);
+                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - After RemoveTrailingLanguageCode: {cleanFileName}");
+                    
+                    // Also remove common transcript suffixes that might remain
+                    cleanFileName = RemoveCommonSuffixes(cleanFileName);
+                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - After RemoveCommonSuffixes: {cleanFileName}");
+                    
+                    transcript.Title = cleanFileName
                         .Replace("_", " ")
-                        .Replace("-", " ");
+                        .Replace("-", " ")
+                        .Trim();
+                    Console.WriteLine($"🔍 {extension.ToUpper()} Title Extraction - Final title: {transcript.Title}");
                 }
                 else
                 {
@@ -942,6 +1007,12 @@ Focus on:
         // Note: At this point, content has already been converted to readable format,
         // but we can detect VTT by checking if it was converted from VTT format
         bool isVttContent = fileName != null && Path.GetExtension(fileName).Equals(".vtt", StringComparison.OrdinalIgnoreCase);
+        
+        // Log file type for debugging
+        var fileExtension = fileName != null ? Path.GetExtension(fileName) : "unknown";
+        Console.WriteLine($"🔍 ExtractParticipants called for file type: {fileExtension}");
+        Console.WriteLine($"🔍 Content length: {content.Length} characters");
+        Console.WriteLine($"🔍 Content preview (first 300 chars): {content.Substring(0, Math.Min(300, content.Length))}");
 
         // For VTT files, rely on speaker pattern since content is already converted
         // The existing fallback speaker pattern will work well for VTT-converted content
@@ -1323,4 +1394,98 @@ Focus on:
 
         return matrix[str1.Length, str2.Length];
     }
+
+    /// <summary>
+    /// Extracts the base filename from archived filename, removing timestamp prefix
+    /// Handles patterns like: YYYYMMDD_HHMMSS_status_language_originalname
+    /// </summary>
+    private static string ExtractBaseFileNameFromArchive(string fileName)
+    {
+        // Remove extension first
+        var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+        
+        // Pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
+        var parts = nameWithoutExt.Split('_');
+        
+        if (parts.Length >= 4)
+        {
+            // Check if this follows the archive pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
+            if (parts[0].Length == 8 && parts[0].All(char.IsDigit) && // YYYYMMDD
+                parts[1].Length == 6 && parts[1].All(char.IsDigit))   // HHMMSS
+            {
+                // Skip timestamp (parts 0,1) and status (part 2)
+                var skipCount = 3;
+                
+                // Check if part 3 is a language name
+                if (parts.Length > 4 && IsLanguageName(parts[3]))
+                {
+                    skipCount = 4; // also skip language
+                }
+                
+                var remainingParts = parts.Skip(skipCount).ToList();
+                
+                if (remainingParts.Count > 0)
+                {
+                    return string.Join("_", remainingParts);
+                }
+            }
+        }
+        
+        // If pattern doesn't match, return as-is
+        return nameWithoutExt;
+    }
+    
+    /// <summary>
+    /// Checks if a string might be a language name or language code
+    /// </summary>
+    private static bool IsLanguageName(string part)
+    {
+        var commonLanguages = new[] { "English", "French", "Dutch", "Spanish", "German" };
+        var languageCodes = new[] { "en", "fr", "nl", "es", "de" };
+        return commonLanguages.Contains(part, StringComparer.OrdinalIgnoreCase) ||
+               languageCodes.Contains(part, StringComparer.OrdinalIgnoreCase);
+    }
+    
+    /// <summary>
+    /// Removes trailing language code from filename (e.g., "transcript_fr" -> "transcript")
+    /// </summary>
+    private static string RemoveTrailingLanguageCode(string fileName)
+    {
+        var parts = fileName.Split('_');
+        
+        // If last part is a language code, remove it
+        if (parts.Length > 1 && IsLanguageName(parts[^1]))
+        {
+            return string.Join("_", parts.Take(parts.Length - 1));
+        }
+        
+        return fileName;
+    }
+    
+    /// <summary>
+    /// Removes common generic suffixes from filename to get meaningful title
+    /// (e.g., "teams_transcript_exact" -> "teams", "transcript" -> "meeting transcript")
+    /// </summary>
+    private static string RemoveCommonSuffixes(string fileName)
+    {
+        var parts = fileName.Split('_');
+        var commonSuffixes = new[] { "transcript", "exact", "recording", "meeting", "doc", "document" };
+        
+        // Filter out common suffixes but keep at least one word
+        var meaningfulParts = parts.Where(p => !commonSuffixes.Contains(p.ToLowerInvariant())).ToList();
+        
+        // If we filtered everything out, return a generic title
+        if (meaningfulParts.Count == 0)
+        {
+            // Check if the original had "teams" or similar identifiers
+            if (parts.Any(p => p.Equals("teams", StringComparison.OrdinalIgnoreCase)))
+            {
+                return "teams meeting";
+            }
+            return "meeting transcript";
+        }
+        
+        return string.Join("_", meaningfulParts);
+    }
 }
+
