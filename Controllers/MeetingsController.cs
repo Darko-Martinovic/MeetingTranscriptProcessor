@@ -296,7 +296,7 @@ namespace MeetingTranscriptProcessor.Controllers
                     {
                         // Delete the transcript file
                         System.IO.File.Delete(filePath);
-                        
+
                         // Also delete the corresponding metadata file if it exists
                         var baseFileName = ExtractBaseFileName(fileName);
                         var metadataPath = Path.Combine(path, $"{baseFileName}.meta.json");
@@ -304,7 +304,7 @@ namespace MeetingTranscriptProcessor.Controllers
                         {
                             System.IO.File.Delete(metadataPath);
                         }
-                        
+
                         return Ok(new { message = "Meeting deleted successfully" });
                     }
                 }
@@ -1083,49 +1083,20 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             try
             {
-                Console.WriteLine($"🔍 LoadTranscriptWithMetadata called for: {fileName}");
-
                 // Remove timestamp prefix to get base filename
                 var baseFileName = ExtractBaseFileName(fileName);
                 var metadataFileName = $"{baseFileName}.meta.json";
 
-                Console.WriteLine($"🔍 Base filename extracted: {baseFileName}");
-                Console.WriteLine($"🔍 Looking for metadata file: {metadataFileName}");
-
                 // Search in all directories for metadata file
                 var allPaths = new[] { _archivePath, _incomingPath, _processingPath };
-
-                // First, let's list all files in the archive directory for debugging
-                Console.WriteLine($"📁 Listing all files in archive directory ({_archivePath}):");
-                try
-                {
-                    var archiveFiles = Directory.GetFiles(_archivePath);
-                    foreach (var file in archiveFiles)
-                    {
-                        var archiveFileName = Path.GetFileName(file);
-                        Console.WriteLine($"   📄 Archive file: {archiveFileName}");
-                        if (archiveFileName.EndsWith(".meta.json"))
-                        {
-                            Console.WriteLine($"      🎯 Found metadata file: {archiveFileName}");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"   ❌ Error listing archive files: {ex.Message}");
-                }
 
                 foreach (var path in allPaths)
                 {
                     var metadataPath = Path.Combine(path, metadataFileName);
-                    Console.WriteLine($"🔍 Checking path: {metadataPath}");
-                    Console.WriteLine($"🔍 File exists: {System.IO.File.Exists(metadataPath)}");
 
                     if (System.IO.File.Exists(metadataPath))
                     {
-                        Console.WriteLine($"✅ Found metadata file at: {metadataPath}");
                         var jsonContent = await System.IO.File.ReadAllTextAsync(metadataPath);
-                        Console.WriteLine($"📄 Metadata file size: {jsonContent.Length} characters");
 
                         var options = new JsonSerializerOptions
                         {
@@ -1135,25 +1106,16 @@ namespace MeetingTranscriptProcessor.Controllers
 
                         if (transcript != null)
                         {
-                            Console.WriteLine($"✅ Successfully deserialized transcript");
-                            Console.WriteLine($"📊 Transcript data:");
-                            Console.WriteLine($"   - ID: {transcript.Id}");
-                            Console.WriteLine($"   - Title: {transcript.Title}");
-                            Console.WriteLine($"   - Action items count: {transcript.ActionItems?.Count ?? 0}");
-                            Console.WriteLine($"   - JIRA tickets count: {transcript.CreatedJiraTickets?.Count ?? 0}");
-
                             // Convert JSON content to readable text if it's in JSON format
                             if (!string.IsNullOrEmpty(transcript.Content) &&
                                 transcript.Content.TrimStart().StartsWith("{"))
                             {
-                                Console.WriteLine($"🔄 Converting JSON content to readable text...");
                                 try
                                 {
                                     var transcriptData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(transcript.Content);
                                     if (transcriptData?.combinedTranscript != null && transcriptData?.participants != null)
                                     {
                                         transcript.Content = ProcessMsTeamsTranscriptForDisplay(transcriptData);
-                                        Console.WriteLine($"✅ Successfully converted JSON to readable text ({transcript.Content.Length} chars)");
                                     }
                                 }
                                 catch (Exception ex)
@@ -1161,30 +1123,12 @@ namespace MeetingTranscriptProcessor.Controllers
                                     Console.WriteLine($"⚠️ Failed to convert JSON content: {ex.Message}");
                                 }
                             }
-
-                            if (transcript.CreatedJiraTickets?.Count > 0)
-                            {
-                                Console.WriteLine($"🎫 JIRA tickets found:");
-                                foreach (var ticket in transcript.CreatedJiraTickets)
-                                {
-                                    Console.WriteLine($"   - {ticket.TicketKey}: {ticket.Title}");
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine($"❌ No JIRA tickets found in transcript!");
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine($"❌ Failed to deserialize transcript from metadata");
                         }
 
                         return transcript;
                     }
                 }
 
-                Console.WriteLine($"❌ No metadata file found for base filename: {baseFileName}");
                 return null;
             }
             catch (Exception ex)
@@ -1210,18 +1154,12 @@ namespace MeetingTranscriptProcessor.Controllers
             // We want to extract the original name part
             var parts = nameWithoutExt.Split('_');
 
-            Console.WriteLine($"🔍 ExtractBaseFileName input: {fileName}");
-            Console.WriteLine($"🔍 nameWithoutExt: {nameWithoutExt}");
-            Console.WriteLine($"🔍 parts: [{string.Join(", ", parts)}] (count: {parts.Length})");
-
             if (parts.Length >= 4)
             {
                 // Check if this follows the archive pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
                 if (parts[0].Length == 8 && parts[0].All(char.IsDigit) && // YYYYMMDD
                     parts[1].Length == 6 && parts[1].All(char.IsDigit))   // HHMMSS
                 {
-                    Console.WriteLine($"🔍 Found archive pattern with timestamp prefix");
-
                     // Skip timestamp (parts 0,1) and status (part 2)
                     var skipCount = 3;
 
@@ -1229,27 +1167,18 @@ namespace MeetingTranscriptProcessor.Controllers
                     if (parts.Length > 4 && IsLanguageName(parts[3]))
                     {
                         skipCount = 4; // also skip language
-                        Console.WriteLine($"🔍 Found language part '{parts[3]}', skipCount = {skipCount}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"🔍 No language part found, skipCount = {skipCount}");
                     }
 
                     var remainingParts = parts.Skip(skipCount).ToList();
-                    Console.WriteLine($"🔍 remainingParts after skip: [{string.Join(", ", remainingParts)}]");
 
                     if (remainingParts.Count > 0)
                     {
-                        var result = string.Join("_", remainingParts);
-                        Console.WriteLine($"🔍 ExtractBaseFileName result: {result}");
-                        return result;
+                        return string.Join("_", remainingParts);
                     }
                 }
             }
 
             // If pattern doesn't match, return as-is
-            Console.WriteLine($"🔍 No archive pattern match, returning as-is: {nameWithoutExt}");
             return nameWithoutExt;
         }
 
@@ -1314,14 +1243,11 @@ namespace MeetingTranscriptProcessor.Controllers
             try
             {
                 var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                Console.WriteLine($"🔍 ReadFileContentForPreview called for: {filePath}");
-                Console.WriteLine($"🔍 File extension: {extension}");
 
                 if (extension == ".json")
                 {
                     // Handle JSON files - check if it's MS Teams format and convert to readable text
                     var jsonContent = await System.IO.File.ReadAllTextAsync(filePath);
-                    Console.WriteLine($"🔍 JSON content length: {jsonContent.Length}");
 
                     try
                     {
@@ -1330,34 +1256,26 @@ namespace MeetingTranscriptProcessor.Controllers
                         // Check for MS Teams/Graph API format
                         if (transcriptData?.combinedTranscript != null && transcriptData?.participants != null)
                         {
-                            Console.WriteLine($"✅ Detected MS Teams format, processing for preview");
-                            var convertedContent = ProcessMsTeamsTranscriptForPreview(transcriptData);
-                            Console.WriteLine($"✅ Converted content length: {convertedContent.Length}");
-                            return convertedContent;
+                            return ProcessMsTeamsTranscriptForPreview(transcriptData);
                         }
 
-                        Console.WriteLine($"⚠️ Not MS Teams format, checking other formats");
                         // Try common JSON transcript formats
                         if (transcriptData?.transcript != null)
                         {
-                            Console.WriteLine($"🔍 Found .transcript field");
                             return transcriptData.transcript.ToString();
                         }
 
                         if (transcriptData?.content != null)
                         {
-                            Console.WriteLine($"🔍 Found .content field");
                             return transcriptData.content.ToString();
                         }
 
                         if (transcriptData?.text != null)
                         {
-                            Console.WriteLine($"🔍 Found .text field");
                             return transcriptData.text.ToString();
                         }
 
                         // If no standard format, return the JSON as text
-                        Console.WriteLine($"⚠️ No recognized format, returning raw JSON");
                         return jsonContent;
                     }
                     catch
@@ -1383,7 +1301,6 @@ namespace MeetingTranscriptProcessor.Controllers
         {
             try
             {
-                Console.WriteLine($"🔍 ProcessMsTeamsTranscriptForPreview called");
                 var result = new List<string>();
 
                 // Add header with meeting information
@@ -1393,13 +1310,11 @@ namespace MeetingTranscriptProcessor.Controllers
                 if (transcriptData.meetingTitle != null)
                 {
                     result.Add($"Title: {transcriptData.meetingTitle}");
-                    Console.WriteLine($"🔍 Added title: {transcriptData.meetingTitle}");
                 }
 
                 if (transcriptData.startTime != null)
                 {
                     result.Add($"Date: {transcriptData.startTime}");
-                    Console.WriteLine($"🔍 Added start time: {transcriptData.startTime}");
                 }
 
                 if (transcriptData.locale != null)
