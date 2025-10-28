@@ -19,6 +19,16 @@ https://github.com/user-attachments/assets/a66fb21f-1d1f-48f7-9840-7bbb8113e0d9
 
 _Watch how the application automatically processes meeting transcripts, extracts action items using Azure OpenAI, and creates Jira tickets seamlessly._
 
+### Latest Features Demo
+
+https://github.com/user-attachments/assets/12b2ecf6-cfd0-4797-958a-8018b7a732e4
+
+**Main Features Showcased:**
+1. **Train AI** - Advanced AI model training and validation
+2. **Support for Dutch as an input language** - Multi-language processing capabilities  
+3. **Token usage and Cost present within a meetings card** - Real-time AI cost tracking
+4. **Support for VTT files (native MS Teams transcripts) and DOCX files** - Enhanced file format compatibility
+
 ## 🚀 Quick Start
 
 ### Prerequisites
