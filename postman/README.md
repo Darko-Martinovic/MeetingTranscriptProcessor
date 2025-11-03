@@ -25,7 +25,7 @@ This directory contains Postman collection and environment files for testing the
 2. Update the following variables with your actual values:
 
 #### Required Variables
-- **`baseUrl`** - API base URL (default: `http://localhost:5000`)
+- **`baseUrl`** - API base URL (default: `http://localhost:5555`)
 - **`fileName`** - Sample meeting file name for testing
 
 #### Optional Variables (for configuration testing)
@@ -46,7 +46,7 @@ Before testing, ensure the Meeting Transcript Processor is running:
 dotnet run --web
 ```
 
-The API will be available at `http://localhost:5000`
+The API will be available at `http://localhost:5555`
 
 ## Collection Structure
 
