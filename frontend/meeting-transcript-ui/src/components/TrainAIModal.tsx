@@ -280,7 +280,7 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
                       <span><strong>Model:</strong> {modelName}</span>
                     </div>
                     <div className={styles.modelParams}>
-                      <span>Temperature: {temperature}</span>
+                      <span>Temperature: {temperature.toFixed(2)}</span>
                       <span>Max Tokens: {maxTokens.toLocaleString()}</span>
                     </div>
                   </div>
