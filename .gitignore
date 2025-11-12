@@ -92,7 +92,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python# .NET specific
+.Python
+
+# Deployment scripts and local configuration
+Deploy/
+
+# .NET specific
 bin/
 obj/
 *.user

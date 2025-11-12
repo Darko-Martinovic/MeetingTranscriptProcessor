@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Cors;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
 using System.Text.Json;
@@ -8,6 +9,7 @@ namespace MeetingTranscriptProcessor.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableCors("AllowFrontend")]
     public class MeetingsController : ControllerBase
     {
         private readonly ITranscriptProcessorService _transcriptProcessor;

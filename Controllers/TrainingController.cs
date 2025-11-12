@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Cors;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
 
@@ -6,6 +7,7 @@ namespace MeetingTranscriptProcessor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableCors("AllowFrontend")]
 public class TrainingController : ControllerBase
 {
     private readonly ITranscriptProcessorService _transcriptProcessor;

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Cors;
 using MeetingTranscriptProcessor.Services;
 
 namespace MeetingTranscriptProcessor.Controllers;
 
 [ApiController]
 [Route("api/processing")]
+[EnableCors("AllowFrontend")]
 public class ProcessingController : ControllerBase
 {
     private readonly IProcessingStatusService _processingStatusService;
