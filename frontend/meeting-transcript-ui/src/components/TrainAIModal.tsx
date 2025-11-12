@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import styles from "./TrainAIModal.module.css";
 
-// Get API base URL from environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5555/api";
+// API configuration - set via VITE_API_URL environment variable
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5100/api";
 
 interface ActionItem {
   id: string;

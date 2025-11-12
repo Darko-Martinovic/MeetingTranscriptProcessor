@@ -46,6 +46,11 @@ namespace MeetingTranscriptProcessor.Controllers
             _processingPath =
                 Environment.GetEnvironmentVariable("PROCESSING_DIRECTORY")
                 ?? Path.Combine(projectRoot, "Data", "Processing");
+
+            // Ensure directories exist
+            Directory.CreateDirectory(_archivePath);
+            Directory.CreateDirectory(_incomingPath);
+            Directory.CreateDirectory(_processingPath);
         }
 
         [HttpGet("folders")]

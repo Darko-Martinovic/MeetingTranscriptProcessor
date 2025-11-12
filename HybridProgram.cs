@@ -116,8 +116,12 @@ namespace MeetingTranscriptProcessor
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseCors("AllowFrontend");
+            // CRITICAL: Middleware order matters!
+            // 1. UseRouting must come first
+            // 2. UseCors must be between UseRouting and MapControllers
+            // 3. MapControllers must come last
             app.UseRouting();
+            app.UseCors("AllowFrontend");
             app.MapControllers();
 
             // Serve static files for the React app
@@ -131,9 +135,10 @@ namespace MeetingTranscriptProcessor
             await InitializeBackgroundServicesAsync();
 
             Console.WriteLine("🌐 Web API Mode");
-            Console.WriteLine($"🚀 Server starting on http://localhost:5555");
+            Console.WriteLine($"🚀 Server starting on http://localhost:5100");
             Console.WriteLine("📁 Background file processing enabled");
             Console.WriteLine("⌨️  Press Ctrl+C to stop");
+            Console.WriteLine();
 
             await app.RunAsync();
         }
@@ -194,10 +199,31 @@ namespace MeetingTranscriptProcessor
             // Initialize concurrency semaphore
             _processingSemaphore = new SemaphoreSlim(_maxConcurrentFiles, _maxConcurrentFiles);
 
-            // Ensure directories exist
-            Directory.CreateDirectory(IncomingPath);
-            Directory.CreateDirectory(ProcessingPath);
-            Directory.CreateDirectory(ArchivePath);
+            // Ensure directories exist - create if missing
+            try
+            {
+                if (!Directory.Exists(IncomingPath))
+                {
+                    Directory.CreateDirectory(IncomingPath);
+                    Console.WriteLine($"✅ Created directory: {IncomingPath}");
+                }
+
+                if (!Directory.Exists(ProcessingPath))
+                {
+                    Directory.CreateDirectory(ProcessingPath);
+                    Console.WriteLine($"✅ Created directory: {ProcessingPath}");
+                }
+
+                if (!Directory.Exists(ArchivePath))
+                {
+                    Directory.CreateDirectory(ArchivePath);
+                    Console.WriteLine($"✅ Created directory: {ArchivePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Warning: Failed to create directories: {ex.Message}");
+            }
 
             // Get services from DI container
             _fileWatcher = _serviceProvider?.GetRequiredService<IFileWatcherService>();
@@ -221,15 +247,10 @@ namespace MeetingTranscriptProcessor
 
         private static void DisplayHeader()
         {
-            Console.Clear();
-            Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║               Meeting Transcript Processor                  ║");
-            Console.WriteLine("║                                                              ║");
-            Console.WriteLine("║  Automatically processes meeting transcripts and creates    ║");
-            Console.WriteLine("║  Jira tickets from extracted action items.                  ║");
-            Console.WriteLine("║                                                              ║");
-            Console.WriteLine($"║  Mode: {(_runAsWebApi ? "Web API + Background Processing" : "Console Application").PadRight(42)} ║");
-            Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
+            Console.WriteLine("==========================================================");
+            Console.WriteLine("Meeting Transcript Processor");
+            Console.WriteLine($"Mode: {(_runAsWebApi ? "Web API + Background Processing" : "Console Application")}");
+            Console.WriteLine("==========================================================");
             Console.WriteLine();
         }
 
@@ -302,9 +323,31 @@ namespace MeetingTranscriptProcessor
 
             _processingSemaphore = new SemaphoreSlim(_maxConcurrentFiles, _maxConcurrentFiles);
 
-            Directory.CreateDirectory(IncomingPath);
-            Directory.CreateDirectory(ProcessingPath);
-            Directory.CreateDirectory(ArchivePath);
+            // Ensure directories exist - create if missing
+            try
+            {
+                if (!Directory.Exists(IncomingPath))
+                {
+                    Directory.CreateDirectory(IncomingPath);
+                    Console.WriteLine($"✅ Created directory: {IncomingPath}");
+                }
+
+                if (!Directory.Exists(ProcessingPath))
+                {
+                    Directory.CreateDirectory(ProcessingPath);
+                    Console.WriteLine($"✅ Created directory: {ProcessingPath}");
+                }
+
+                if (!Directory.Exists(ArchivePath))
+                {
+                    Directory.CreateDirectory(ArchivePath);
+                    Console.WriteLine($"✅ Created directory: {ArchivePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️  Warning: Failed to create directories: {ex.Message}");
+            }
 
             var services = new ServiceCollection();
             services.AddLogging(builder => builder.AddConsole());
