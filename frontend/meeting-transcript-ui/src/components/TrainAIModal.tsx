@@ -7,6 +7,7 @@ import {
   ThumbsUp,
   Meh,
   ThumbsDown,
+  Download,
 } from "lucide-react";
 import styles from "./TrainAIModal.module.css";
 
@@ -38,6 +39,9 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
   const [updatingPrompt, setUpdatingPrompt] = useState(false);
   const [tokensUsed, setTokensUsed] = useState<number>(0);
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
+  const [modelName, setModelName] = useState<string>("");
+  const [temperature, setTemperature] = useState<number>(0);
+  const [maxTokens, setMaxTokens] = useState<number>(0);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -48,6 +52,9 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
       setCustomPrompt("");
       setTokensUsed(0);
       setEstimatedCost(0);
+      setModelName("");
+      setTemperature(0);
+      setMaxTokens(0);
     }
   };
 
@@ -75,6 +82,9 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
       setActionItems(data.actionItems || []);
       setTokensUsed(data.tokensUsed || 0);
       setEstimatedCost(data.estimatedCost || 0);
+      setModelName(data.modelName || "");
+      setTemperature(data.temperature || 0);
+      setMaxTokens(data.maxTokens || 0);
     } catch (error) {
       console.error("Error processing transcript:", error);
       alert("Failed to process transcript. Please try again.");
@@ -135,6 +145,79 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
     }
   };
 
+  const exportToCSV = () => {
+    if (actionItems.length === 0) return;
+
+    // Create CSV header
+    const headers = ["Ticket #", "Title", "Description", "Priority", "Type", "Assignee"];
+    
+    // Create CSV rows
+    const rows = actionItems.map((item, index) => [
+      item.ticketNumber || `TRAIN-${index + 1}`,
+      `"${item.title.replace(/"/g, '""')}"`, // Escape quotes
+      `"${item.description.replace(/"/g, '""')}"`,
+      item.priority,
+      item.type,
+      item.assignedTo || "Unassigned"
+    ]);
+
+    // Combine header and rows
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.join(","))
+    ].join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `training-action-items-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToJSON = () => {
+    if (actionItems.length === 0) return;
+
+    // Create comprehensive export data
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      fileName: selectedFile?.name || "",
+      modelInfo: {
+        modelName,
+        temperature,
+        maxTokens
+      },
+      metrics: {
+        tokensUsed,
+        estimatedCost
+      },
+      actionItems: actionItems.map((item, index) => ({
+        ticketNumber: item.ticketNumber || `TRAIN-${index + 1}`,
+        title: item.title,
+        description: item.description,
+        priority: item.priority,
+        type: item.type,
+        assignedTo: item.assignedTo || "Unassigned"
+      }))
+    };
+
+    // Create and download file
+    const jsonContent = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonContent], { type: "application/json;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `training-action-items-${new Date().toISOString().split('T')[0]}.json`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -188,6 +271,22 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
             <div className={styles.resultsSection}>
               <div className={styles.resultsSummary}>
                 <h3>Extracted Action Items ({actionItems.length})</h3>
+                
+                {/* Model Information */}
+                {modelName && (
+                  <div className={styles.modelInfo}>
+                    <div className={styles.modelBadge}>
+                      <Brain className="h-4 w-4" />
+                      <span><strong>Model:</strong> {modelName}</span>
+                    </div>
+                    <div className={styles.modelParams}>
+                      <span>Temperature: {temperature}</span>
+                      <span>Max Tokens: {maxTokens.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Metrics Display */}
                 <div className={styles.metricsDisplay}>
                   {tokensUsed > 0 && (
                     <span className={styles.metric}>
@@ -201,6 +300,18 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
                       <strong>${estimatedCost.toFixed(4)}</strong>
                     </span>
                   )}
+                </div>
+
+                {/* Export Buttons */}
+                <div className={styles.exportButtons}>
+                  <button onClick={exportToCSV} className={styles.exportButton}>
+                    <Download className="h-4 w-4" />
+                    <span>Export CSV</span>
+                  </button>
+                  <button onClick={exportToJSON} className={styles.exportButton}>
+                    <Download className="h-4 w-4" />
+                    <span>Export JSON</span>
+                  </button>
                 </div>
               </div>
               <div className={styles.resultsTable}>

@@ -48,12 +48,19 @@ public class TrainingController : ControllerBase
                 // Process transcript (this will extract action items but we won't create JIRA tickets)
                 var transcript = await _transcriptProcessor.ProcessTranscriptAsync(tempPath);
 
+                // Get AI configuration for model information
+                var configService = HttpContext.RequestServices.GetRequiredService<IConfigurationService>();
+                var aiSettings = configService.GetAzureOpenAISettings();
+
                 // Convert to training result format
                 var result = new TrainingResult
                 {
                     FileName = file.FileName,
                     TokensUsed = transcript.TokensUsed ?? 0,
                     EstimatedCost = transcript.EstimatedCost ?? 0,
+                    ModelName = aiSettings.DeploymentName,
+                    Temperature = aiSettings.Temperature,
+                    MaxTokens = aiSettings.MaxTokens,
                     ActionItems = transcript.ActionItems.Select((item, index) => new TrainingActionItem
                     {
                         Id = item.Id.ToString(),
@@ -66,7 +73,7 @@ public class TrainingController : ControllerBase
                     }).ToList()
                 };
 
-                _logger.LogInformation($"Successfully processed training transcript. Found {result.ActionItems.Count} action items");
+                _logger.LogInformation($"Successfully processed training transcript with {result.ModelName}. Found {result.ActionItems.Count} action items");
 
                 return Ok(result);
             }
@@ -123,6 +130,9 @@ public class TrainingResult
     public List<TrainingActionItem> ActionItems { get; set; } = new();
     public int TokensUsed { get; set; }
     public decimal EstimatedCost { get; set; }
+    public string ModelName { get; set; } = string.Empty;
+    public double Temperature { get; set; }
+    public int MaxTokens { get; set; }
 }
 
 public class TrainingActionItem
