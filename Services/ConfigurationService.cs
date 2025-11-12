@@ -216,7 +216,8 @@ public class ConfigurationService : IConfigurationService
                 var settings = JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
-                    ReadCommentHandling = JsonCommentHandling.Skip
+                    ReadCommentHandling = JsonCommentHandling.Skip,
+                    NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
                 });
 
                 if (settings != null)
@@ -359,6 +360,6 @@ public class ConfigurationService : IConfigurationService
     private double? GetDoubleFromEnv(string envVarName)
     {
         var value = Environment.GetEnvironmentVariable(envVarName);
-        return double.TryParse(value, out var result) ? result : null;
+        return double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : null;
     }
 }
