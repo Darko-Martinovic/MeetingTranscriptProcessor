@@ -95,7 +95,14 @@ namespace MeetingTranscriptProcessor
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:5175")
+                    policy.WithOrigins(
+                              "http://localhost:3000",      // Vite dev server
+                              "http://localhost:5173",      // Vite dev server (alternate)
+                              "http://localhost:5175",      // Vite dev server (alternate)
+                              "http://localhost:5273",      // Python HTTP server (production)
+                              "http://10.74.42.54:5273",    // Remote machine frontend
+                              "http://10.74.42.54:5100"     // Remote machine backend (for API calls)
+                          )
                           .AllowAnyHeader()
                           .AllowAnyMethod();
                 });
