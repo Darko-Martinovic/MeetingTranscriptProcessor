@@ -46,6 +46,55 @@ const AzureOpenAITab: React.FC<AzureOpenAITabProps> = React.memo(
             placeholder="gpt-4"
           />
         </div>
+        
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Temperature (0.0 - 1.0)
+            <span className={styles.helpText}>Lower = more focused, Higher = more creative</span>
+          </label>
+          <input
+            type="number"
+            name="temperature"
+            defaultValue={0.1}
+            min="0"
+            max="1"
+            step="0.1"
+            className={styles.input}
+            placeholder="0.1"
+          />
+        </div>
+        
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Max Tokens</label>
+          <input
+            type="number"
+            name="maxTokens"
+            defaultValue={4000}
+            min="100"
+            max="8000"
+            step="100"
+            className={styles.input}
+            placeholder="4000"
+          />
+        </div>
+        
+        <div className={styles.formGroup}>
+          <label className={styles.label}>
+            Top P (0.0 - 1.0)
+            <span className={styles.helpText}>Nucleus sampling threshold</span>
+          </label>
+          <input
+            type="number"
+            name="topP"
+            defaultValue={0.95}
+            min="0"
+            max="1"
+            step="0.05"
+            className={styles.input}
+            placeholder="0.95"
+          />
+        </div>
+        
         <button
           type="submit"
           disabled={loading}

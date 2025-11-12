@@ -42,6 +42,7 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
   const [modelName, setModelName] = useState<string>("");
   const [temperature, setTemperature] = useState<number>(0);
   const [maxTokens, setMaxTokens] = useState<number>(0);
+  const [customTemperature, setCustomTemperature] = useState<number>(0.1);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -65,6 +66,7 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
+      formData.append("temperature", customTemperature.toString());
 
       const response = await fetch(
         `${API_BASE_URL}/training/process`,
@@ -257,6 +259,33 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
                 )}
               </label>
             </div>
+            
+            {/* Temperature Control */}
+            <div className={styles.temperatureControl}>
+              <label className={styles.temperatureLabel}>
+                <span className={styles.temperatureLabelText}>
+                  Temperature: <strong>{customTemperature.toFixed(2)}</strong>
+                </span>
+                <span className={styles.temperatureHint}>
+                  Lower = more focused (recommended for training)
+                </span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={customTemperature}
+                onChange={(e) => setCustomTemperature(parseFloat(e.target.value))}
+                className={styles.temperatureSlider}
+              />
+              <div className={styles.temperatureMarkers}>
+                <span>0.0</span>
+                <span>0.5</span>
+                <span>1.0</span>
+              </div>
+            </div>
+            
             <button
               onClick={handleProcess}
               disabled={!selectedFile || processing}

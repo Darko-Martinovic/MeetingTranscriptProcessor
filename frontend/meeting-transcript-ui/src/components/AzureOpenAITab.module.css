@@ -12,11 +12,20 @@
 }
 
 .label {
-  display: block;
+  display: flex;
+  flex-direction: column;
   font-size: 0.875rem;
   font-weight: 600;
   color: #374151;
   margin-bottom: 0.25rem;
+}
+
+.helpText {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  font-style: italic;
 }
 
 .input {

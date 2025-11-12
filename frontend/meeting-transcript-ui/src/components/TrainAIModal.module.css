@@ -102,6 +102,92 @@
   background: var(--bg-tertiary);
 }
 
+/* Temperature Control Styles */
+.temperatureControl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-primary);
+}
+
+.temperatureLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.temperatureLabelText {
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+.temperatureHint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.temperatureSlider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #22c55e 0%, #f59e0b 50%, #ef4444 100%);
+  outline: none;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.temperatureSlider:hover {
+  opacity: 1;
+}
+
+.temperatureSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-purple, #8b5cf6);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.temperatureSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.temperatureSlider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-purple, #8b5cf6);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.temperatureSlider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+.temperatureMarkers {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  padding: 0 0.5rem;
+}
+
 .processButton {
   padding: 0.75rem 1.5rem;
   background: var(--accent-purple, #8b5cf6);
@@ -112,6 +198,7 @@
   cursor: pointer;
   transition: all 0.15s ease;
   width: 100%;
+  margin-top: 0.5rem;
 }
 
 .processButton:hover:not(:disabled) {

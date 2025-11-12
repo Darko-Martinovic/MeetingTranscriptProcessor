@@ -25,7 +25,7 @@ public class TrainingController : ControllerBase
     }
 
     [HttpPost("process")]
-    public async Task<ActionResult<TrainingResult>> ProcessTranscript([FromForm] IFormFile file)
+    public async Task<ActionResult<TrainingResult>> ProcessTranscript([FromForm] IFormFile file, [FromForm] double? temperature)
     {
         try
         {
@@ -34,7 +34,7 @@ public class TrainingController : ControllerBase
                 return BadRequest(new { error = "No file provided" });
             }
 
-            _logger.LogInformation($"Processing training transcript: {file.FileName}");
+            _logger.LogInformation($"Processing training transcript: {file.FileName} with temperature: {temperature ?? 0.1}");
 
             // Save file temporarily
             var tempPath = Path.Combine(Path.GetTempPath(), file.FileName);
@@ -45,12 +45,18 @@ public class TrainingController : ControllerBase
 
             try
             {
-                // Process transcript (this will extract action items but we won't create JIRA tickets)
-                var transcript = await _transcriptProcessor.ProcessTranscriptAsync(tempPath);
-
                 // Get AI configuration for model information
                 var configService = HttpContext.RequestServices.GetRequiredService<IConfigurationService>();
                 var aiSettings = configService.GetAzureOpenAISettings();
+                
+                // Override temperature if provided
+                if (temperature.HasValue)
+                {
+                    aiSettings.Temperature = temperature.Value;
+                }
+                
+                // Process transcript (this will extract action items but we won't create JIRA tickets)
+                var transcript = await _transcriptProcessor.ProcessTranscriptAsync(tempPath);
 
                 // Convert to training result format
                 var result = new TrainingResult
