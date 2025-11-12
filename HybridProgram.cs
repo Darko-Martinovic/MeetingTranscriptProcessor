@@ -95,7 +95,7 @@ namespace MeetingTranscriptProcessor
             {
                 options.AddPolicy("AllowFrontend", policy =>
                 {
-                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+                    policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:5175")
                           .AllowAnyHeader()
                           .AllowAnyMethod();
                 });
@@ -124,7 +124,7 @@ namespace MeetingTranscriptProcessor
             await InitializeBackgroundServicesAsync();
 
             Console.WriteLine("🌐 Web API Mode");
-            Console.WriteLine($"🚀 Server starting on http://localhost:5000");
+            Console.WriteLine($"🚀 Server starting on http://localhost:5555");
             Console.WriteLine("📁 Background file processing enabled");
             Console.WriteLine("⌨️  Press Ctrl+C to stop");
 

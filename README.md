@@ -73,8 +73,8 @@ https://github.com/user-attachments/assets/12b2ecf6-cfd0-4797-958a-8018b7a732e4
    ```
 
 4. **Access the application:**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:5000
+   - Frontend: http://localhost:5175
+   - Backend API: http://localhost:5555
 
 ## 📁 How It Works
 
@@ -91,6 +91,16 @@ https://github.com/user-attachments/assets/12b2ecf6-cfd0-4797-958a-8018b7a732e4
 ## ⚙️ Configuration
 
 All settings are **optional** - the app works in simulation mode without credentials.
+
+### Port Configuration
+
+The application uses the following default ports:
+- **Frontend (React + Vite)**: Port `5175` (configured in `vite.config.ts`)
+- **Backend (.NET API)**: Port `5555` (configured in `Properties/launchSettings.json`)
+
+To use different ports:
+- **Frontend**: Set `VITE_API_URL` in `frontend/meeting-transcript-ui/.env`
+- **Backend**: Modify the `applicationUrl` in `Properties/launchSettings.json`
 
 ### Environment Variables (.env)
 

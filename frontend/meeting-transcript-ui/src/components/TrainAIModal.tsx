@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import styles from "./TrainAIModal.module.css";
 
+// Get API base URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5555/api";
+
 interface ActionItem {
   id: string;
   title: string;
@@ -57,7 +60,7 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
       formData.append("file", selectedFile);
 
       const response = await fetch(
-        "http://localhost:5000/api/training/process",
+        `${API_BASE_URL}/training/process`,
         {
           method: "POST",
           body: formData,
@@ -109,7 +112,7 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
     setUpdatingPrompt(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/api/configuration/custom-prompt",
+        `${API_BASE_URL}/configuration/custom-prompt`,
         {
           method: "PUT",
           headers: {
