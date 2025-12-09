@@ -12,7 +12,8 @@ import {
 import styles from "./TrainAIModal.module.css";
 
 // API configuration - set via VITE_API_URL environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5100/api";
+// Note: API versioning is handled by adding /v1 to the base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5100/api/v1";
 
 interface ActionItem {
   id: string;

@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "name": "Meeting Transcript Processor API",
-    "description": "API collection for testing the Meeting Transcript Processor application",
+    "name": "📋 Meeting Transcript Processor API",
+    "description": "API collection for testing the Meeting Transcript Processor application with API versioning support (v1)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "12345678"
   },
@@ -16,9 +16,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/configuration/system-status",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "configuration", "system-status"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/system-status",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "configuration", "system-status"]
             },
             "description": "Get system health and processing metrics"
           },
@@ -35,9 +37,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders"]
             },
             "description": "Get all folders with meeting counts"
           },
@@ -49,9 +53,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "0", "meetings"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/0/meetings",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "0", "meetings"]
             },
             "description": "Get meetings in Archive folder (FolderType: 0)"
           },
@@ -63,9 +69,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?search=sprint&status=success&language=en&sortBy=date&sortOrder=desc",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/0/meetings?search=sprint&status=success&language=en&sortBy=date&sortOrder=desc",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "0", "meetings"],
               "query": [
                 {
                   "key": "search",
@@ -104,9 +112,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/1/meetings",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "1", "meetings"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/1/meetings",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "1", "meetings"]
             },
             "description": "Get meetings in Incoming folder (FolderType: 1)"
           },
@@ -118,9 +128,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/2/meetings",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "2", "meetings"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/2/meetings",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "2", "meetings"]
             },
             "description": "Get meetings in Processing folder (FolderType: 2)"
           },
@@ -132,9 +144,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/3/meetings",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "3", "meetings"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/3/meetings",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "3", "meetings"]
             },
             "description": "Get recent meetings (last 5 across all folders, FolderType: 3)"
           },
@@ -151,9 +165,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "meeting", "{{fileName}}"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/meeting/{{fileName}}",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "meeting", "{{fileName}}"]
             },
             "description": "Get detailed meeting transcript and action items"
           },
@@ -165,9 +181,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}/tickets",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "meeting", "{{fileName}}", "tickets"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/meeting/{{fileName}}/tickets",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "meeting", "{{fileName}}", "tickets"]
             },
             "description": "Get Jira tickets for a specific meeting"
           },
@@ -188,9 +206,11 @@
               "raw": "{\n  \"newTitle\": \"Updated Meeting Title\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}/title",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "meeting", "{{fileName}}", "title"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/meeting/{{fileName}}/title",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "meeting", "{{fileName}}", "title"]
             },
             "description": "Update the title of a meeting"
           },
@@ -211,9 +231,11 @@
               "raw": "{\n  \"destinationFolder\": 0\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}/move",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "meeting", "{{fileName}}", "move"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/meeting/{{fileName}}/move",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "meeting", "{{fileName}}", "move"]
             },
             "description": "Move a meeting to a different folder (0=Archive, 1=Incoming, 2=Processing)"
           },
@@ -225,9 +247,11 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/meeting/{{fileName}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "meeting", "{{fileName}}"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/meeting/{{fileName}}",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "meeting", "{{fileName}}"]
             },
             "description": "Delete a meeting file"
           },
@@ -250,14 +274,16 @@
                   "key": "file",
                   "type": "file",
                   "src": [],
-                  "description": "Select a transcript file (.txt, .md, .json, .xml, .docx, .pdf)"
+                  "description": "Select a transcript file (.txt, .md, .json, .xml, .docx, .pdf, .vtt)"
                 }
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/upload",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "upload"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/upload",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "upload"]
             },
             "description": "Upload a single meeting transcript file"
           },
@@ -292,9 +318,11 @@
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/upload",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "upload"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/upload",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "upload"]
             },
             "description": "Upload multiple meeting transcript files at once"
           },
@@ -311,9 +339,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/processing/queue",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "processing", "queue"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/processing/queue",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "processing", "queue"]
             },
             "description": "Get the current processing queue and status"
           },
@@ -325,9 +355,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/processing/status/{{processingId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "processing", "status", "{{processingId}}"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/processing/status/{{processingId}}",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "processing", "status", "{{processingId}}"]
             },
             "description": "Get status for a specific processing job"
           },
@@ -339,9 +371,11 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/processing/completed",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "processing", "completed"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/processing/completed",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "processing", "completed"]
             },
             "description": "Clear completed processing history"
           },
@@ -358,9 +392,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/configuration",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "configuration"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "configuration"]
             },
             "description": "Get current system configuration"
           },
@@ -372,9 +408,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/configuration/system-status",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "configuration", "system-status"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/system-status",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "configuration", "system-status"]
             },
             "description": "Get system health and processing metrics"
           },
@@ -392,12 +430,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"endpoint\": \"{{azureOpenAIEndpoint}}\",\n  \"apiKey\": \"{{azureOpenAIApiKey}}\",\n  \"deploymentName\": \"{{azureOpenAIDeployment}}\",\n  \"isConfigured\": true\n}"
+              "raw": "{\n  \"endpoint\": \"{{azureOpenAIEndpoint}}\",\n  \"apiKey\": \"{{azureOpenAIApiKey}}\",\n  \"deploymentName\": \"{{azureOpenAIDeployment}}\",\n  \"temperature\": 0.1,\n  \"maxTokens\": 4000,\n  \"topP\": 0.95\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/configuration/azure-openai",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "configuration", "azure-openai"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/azure-openai",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "configuration", "azure-openai"]
             },
             "description": "Update Azure OpenAI configuration settings"
           },
@@ -418,9 +458,11 @@
               "raw": "{\n  \"maxConcurrentFiles\": 3,\n  \"validationConfidenceThreshold\": 0.5,\n  \"enableValidation\": true,\n  \"enableHallucinationDetection\": true,\n  \"enableConsistencyManagement\": true\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/configuration/extraction",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "configuration", "extraction"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/extraction",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "configuration", "extraction"]
             },
             "description": "Update extraction configuration settings"
           },
@@ -438,14 +480,79 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{jiraUrl}}\",\n  \"email\": \"{{jiraEmail}}\",\n  \"apiToken\": \"{{jiraApiToken}}\",\n  \"projectKey\": \"{{jiraProjectKey}}\",\n  \"isConfigured\": true\n}"
+              "raw": "{\n  \"url\": \"{{jiraUrl}}\",\n  \"email\": \"{{jiraEmail}}\",\n  \"apiToken\": \"{{jiraApiToken}}\",\n  \"defaultProject\": \"{{jiraProjectKey}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/configuration/jira",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "configuration", "jira"]
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/jira",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "configuration", "jira"]
             },
             "description": "Update Jira integration configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Custom Prompts",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customPrompt\": \"Your custom system prompt here\"\n}"
+            },
+            "url": {
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/prompts",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "configuration", "prompts"]
+            },
+            "description": "Update custom AI prompts"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI Training",
+      "item": [
+        {
+          "name": "Process Training Transcript",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Training transcript file"
+                },
+                {
+                  "key": "temperature",
+                  "value": "0.1",
+                  "type": "text",
+                  "description": "Optional: Override temperature (0.0-1.0)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/training/process",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "training", "process"]
+            },
+            "description": "Process a transcript file for AI training and generate Jira tickets"
           },
           "response": []
         }
@@ -460,9 +567,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?dateFrom=2024-01-01&dateTo=2024-12-31",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/0/meetings?dateFrom=2024-01-01&dateTo=2024-12-31",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "0", "meetings"],
               "query": [
                 {
                   "key": "dateFrom",
@@ -486,9 +595,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?participants=john,jane",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/0/meetings?participants=john,jane",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "0", "meetings"],
               "query": [
                 {
                   "key": "participants",
@@ -507,9 +618,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?hasJiraTickets=true",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/0/meetings?hasJiraTickets=true",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "0", "meetings"],
               "query": [
                 {
                   "key": "hasJiraTickets",
@@ -528,9 +641,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/meetings/folders/0/meetings?search=sprint&status=success&language=en&participants=john&dateFrom=2024-01-01&dateTo=2024-12-31&hasJiraTickets=true&sortBy=date&sortOrder=desc",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "meetings", "folders", "0", "meetings"],
+              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/meetings/folders/0/meetings?search=sprint&status=success&language=en&participants=john&dateFrom=2024-01-01&dateTo=2024-12-31&hasJiraTickets=true&sortBy=date&sortOrder=desc",
+              "protocol": "{{protocol}}",
+              "host": ["{{host}}"],
+              "port": "{{port}}",
+              "path": ["api", "{{apiVersion}}", "meetings", "folders", "0", "meetings"],
               "query": [
                 {
                   "key": "search",
@@ -604,54 +719,82 @@
   ],
   "variable": [
     {
-      "key": "baseUrl",
-      "value": "http://localhost:5000",
-      "type": "string"
+      "key": "protocol",
+      "value": "http",
+      "type": "string",
+      "description": "API protocol (http or https)"
+    },
+    {
+      "key": "host",
+      "value": "localhost",
+      "type": "string",
+      "description": "API host address"
+    },
+    {
+      "key": "port",
+      "value": "5100",
+      "type": "string",
+      "description": "API port number"
+    },
+    {
+      "key": "apiVersion",
+      "value": "v1",
+      "type": "string",
+      "description": "API version"
     },
     {
       "key": "fileName",
       "value": "sample_meeting_transcript.txt",
-      "type": "string"
+      "type": "string",
+      "description": "Sample file name for testing"
     },
     {
       "key": "processingId",
       "value": "sample-processing-id",
-      "type": "string"
+      "type": "string",
+      "description": "Sample processing ID for testing"
     },
     {
       "key": "azureOpenAIEndpoint",
       "value": "https://your-resource.openai.azure.com",
-      "type": "string"
+      "type": "string",
+      "description": "Azure OpenAI endpoint"
     },
     {
       "key": "azureOpenAIApiKey",
       "value": "your-api-key-here",
-      "type": "string"
+      "type": "string",
+      "description": "Azure OpenAI API key"
     },
     {
       "key": "azureOpenAIDeployment",
       "value": "gpt-4",
-      "type": "string"
+      "type": "string",
+      "description": "Azure OpenAI deployment name"
     },
     {
       "key": "jiraUrl",
       "value": "https://your-domain.atlassian.net",
-      "type": "string"
+      "type": "string",
+      "description": "Jira instance URL"
     },
     {
       "key": "jiraEmail",
       "value": "your-email@example.com",
-      "type": "string"
+      "type": "string",
+      "description": "Jira account email"
     },
     {
       "key": "jiraApiToken",
       "value": "your-jira-api-token",
-      "type": "string"
+      "type": "string",
+      "description": "Jira API token"
     },
     {
       "key": "jiraProjectKey",
       "value": "PROJECT",
-      "type": "string"
+      "type": "string",
+      "description": "Jira project key"
     }
   ]
 }

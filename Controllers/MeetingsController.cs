@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Cors;
+using Asp.Versioning;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
 using System.Text.Json;
@@ -8,7 +9,8 @@ using Newtonsoft.Json;
 namespace MeetingTranscriptProcessor.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiVersion("1.0")]
     [EnableCors("AllowFrontend")]
     public class MeetingsController : ControllerBase
     {
