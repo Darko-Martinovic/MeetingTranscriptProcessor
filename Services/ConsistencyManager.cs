@@ -7,7 +7,7 @@ namespace MeetingTranscriptProcessor.Services;
 /// </summary>
 public class ConsistencyManager : IConsistencyManager
 {
-    private readonly ILogger? _logger;
+    private readonly ILogger<ConsistencyManager>? _logger;
 
     // Meeting type classification patterns
     private static readonly Dictionary<MeetingType, List<string>> MeetingTypePatterns =
@@ -84,7 +84,7 @@ public class ConsistencyManager : IConsistencyManager
             ["nl"] = new() { "de", "het", "en", "actie", "taak", "moet", "zal", "nodig" }
         };
 
-    public ConsistencyManager(ILogger? logger = null)
+    public ConsistencyManager(ILogger<ConsistencyManager>? logger = null)
     {
         _logger = logger;
     }

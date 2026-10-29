@@ -8,8 +8,9 @@ MeetingTranscriptProcessor is an intelligent, full-stack application for process
 
 - **Backend (.NET 10, ASP.NET Core)**
 
-  - `Controllers/`: Web API endpoints for meetings, configuration, and status.
-  - `Services/`: Core logic (file watching, transcript parsing, AI analysis, Jira integration, validation).
+  - `Controllers/`: Web API endpoints for meetings, configuration, processing status and training; they stay thin. Every `fileName` from a request passes `[SafeFileName]` (`MeetingFileNames`).
+  - `Services/`: `TranscriptWorker` (background service: incoming file → processor → Jira → archive), `TranscriptReader` (every file format as text, with title, date, participants, project; no model), `TranscriptProcessorService` (model extraction, validation, hallucination check, `ActionItemMerger`; `AiResponseParser` reads the model's JSON, `RuleBasedExtractor` the lines), `MeetingStore` (the folders, listing, metadata, title, move, delete, archive), `JiraTicketService` (named `HttpClient` "jira"), `ConfigurationService` (the `config/*.json` sections with environment overrides; `processing.json` holds the Settings page's processing switches, which apply to the next file).
+  - Logging is `ILogger<T>` everywhere; JSON is System.Text.Json only.
   - `Models/`: Data contracts (MeetingTranscript, ActionItem, FolderInfo, etc.).
   - **File Flow:** `data/Incoming` → `data/Processing` → AI/Rule Extraction → Jira → `data/Archive`.
   - **AI/ML:** Azure OpenAI for extraction, with cross-validation, hallucination detection, and context-aware prompts.

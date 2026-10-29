@@ -366,11 +366,33 @@ Focus on:
 }
 
 /// <summary>
+/// How the incoming files are processed: how many at a time, and which checks run on what the model finds.
+/// Saved from the Settings page; they apply to the next file without a restart
+/// </summary>
+public class ProcessingSettings
+{
+    /// <summary>
+    /// Files processed at a time (1 to 10)
+    /// </summary>
+    public int MaxConcurrentFiles { get; set; } = 3;
+
+    /// <summary>
+    /// The confidence an action item needs to be kept when hallucination detection is on
+    /// </summary>
+    public double ValidationConfidenceThreshold { get; set; } = 0.5;
+
+    public bool EnableValidation { get; set; } = true;
+    public bool EnableHallucinationDetection { get; set; } = true;
+    public bool EnableConsistencyManagement { get; set; } = true;
+}
+
+/// <summary>
 /// Master configuration class containing all settings
 /// </summary>
 public class AppConfiguration
 {
     public AzureOpenAISettings AzureOpenAI { get; set; } = new();
+    public ProcessingSettings Processing { get; set; } = new();
     public ExtractionSettings Extraction { get; set; } = new();
     public MeetingTypeSettings MeetingTypes { get; set; } = new();
     public LanguageSettings Languages { get; set; } = new();

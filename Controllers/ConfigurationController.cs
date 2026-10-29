@@ -1,236 +1,143 @@
-using Microsoft.AspNetCore.Mvc;
 using Asp.Versioning;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
+using Microsoft.AspNetCore.Mvc;
 
-namespace MeetingTranscriptProcessor.Controllers
+namespace MeetingTranscriptProcessor.Controllers;
+
+/// <summary>
+/// The settings the Settings page shows and changes. Credentials come from .env and are only
+/// reported as configured or not
+/// </summary>
+[ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
+public class ConfigurationController(
+    IConfigurationService configurationService,
+    IConfiguration configuration,
+    StoragePaths paths) : ControllerBase
 {
-    [ApiController]
-    [Route("api/v{version:apiVersion}/[controller]")]
-    [ApiVersion("1.0")]
-    public class ConfigurationController : ControllerBase
+    [HttpGet]
+    public ActionResult<ConfigurationDto> GetConfiguration()
     {
-        private readonly IConfigurationService _configurationService;
+        var azureOpenAI = configurationService.GetAzureOpenAISettings();
+        var processing = configurationService.GetProcessingSettings();
 
-        public ConfigurationController(IConfigurationService configurationService)
+        return new ConfigurationDto
         {
-            _configurationService = configurationService;
-        }
-
-        [HttpGet]
-        public ActionResult<ConfigurationDto> GetConfiguration()
-        {
-            try
+            AzureOpenAI = new AzureOpenAIDto
             {
-                var config = _configurationService.GetConfiguration();
-                var azureOpenAI = _configurationService.GetAzureOpenAISettings();
-                var extraction = _configurationService.GetExtractionSettings();
-
-                var dto = new ConfigurationDto
-                {
-                    AzureOpenAI = new AzureOpenAIDto
-                    {
-                        Endpoint = azureOpenAI.Endpoint ?? string.Empty,
-                        DeploymentName = azureOpenAI.DeploymentName,
-                        ApiVersion = azureOpenAI.ApiVersion,
-                        Temperature = azureOpenAI.Temperature,
-                        MaxTokens = azureOpenAI.MaxTokens,
-                        TopP = azureOpenAI.TopP,
-                        IsConfigured =
-                            !string.IsNullOrEmpty(azureOpenAI.Endpoint)
-                            && !string.IsNullOrEmpty(azureOpenAI.ApiKey)
-                            && !string.IsNullOrEmpty(azureOpenAI.DeploymentName),
-                        SystemPrompt = azureOpenAI.SystemPrompt,
-                        CustomPrompt = azureOpenAI.CustomPrompt
-                    },
-                    Extraction = new ExtractionDto
-                    {
-                        MaxConcurrentFiles = int.Parse(
-                            Environment.GetEnvironmentVariable("MAX_CONCURRENT_FILES") ?? "3"
-                        ),
-                        ValidationConfidenceThreshold = double.Parse(
-                            Environment.GetEnvironmentVariable("VALIDATION_CONFIDENCE_THRESHOLD")
-                                ?? "0.5"
-                        ),
-                        EnableValidation = bool.Parse(
-                            Environment.GetEnvironmentVariable("ENABLE_VALIDATION") ?? "true"
-                        ),
-                        EnableHallucinationDetection = bool.Parse(
-                            Environment.GetEnvironmentVariable("ENABLE_HALLUCINATION_DETECTION")
-                                ?? "true"
-                        ),
-                        EnableConsistencyManagement = bool.Parse(
-                            Environment.GetEnvironmentVariable("ENABLE_CONSISTENCY_MANAGEMENT")
-                                ?? "true"
-                        )
-                    },
-                    Environment = new EnvironmentDto
-                    {
-                        IncomingDirectory = Environment.GetEnvironmentVariable(
-                            "INCOMING_DIRECTORY"
-                        ),
-                        ProcessingDirectory = Environment.GetEnvironmentVariable(
-                            "PROCESSING_DIRECTORY"
-                        ),
-                        ArchiveDirectory = Environment.GetEnvironmentVariable("ARCHIVE_DIRECTORY"),
-                        JiraUrl = Environment.GetEnvironmentVariable("JIRA_URL"),
-                        JiraEmail = Environment.GetEnvironmentVariable("JIRA_EMAIL"),
-                        JiraDefaultProject = Environment.GetEnvironmentVariable(
-                            "JIRA_DEFAULT_PROJECT"
-                        ),
-                        IsJiraConfigured = IsJiraConfigured()
-                    }
-                };
-
-                return Ok(dto);
-            }
-            catch (Exception ex)
+                Endpoint = azureOpenAI.Endpoint ?? string.Empty,
+                DeploymentName = azureOpenAI.DeploymentName,
+                ApiVersion = azureOpenAI.ApiVersion,
+                Temperature = azureOpenAI.Temperature,
+                MaxTokens = azureOpenAI.MaxTokens,
+                TopP = azureOpenAI.TopP,
+                IsConfigured = IsAzureOpenAIConfigured(azureOpenAI),
+                SystemPrompt = azureOpenAI.SystemPrompt,
+                CustomPrompt = azureOpenAI.CustomPrompt
+            },
+            Extraction = new ExtractionDto
             {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Updates the model settings and saves them in config/azure-openai.json.
-        /// The endpoint and the key are set in .env only
-        /// </summary>
-        [HttpPut("azure-openai")]
-        public async Task<ActionResult> UpdateAzureOpenAIConfiguration([FromBody] AzureOpenAIUpdateDto dto)
-        {
-            try
+                MaxConcurrentFiles = processing.MaxConcurrentFiles,
+                ValidationConfidenceThreshold = processing.ValidationConfidenceThreshold,
+                EnableValidation = processing.EnableValidation,
+                EnableHallucinationDetection = processing.EnableHallucinationDetection,
+                EnableConsistencyManagement = processing.EnableConsistencyManagement
+            },
+            Environment = new EnvironmentDto
             {
-                var settings = _configurationService.GetAzureOpenAISettings();
-
-                if (!string.IsNullOrWhiteSpace(dto.DeploymentName))
-                    settings.DeploymentName = dto.DeploymentName.Trim();
-                if (dto.Temperature.HasValue)
-                    settings.Temperature = dto.Temperature.Value;
-                if (dto.MaxTokens.HasValue)
-                    settings.MaxTokens = dto.MaxTokens.Value;
-                if (dto.TopP.HasValue)
-                    settings.TopP = dto.TopP.Value;
-
-                await _configurationService.SaveAzureOpenAISettingsAsync(settings);
-
-                return Ok(new { message = "Azure OpenAI configuration updated successfully" });
+                IncomingDirectory = paths.Incoming,
+                ProcessingDirectory = paths.Processing,
+                ArchiveDirectory = paths.Archive,
+                JiraUrl = configuration["JIRA_URL"],
+                JiraEmail = configuration["JIRA_EMAIL"],
+                JiraDefaultProject = configuration["JIRA_PROJECT_KEY"] is { Length: > 0 } key ? key : configuration["JIRA_DEFAULT_PROJECT"],
+                IsJiraConfigured = IsJiraConfigured()
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        [HttpPut("prompts")]
-        public async Task<ActionResult> UpdatePromptsConfiguration([FromBody] PromptsUpdateDto dto)
-        {
-            try
-            {
-                var settings = _configurationService.GetAzureOpenAISettings();
-
-                // Update custom prompt
-                settings.CustomPrompt = dto.CustomPrompt;
-
-                // Save to configuration file
-                await _configurationService.SaveAzureOpenAISettingsAsync(settings);
-
-                return Ok(new { message = "Prompts configuration updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        [HttpPut("extraction")]
-        public ActionResult UpdateExtractionConfiguration([FromBody] ExtractionUpdateDto dto)
-        {
-            try
-            {
-                // Update environment variables
-                if (dto.MaxConcurrentFiles.HasValue)
-                    Environment.SetEnvironmentVariable(
-                        "MAX_CONCURRENT_FILES",
-                        dto.MaxConcurrentFiles.ToString()
-                    );
-
-                if (dto.ValidationConfidenceThreshold.HasValue)
-                    Environment.SetEnvironmentVariable(
-                        "VALIDATION_CONFIDENCE_THRESHOLD",
-                        dto.ValidationConfidenceThreshold.ToString()
-                    );
-
-                if (dto.EnableValidation.HasValue)
-                    Environment.SetEnvironmentVariable(
-                        "ENABLE_VALIDATION",
-                        dto.EnableValidation.ToString()
-                    );
-
-                if (dto.EnableHallucinationDetection.HasValue)
-                    Environment.SetEnvironmentVariable(
-                        "ENABLE_HALLUCINATION_DETECTION",
-                        dto.EnableHallucinationDetection.ToString()
-                    );
-
-                if (dto.EnableConsistencyManagement.HasValue)
-                    Environment.SetEnvironmentVariable(
-                        "ENABLE_CONSISTENCY_MANAGEMENT",
-                        dto.EnableConsistencyManagement.ToString()
-                    );
-
-                // Reload configuration
-                _configurationService.ReloadConfiguration();
-
-                return Ok(new { message = "Extraction configuration updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        [HttpGet("system-status")]
-        public ActionResult<SystemStatusDto> GetSystemStatus()
-        {
-            try
-            {
-                var status = new SystemStatusDto
-                {
-                    IsRunning = true, // API is running if we can respond
-                    AzureOpenAIConfigured = !string.IsNullOrEmpty(
-                        Environment.GetEnvironmentVariable("AOAI_ENDPOINT") ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")
-                    ) && !string.IsNullOrEmpty(
-                        Environment.GetEnvironmentVariable("AOAI_APIKEY") ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY")
-                    ) && !string.IsNullOrEmpty(
-                        Environment.GetEnvironmentVariable("CHATCOMPLETION_DEPLOYMENTNAME") ?? Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME")
-                    ),
-                    JiraConfigured = IsJiraConfigured(),
-                    ValidationEnabled = bool.Parse(
-                        Environment.GetEnvironmentVariable("ENABLE_VALIDATION") ?? "true"
-                    ),
-                    HallucinationDetectionEnabled = bool.Parse(
-                        Environment.GetEnvironmentVariable("ENABLE_HALLUCINATION_DETECTION")
-                            ?? "true"
-                    ),
-                    ConsistencyManagementEnabled = bool.Parse(
-                        Environment.GetEnvironmentVariable("ENABLE_CONSISTENCY_MANAGEMENT")
-                            ?? "true"
-                    ),
-                    CurrentTime = DateTime.UtcNow
-                };
-
-                return Ok(status);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        private bool IsJiraConfigured()
-        {
-            return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_URL"))
-                && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_API_TOKEN"))
-                && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JIRA_EMAIL"));
-        }
+        };
     }
+
+    /// <summary>
+    /// Updates the model settings and saves them in config/azure-openai.json.
+    /// The endpoint and the key are set in .env only
+    /// </summary>
+    [HttpPut("azure-openai")]
+    public async Task<ActionResult> UpdateAzureOpenAIConfiguration([FromBody] AzureOpenAIUpdateDto dto)
+    {
+        var settings = configurationService.GetAzureOpenAISettings();
+
+        if (!string.IsNullOrWhiteSpace(dto.DeploymentName))
+            settings.DeploymentName = dto.DeploymentName.Trim();
+        if (dto.Temperature.HasValue)
+            settings.Temperature = dto.Temperature.Value;
+        if (dto.MaxTokens.HasValue)
+            settings.MaxTokens = dto.MaxTokens.Value;
+        if (dto.TopP.HasValue)
+            settings.TopP = dto.TopP.Value;
+
+        await configurationService.SaveAzureOpenAISettingsAsync(settings);
+        return Ok(new { message = "Azure OpenAI configuration updated successfully" });
+    }
+
+    /// <summary>
+    /// Saves the guidance added to the system prompt (the training page's custom prompt)
+    /// </summary>
+    [HttpPut("prompts")]
+    public async Task<ActionResult> UpdatePromptsConfiguration([FromBody] PromptsUpdateDto dto)
+    {
+        var settings = configurationService.GetAzureOpenAISettings();
+        settings.CustomPrompt = dto.CustomPrompt;
+        await configurationService.SaveAzureOpenAISettingsAsync(settings);
+        return Ok(new { message = "Prompts configuration updated successfully" });
+    }
+
+    /// <summary>
+    /// Updates the processing settings and saves them in config/processing.json; the next file uses them
+    /// </summary>
+    [HttpPut("extraction")]
+    public async Task<ActionResult> UpdateExtractionConfiguration([FromBody] ExtractionUpdateDto dto)
+    {
+        var settings = configurationService.GetProcessingSettings();
+
+        if (dto.MaxConcurrentFiles.HasValue)
+            settings.MaxConcurrentFiles = dto.MaxConcurrentFiles.Value;
+        if (dto.ValidationConfidenceThreshold.HasValue)
+            settings.ValidationConfidenceThreshold = dto.ValidationConfidenceThreshold.Value;
+        if (dto.EnableValidation.HasValue)
+            settings.EnableValidation = dto.EnableValidation.Value;
+        if (dto.EnableHallucinationDetection.HasValue)
+            settings.EnableHallucinationDetection = dto.EnableHallucinationDetection.Value;
+        if (dto.EnableConsistencyManagement.HasValue)
+            settings.EnableConsistencyManagement = dto.EnableConsistencyManagement.Value;
+
+        await configurationService.SaveProcessingSettingsAsync(settings);
+        return Ok(new { message = "Extraction configuration updated successfully" });
+    }
+
+    [HttpGet("system-status")]
+    public ActionResult<SystemStatusDto> GetSystemStatus()
+    {
+        var processing = configurationService.GetProcessingSettings();
+        return new SystemStatusDto
+        {
+            IsRunning = true,
+            AzureOpenAIConfigured = IsAzureOpenAIConfigured(configurationService.GetAzureOpenAISettings()),
+            JiraConfigured = IsJiraConfigured(),
+            ValidationEnabled = processing.EnableValidation,
+            HallucinationDetectionEnabled = processing.EnableHallucinationDetection,
+            ConsistencyManagementEnabled = processing.EnableConsistencyManagement,
+            CurrentTime = DateTime.UtcNow
+        };
+    }
+
+    private static bool IsAzureOpenAIConfigured(AzureOpenAISettings settings) =>
+        !string.IsNullOrEmpty(settings.Endpoint)
+        && !string.IsNullOrEmpty(settings.ApiKey)
+        && !string.IsNullOrEmpty(settings.DeploymentName);
+
+    private bool IsJiraConfigured() =>
+        !string.IsNullOrWhiteSpace(configuration["JIRA_URL"])
+        && !string.IsNullOrWhiteSpace(configuration["JIRA_API_TOKEN"])
+        && !string.IsNullOrWhiteSpace(configuration["JIRA_EMAIL"]);
 }

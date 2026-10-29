@@ -57,6 +57,9 @@ public static class ArchiveNames
         _ => "Unknown"
     };
 
-    private static bool IsLanguageName(string part) =>
+    /// <summary>
+    /// True for a language name that archived file names carry
+    /// </summary>
+    public static bool IsLanguageName(string part) =>
         LanguageNames.Contains(part, StringComparer.OrdinalIgnoreCase);
 }

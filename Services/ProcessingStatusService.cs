@@ -19,6 +19,12 @@ public class ProcessingStatusService : IProcessingStatusService
     private readonly ConcurrentDictionary<string, ProcessingStatus> _activeProcessing = new();
     private readonly ConcurrentQueue<ProcessingStatus> _recentlyCompleted = new();
     private const int MaxRecentlyCompleted = 10;
+    private readonly ILogger<ProcessingStatusService> _logger;
+
+    public ProcessingStatusService(ILogger<ProcessingStatusService> logger)
+    {
+        _logger = logger;
+    }
 
     public string StartProcessing(string fileName)
     {
@@ -34,7 +40,7 @@ public class ProcessingStatusService : IProcessingStatusService
         };
 
         _activeProcessing.TryAdd(id, status);
-        Console.WriteLine($"🚀 Started processing: {fileName} (ID: {id})");
+        _logger.LogDebug("Queued {FileName} as {Id}", fileName, id);
         return id;
     }
 
@@ -45,8 +51,7 @@ public class ProcessingStatusService : IProcessingStatusService
             status.Stage = stage;
             status.StatusMessage = message;
             status.ProgressPercentage = progressPercentage;
-            
-            Console.WriteLine($"📊 {id}: {stage} - {message} ({progressPercentage}%)");
+            _logger.LogDebug("{Id}: {Stage} - {Message} ({Progress}%)", id, stage, message, progressPercentage);
         }
     }
 
@@ -55,7 +60,6 @@ public class ProcessingStatusService : IProcessingStatusService
         if (_activeProcessing.TryGetValue(id, out var status))
         {
             status.Metrics = metrics;
-            Console.WriteLine($"📈 {id}: Metrics - {metrics.ActionItemsExtracted} actions, {metrics.JiraTicketsCreated} tickets");
         }
     }
 
@@ -84,9 +88,9 @@ public class ProcessingStatusService : IProcessingStatusService
                 _recentlyCompleted.TryDequeue(out _);
             }
 
-            var statusIcon = success ? "✅" : "❌";
-            var duration = status.Metrics.ProcessingTime.TotalSeconds;
-            Console.WriteLine($"{statusIcon} {id}: Completed in {duration:F1}s - {status.FileName}");
+            _logger.LogDebug(
+                "{Id}: {Outcome} in {Seconds:F1}s - {FileName}",
+                id, success ? "completed" : "failed", status.Metrics.ProcessingTime.TotalSeconds, status.FileName);
         }
     }
 
@@ -116,6 +120,5 @@ public class ProcessingStatusService : IProcessingStatusService
     public void ClearCompleted()
     {
         while (_recentlyCompleted.TryDequeue(out _)) { }
-        Console.WriteLine("🧹 Cleared completed processing history");
     }
 }

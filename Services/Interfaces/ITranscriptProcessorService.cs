@@ -7,5 +7,5 @@ namespace MeetingTranscriptProcessor.Services;
 /// </summary>
 public interface ITranscriptProcessorService
 {
-    Task<MeetingTranscript> ProcessTranscriptAsync(string filePath);
+    Task<MeetingTranscript> ProcessTranscriptAsync(string filePath, double? temperature = null);
 }

@@ -7,12 +7,9 @@ namespace MeetingTranscriptProcessor.Services;
 /// </summary>
 public class ActionItemValidator : IActionItemValidator
 {
-    private readonly ILogger? _logger;
+    private readonly ILogger<ActionItemValidator>? _logger;
 
-    // Validation metrics tracking
-    private static readonly List<ValidationResult> _validationHistory = new();
-
-    public ActionItemValidator(ILogger? logger = null)
+    public ActionItemValidator(ILogger<ActionItemValidator>? logger = null)
     {
         _logger = logger;
     }
@@ -59,9 +56,6 @@ public class ActionItemValidator : IActionItemValidator
             ruleBasedExtracted,
             transcript
         );
-
-        // Track for metrics
-        _validationHistory.Add(result);
 
         return result;
     }
@@ -384,31 +378,5 @@ public class ActionItemValidator : IActionItemValidator
             .Select(word => word.ToLowerInvariant())
             .Distinct()
             .ToList();
-    }
-
-    /// <summary>
-    /// Get validation metrics for monitoring
-    /// </summary>
-    public static ValidationMetrics GetValidationMetrics()
-    {
-        if (_validationHistory.Count == 0)
-        {
-            return new ValidationMetrics();
-        }
-
-        var recent = _validationHistory.TakeLast(100).ToList(); // Last 100 validations
-
-        return new ValidationMetrics
-        {
-            TotalValidations = _validationHistory.Count,
-            AverageConfidence = recent.Average(v => v.OverallConfidence),
-            AverageCrossValidationScore = recent.Average(v => v.CrossValidationScore),
-            AverageContextCoherence = recent.Average(v => v.ContextCoherenceScore),
-            TotalFalsePositives = recent.Sum(v => v.PotentialFalsePositives.Count),
-            TotalFalseNegatives = recent.Sum(v => v.PotentialFalseNegatives.Count),
-            HighConfidenceRate =
-                recent.Count(v => v.OverallConfidence > 0.8) / (double)recent.Count,
-            LowConfidenceRate = recent.Count(v => v.OverallConfidence < 0.4) / (double)recent.Count
-        };
     }
 }

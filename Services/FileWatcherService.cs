@@ -10,12 +10,12 @@ public class FileWatcherService : IFileWatcherService, IDisposable
     private readonly FileSystemWatcher _watcher;
     private readonly string _incomingPath;
     private readonly string _processingPath;
-    private readonly ILogger? _logger;
+    private readonly ILogger<FileWatcherService>? _logger;
     private bool _disposed = false;
 
     public event EventHandler<FileDetectedEventArgs>? FileDetected;
 
-    public FileWatcherService(string incomingPath, string processingPath, ILogger? logger = null)
+    public FileWatcherService(string incomingPath, string processingPath, ILogger<FileWatcherService>? logger = null)
     {
         _incomingPath = incomingPath ?? throw new ArgumentNullException(nameof(incomingPath));
         _processingPath = processingPath ?? throw new ArgumentNullException(nameof(processingPath));
@@ -47,8 +47,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         try
         {
             _watcher.EnableRaisingEvents = true;
-            _logger?.LogInformation($"📁 File watcher started - monitoring: {_incomingPath}");
-            Console.WriteLine($"📁 File watcher started - monitoring: {_incomingPath}");
+            _logger?.LogInformation("File watcher started on {Folder}", _incomingPath);
 
             // Process any existing files
             ProcessExistingFiles();
@@ -56,7 +55,6 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to start file watcher");
-            Console.WriteLine($"❌ Failed to start file watcher: {ex.Message}");
             throw;
         }
     }
@@ -70,12 +68,10 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         {
             _watcher.EnableRaisingEvents = false;
             _logger?.LogInformation("File watcher stopped");
-            Console.WriteLine("📁 File watcher stopped");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error stopping file watcher");
-            Console.WriteLine($"❌ Error stopping file watcher: {ex.Message}");
         }
     }
 
@@ -93,7 +89,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
 
             if (existingFiles.Any())
             {
-                Console.WriteLine($"📄 Found {existingFiles.Count} existing file(s) to process");
+                _logger?.LogInformation("Found {Count} file(s) waiting in {Folder}", existingFiles.Count, _incomingPath);
 
                 foreach (var file in existingFiles)
                 {
@@ -106,7 +102,6 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error processing existing files");
-            Console.WriteLine($"❌ Error processing existing files: {ex.Message}");
         }
     }
 
@@ -115,7 +110,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
     /// </summary>
     private void OnFileCreated(object sender, FileSystemEventArgs e)
     {
-        _logger?.LogInformation($"File created: {e.FullPath}");
+        _logger?.LogDebug("File created: {Path}", e.FullPath);
 
         // Small delay to ensure file is fully written
         Thread.Sleep(500);
@@ -130,7 +125,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         // Only process if it's a supported file type and not currently being processed
         if (IsSupportedFileType(e.FullPath) && !IsFileBeingProcessed(e.FullPath))
         {
-            _logger?.LogInformation($"File changed: {e.FullPath}");
+            _logger?.LogDebug("File changed: {Path}", e.FullPath);
 
             // Small delay to ensure file is fully written
             Thread.Sleep(500);
@@ -150,15 +145,19 @@ public class FileWatcherService : IFileWatcherService, IDisposable
                 return;
             }
 
-            // Check if file is locked (still being written)
-            if (IsFileLocked(filePath))
+            // A file still being written is locked; wait up to 10 seconds for it
+            for (var attempt = 0; IsFileLocked(filePath); attempt++)
             {
-                _logger?.LogWarning($"File is locked, will retry: {filePath}");
-                // Could implement retry logic here
-                return;
+                if (attempt == 20)
+                {
+                    _logger?.LogWarning("{FileName} stayed locked; it will be picked up when it changes", Path.GetFileName(filePath));
+                    return;
+                }
+
+                Thread.Sleep(500);
             }
 
-            Console.WriteLine($"📄 New file detected: {Path.GetFileName(filePath)}");
+            _logger?.LogInformation("New file: {FileName}", Path.GetFileName(filePath));
 
             // Move file to processing directory
             var fileName = Path.GetFileName(filePath);
@@ -176,7 +175,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
             }
 
             File.Move(filePath, processingFilePath);
-            _logger?.LogInformation($"Moved file to processing: {processingFilePath}");
+            _logger?.LogDebug("Moved {FileName} to the processing folder", Path.GetFileName(processingFilePath));
 
             // Raise event for file processing
             FileDetected?.Invoke(
@@ -191,31 +190,14 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"Error processing file: {filePath}");
-            Console.WriteLine(
-                $"❌ Error processing file {Path.GetFileName(filePath)}: {ex.Message}"
-            );
+            _logger?.LogError(ex, "Error picking up {FileName}", Path.GetFileName(filePath));
         }
     }
 
     /// <summary>
     /// Checks if the file type is supported for transcript processing
     /// </summary>
-    private static bool IsSupportedFileType(string filePath)
-    {
-        var extension = Path.GetExtension(filePath).ToLowerInvariant();
-        return extension switch
-        {
-            ".txt" => true,
-            ".md" => true,
-            ".json" => true,
-            ".xml" => true,
-            ".docx" => true,
-            ".pdf" => true,
-            ".vtt" => true,
-            _ => false
-        };
-    }
+    private static bool IsSupportedFileType(string filePath) => TranscriptReader.IsSupported(filePath);
 
     /// <summary>
     /// Checks if a file is currently locked (being written to)
@@ -273,36 +255,4 @@ public class FileDetectedEventArgs : EventArgs
     public string FilePath { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
     public DateTime DetectedAt { get; set; }
-}
-
-/// <summary>
-/// Simple logger interface for file watcher
-/// </summary>
-public interface ILogger
-{
-    void LogInformation(string message);
-    void LogWarning(string message);
-    void LogError(Exception ex, string message);
-}
-
-/// <summary>
-/// Simple console logger implementation
-/// </summary>
-public class ConsoleLogger : ILogger
-{
-    public void LogInformation(string message)
-    {
-        Console.WriteLine($"[INFO] {DateTime.Now:HH:mm:ss} - {message}");
-    }
-
-    public void LogWarning(string message)
-    {
-        Console.WriteLine($"[WARN] {DateTime.Now:HH:mm:ss} - {message}");
-    }
-
-    public void LogError(Exception ex, string message)
-    {
-        Console.WriteLine($"[ERROR] {DateTime.Now:HH:mm:ss} - {message}");
-        Console.WriteLine($"Exception: {ex.Message}");
-    }
 }
