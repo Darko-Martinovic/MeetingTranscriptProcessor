@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Cors;
 using Asp.Versioning;
 using MeetingTranscriptProcessor.Services;
 
@@ -8,7 +7,6 @@ namespace MeetingTranscriptProcessor.Controllers;
 [ApiController]
 [Route("api/v{version:apiVersion}/processing")]
 [ApiVersion("1.0")]
-[EnableCors("AllowFrontend")]
 public class ProcessingController : ControllerBase
 {
     private readonly IProcessingStatusService _processingStatusService;

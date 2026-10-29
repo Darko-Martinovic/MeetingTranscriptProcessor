@@ -1,4 +1,6 @@
 using DotNetEnv;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using MeetingTranscriptProcessor.Services;
 
 // Keys and settings come from .env in the working directory; the tests bring their own
@@ -46,29 +48,35 @@ builder.Services.AddApiVersioning(options =>
     options.SubstituteApiVersionInUrl = true;
 });
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins(
-                  "http://localhost:3000",      // Vite dev server
-                  "http://localhost:5173",      // Vite dev server (alternate)
-                  "http://localhost:5175",      // Vite dev server (alternate)
-                  "http://localhost:5273",      // Python HTTP server (production)
-                  "http://10.74.42.54:5273",    // Remote machine frontend
-                  "http://10.74.42.54:5100"     // Remote machine backend (for API calls)
-              )
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
+builder.Services.AddCors();
 
 var app = builder.Build();
 
+// The frontend's origins, from CORS_ORIGINS (comma-separated); by default the Vite dev server ports on localhost
+var corsOrigins = (app.Configuration["CORS_ORIGINS"] is { Length: > 0 } origins
+        ? origins
+        : "http://localhost:5173,http://localhost:5175,http://localhost:3000,http://localhost:5273")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 // UseCors must come between UseRouting and MapControllers
 app.UseRouting();
-app.UseCors("AllowFrontend");
+app.UseCors(policy => policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod());
+app.UseMiddleware<ApiKeyMiddleware>();
 app.MapControllers();
+
+// Without API_KEY, the API may only be reached from this machine
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var addresses = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()?.Addresses ?? [];
+    var exposed = addresses.Where(address => !NetworkExposure.IsLoopback(address)).ToList();
+    if (exposed.Count > 0 && string.IsNullOrEmpty(app.Configuration["API_KEY"]))
+    {
+        app.Logger.LogCritical(
+            "Listening on {Addresses} reaches other machines; set API_KEY in .env to allow it. Stopping",
+            string.Join(", ", exposed));
+        app.Lifetime.StopApplication();
+    }
+});
 
 app.Run();
 

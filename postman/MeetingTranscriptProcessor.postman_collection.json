@@ -430,7 +430,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"endpoint\": \"{{azureOpenAIEndpoint}}\",\n  \"apiKey\": \"{{azureOpenAIApiKey}}\",\n  \"deploymentName\": \"{{azureOpenAIDeployment}}\",\n  \"temperature\": 0.1,\n  \"maxTokens\": 4000,\n  \"topP\": 0.95\n}"
+              "raw": "{\n  \"deploymentName\": \"gpt-4o\",\n  \"temperature\": 0.1,\n  \"maxTokens\": 4000,\n  \"topP\": 0.95\n}"
             },
             "url": {
               "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/azure-openai",
@@ -439,7 +439,7 @@
               "port": "{{port}}",
               "path": ["api", "{{apiVersion}}", "configuration", "azure-openai"]
             },
-            "description": "Update Azure OpenAI configuration settings"
+            "description": "Updates the model settings (deployment, temperature, max tokens, top P) and saves them in config/azure-openai.json. The endpoint and the key are set in .env only."
           },
           "response": []
         },
@@ -465,31 +465,6 @@
               "path": ["api", "{{apiVersion}}", "configuration", "extraction"]
             },
             "description": "Update extraction configuration settings"
-          },
-          "response": []
-        },
-        {
-          "name": "Update Jira Configuration",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"url\": \"{{jiraUrl}}\",\n  \"email\": \"{{jiraEmail}}\",\n  \"apiToken\": \"{{jiraApiToken}}\",\n  \"defaultProject\": \"{{jiraProjectKey}}\"\n}"
-            },
-            "url": {
-              "raw": "{{protocol}}://{{host}}:{{port}}/api/{{apiVersion}}/configuration/jira",
-              "protocol": "{{protocol}}",
-              "host": ["{{host}}"],
-              "port": "{{port}}",
-              "path": ["api", "{{apiVersion}}", "configuration", "jira"]
-            },
-            "description": "Update Jira integration configuration"
           },
           "response": []
         },
@@ -755,46 +730,30 @@
       "description": "Sample processing ID for testing"
     },
     {
-      "key": "azureOpenAIEndpoint",
-      "value": "https://your-resource.openai.azure.com",
+      "key": "apiKey",
+      "value": "",
       "type": "string",
-      "description": "Azure OpenAI endpoint"
-    },
-    {
-      "key": "azureOpenAIApiKey",
-      "value": "your-api-key-here",
-      "type": "string",
-      "description": "Azure OpenAI API key"
-    },
-    {
-      "key": "azureOpenAIDeployment",
-      "value": "gpt-4",
-      "type": "string",
-      "description": "Azure OpenAI deployment name"
-    },
-    {
-      "key": "jiraUrl",
-      "value": "https://your-domain.atlassian.net",
-      "type": "string",
-      "description": "Jira instance URL"
-    },
-    {
-      "key": "jiraEmail",
-      "value": "your-email@example.com",
-      "type": "string",
-      "description": "Jira account email"
-    },
-    {
-      "key": "jiraApiToken",
-      "value": "your-jira-api-token",
-      "type": "string",
-      "description": "Jira API token"
-    },
-    {
-      "key": "jiraProjectKey",
-      "value": "PROJECT",
-      "type": "string",
-      "description": "Jira project key"
+      "description": "The backend's API_KEY; leave empty when the backend has none"
     }
-  ]
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-Api-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  }
 }

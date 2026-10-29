@@ -31,14 +31,6 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             ?? "TASK";
         _logger = logger;
 
-        // Debug output for JIRA configuration
-        Console.WriteLine("🔍 JIRA Configuration Debug:");
-        Console.WriteLine($"   JIRA_URL: {(!string.IsNullOrWhiteSpace(_jiraBaseUrl) ? "✓ Set" : "❌ Missing")} = '{_jiraBaseUrl}'");
-        Console.WriteLine($"   JIRA_API_TOKEN: {(!string.IsNullOrWhiteSpace(_jiraApiToken) ? "✓ Set" : "❌ Missing")} = '{(_jiraApiToken?.Length > 10 ? _jiraApiToken[..10] + "..." : _jiraApiToken)}'");
-        Console.WriteLine($"   JIRA_EMAIL: {(!string.IsNullOrWhiteSpace(_jiraUserEmail) ? "✓ Set" : "❌ Missing")} = '{_jiraUserEmail}'");
-        Console.WriteLine($"   JIRA_PROJECT_KEY: {_defaultProjectKey} (env: '{Environment.GetEnvironmentVariable("JIRA_PROJECT_KEY")}')");
-        Console.WriteLine($"   IsJiraConfigured: {IsJiraConfigured()}");
-
         _httpClient = new HttpClient();
 
         // Configure HttpClient for Jira API if credentials are available

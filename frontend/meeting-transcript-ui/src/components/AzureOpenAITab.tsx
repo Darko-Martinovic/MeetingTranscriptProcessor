@@ -17,23 +17,20 @@ const AzureOpenAITab: React.FC<AzureOpenAITabProps> = React.memo(
 
     return (
       <form onSubmit={handleSubmit} className={styles.form}>
+        <p className={styles.note}>
+          {config.azureOpenAI.isConfigured
+            ? "Azure OpenAI is configured. "
+            : "Azure OpenAI isn't configured: action items are found with rules. "}
+          The endpoint and the key are set as AOAI_ENDPOINT and AOAI_APIKEY in
+          the backend's .env file.
+        </p>
         <div className={styles.formGroup}>
           <label className={styles.label}>Endpoint</label>
           <input
             type="url"
-            name="endpoint"
-            defaultValue={config.azureOpenAI.endpoint}
+            value={config.azureOpenAI.endpoint}
             className={styles.input}
-            placeholder="https://your-resource.openai.azure.com/"
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>API Key</label>
-          <input
-            type="password"
-            name="apiKey"
-            className={styles.input}
-            placeholder="Enter your API key"
+            disabled
           />
         </div>
         <div className={styles.formGroup}>
@@ -49,15 +46,15 @@ const AzureOpenAITab: React.FC<AzureOpenAITabProps> = React.memo(
         
         <div className={styles.formGroup}>
           <label className={styles.label}>
-            Temperature (0.0 - 1.0)
+            Temperature (0.0 - 2.0)
             <span className={styles.helpText}>Lower = more focused, Higher = more creative</span>
           </label>
           <input
             type="number"
             name="temperature"
-            defaultValue={0.1}
+            defaultValue={config.azureOpenAI.temperature}
             min="0"
-            max="1"
+            max="2"
             step="0.1"
             className={styles.input}
             placeholder="0.1"
@@ -69,9 +66,9 @@ const AzureOpenAITab: React.FC<AzureOpenAITabProps> = React.memo(
           <input
             type="number"
             name="maxTokens"
-            defaultValue={4000}
+            defaultValue={config.azureOpenAI.maxTokens}
             min="100"
-            max="8000"
+            max="128000"
             step="100"
             className={styles.input}
             placeholder="4000"
@@ -86,7 +83,7 @@ const AzureOpenAITab: React.FC<AzureOpenAITabProps> = React.memo(
           <input
             type="number"
             name="topP"
-            defaultValue={0.95}
+            defaultValue={config.azureOpenAI.topP}
             min="0"
             max="1"
             step="0.05"

@@ -8,7 +8,7 @@ namespace MeetingTranscriptProcessor.Tests;
 /// The app on folders of its own: the meeting folders and a copy of the configuration files
 /// (without azure-openai.json, so no model is ever called) under a temporary folder
 /// </summary>
-public sealed class AppFactory : WebApplicationFactory<Program>
+public class AppFactory : WebApplicationFactory<Program>
 {
     public AppFactory()
     {
