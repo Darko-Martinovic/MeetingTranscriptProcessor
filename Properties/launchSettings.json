@@ -33,25 +33,6 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
-    },
-    "Console": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": false,
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "RUN_AS_WEB_API": "false"
-      }
-    },
-    "WebAPI": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": false,
-      "applicationUrl": "http://localhost:5100",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "RUN_AS_WEB_API": "true"
-      }
     }
   }
 }
