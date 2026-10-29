@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-MeetingTranscriptProcessor is an intelligent, full-stack application for processing meeting transcripts, extracting action items (using Azure OpenAI or rule-based fallback), and creating Jira tickets. It features a modern React+TypeScript frontend and a .NET 9 backend, with robust file/folder management and advanced filtering.
+MeetingTranscriptProcessor is an intelligent, full-stack application for processing meeting transcripts, extracting action items (using Azure OpenAI or rule-based fallback), and creating Jira tickets. It features a modern React+TypeScript frontend and a .NET 10 backend, with robust file/folder management and advanced filtering.
 
 ## Architecture & Data Flow
 
-- **Backend (.NET 9, ASP.NET Core)**
+- **Backend (.NET 10, ASP.NET Core)**
 
   - `Controllers/`: Web API endpoints for meetings, configuration, and status.
   - `Services/`: Core logic (file watching, transcript parsing, AI analysis, Jira integration, validation).
@@ -24,9 +24,9 @@ MeetingTranscriptProcessor is an intelligent, full-stack application for process
 
 - **Build/Run**
 
-  - Backend: `dotnet run --web` (dev: `dotnet watch run --web`)
+  - Backend: `dotnet run` from the repository root (dev: `dotnet watch run`); `Program.cs` hosts the API and `TranscriptWorker`, which processes the files arriving in `data/Incoming`
   - Frontend: `cd frontend/meeting-transcript-ui && npm install && npm run dev`
-  - Tests: `dotnet test`
+  - Tests: `dotnet test` (xUnit v3 on Microsoft.Testing.Platform, `tests/`; they run the app with `WebApplicationFactory` on temporary folders and never call Azure OpenAI or Jira)
   - Production: `dotnet publish -c Release`, `npm run build`
 
 - **Configuration**

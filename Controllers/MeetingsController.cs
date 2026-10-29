@@ -4,7 +4,6 @@ using Asp.Versioning;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
 using System.Text.Json;
-using Newtonsoft.Json;
 
 namespace MeetingTranscriptProcessor.Controllers
 {
@@ -26,33 +25,17 @@ namespace MeetingTranscriptProcessor.Controllers
             ITranscriptProcessorService transcriptProcessor,
             IConfigurationService configurationService,
             IJiraTicketService jiraTicketService,
-            IProcessingStatusService processingStatusService
+            IProcessingStatusService processingStatusService,
+            StoragePaths paths
         )
         {
             _transcriptProcessor = transcriptProcessor;
             _configurationService = configurationService;
             _jiraTicketService = jiraTicketService;
             _processingStatusService = processingStatusService;
-
-            // Get paths from environment or use defaults
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var projectRoot =
-                Directory.GetParent(baseDir)?.Parent?.Parent?.Parent?.FullName ?? baseDir;
-
-            _archivePath =
-                Environment.GetEnvironmentVariable("ARCHIVE_DIRECTORY")
-                ?? Path.Combine(projectRoot, "Data", "Archive");
-            _incomingPath =
-                Environment.GetEnvironmentVariable("INCOMING_DIRECTORY")
-                ?? Path.Combine(projectRoot, "Data", "Incoming");
-            _processingPath =
-                Environment.GetEnvironmentVariable("PROCESSING_DIRECTORY")
-                ?? Path.Combine(projectRoot, "Data", "Processing");
-
-            // Ensure directories exist
-            Directory.CreateDirectory(_archivePath);
-            Directory.CreateDirectory(_incomingPath);
-            Directory.CreateDirectory(_processingPath);
+            _archivePath = paths.Archive;
+            _incomingPath = paths.Incoming;
+            _processingPath = paths.Processing;
         }
 
         [HttpGet("folders")]
@@ -307,7 +290,7 @@ namespace MeetingTranscriptProcessor.Controllers
                         System.IO.File.Delete(filePath);
 
                         // Also delete the corresponding metadata file if it exists
-                        var baseFileName = ExtractBaseFileName(fileName);
+                        var baseFileName = ArchiveNames.BaseName(fileName);
                         var metadataPath = Path.Combine(path, $"{baseFileName}.meta.json");
                         if (System.IO.File.Exists(metadataPath))
                         {
@@ -959,133 +942,6 @@ namespace MeetingTranscriptProcessor.Controllers
         }
 
         /// <summary>
-        /// Saves transcript metadata including JIRA ticket references
-        /// </summary>
-        private async Task SaveTranscriptMetadataAsync(MeetingTranscript transcript, string archivedFilePath)
-        {
-            try
-            {
-                Console.WriteLine($"🔄 SaveTranscriptMetadataAsync called for: {Path.GetFileName(archivedFilePath)}");
-                Console.WriteLine($"📊 Transcript has {transcript.CreatedJiraTickets.Count} JIRA tickets");
-
-                // Extract base filename from archived file (removes timestamp prefix)
-                var archivedFileName = Path.GetFileNameWithoutExtension(archivedFilePath);
-                var baseFileName = ExtractBaseFileName(Path.GetFileName(archivedFilePath));
-                var metadataFileName = $"{baseFileName}.meta.json";
-                var metadataPath = Path.Combine(Path.GetDirectoryName(archivedFilePath) ?? "", metadataFileName);
-
-                Console.WriteLine($"📂 Base filename: {baseFileName}");
-                Console.WriteLine($"📂 Metadata path: {metadataPath}");
-                Console.WriteLine($"📂 Directory exists: {Directory.Exists(Path.GetDirectoryName(metadataPath))}");
-
-                // Ensure directory exists
-                var directory = Path.GetDirectoryName(metadataPath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                    Console.WriteLine($"📁 Created directory: {directory}");
-                }
-
-                // Serialize transcript to JSON with comprehensive options
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
-
-                var jsonContent = System.Text.Json.JsonSerializer.Serialize(transcript, options);
-                Console.WriteLine($"📄 JSON content length: {jsonContent.Length} characters");
-                Console.WriteLine($"🎫 JIRA tickets in JSON: {transcript.CreatedJiraTickets.Count}");
-
-                await System.IO.File.WriteAllTextAsync(metadataPath, jsonContent);
-
-                // Verify file was created
-                if (System.IO.File.Exists(metadataPath))
-                {
-                    var fileInfo = new FileInfo(metadataPath);
-                    Console.WriteLine($"✅ Successfully saved metadata file: {metadataFileName} ({fileInfo.Length} bytes)");
-                }
-                else
-                {
-                    Console.WriteLine($"❌ Metadata file was not created: {metadataPath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ ERROR: Failed to save transcript metadata: {ex.Message}");
-                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
-
-                // Re-throw to ensure the error is visible in processing
-                throw new InvalidOperationException($"Failed to save metadata for {Path.GetFileName(archivedFilePath)}: {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>
-        /// Archives processed file to archive directory with timestamp
-        /// </summary>
-        private string ArchiveFile(string filePath, string status, string? languageCode = null)
-        {
-            try
-            {
-                if (!System.IO.File.Exists(filePath))
-                    return "";
-
-                var fileName = Path.GetFileName(filePath);
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-
-                // Include language in filename if available
-                var languageInfo = string.IsNullOrEmpty(languageCode) ? "" : $"_{GetLanguageName(languageCode)}";
-                var archivedFileName = $"{timestamp}_{status}{languageInfo}_{fileName}";
-                var archivedPath = Path.Combine(_archivePath, archivedFileName);
-
-                // Move file to archive
-                System.IO.File.Move(filePath, archivedPath);
-
-                // Also move metadata file if it exists (this is legacy - new approach creates metadata after archiving)
-                var originalFileName = Path.GetFileNameWithoutExtension(filePath);
-                var metadataFileName = $"{originalFileName}.meta.json";
-                var metadataFilePath = Path.Combine(Path.GetDirectoryName(filePath) ?? "", metadataFileName);
-
-                if (System.IO.File.Exists(metadataFilePath))
-                {
-                    // Archive metadata with base filename only (no timestamp prefix)
-                    // This allows LoadTranscriptWithMetadata to find it using the extracted base filename
-                    var baseFileName = ExtractBaseFileName(fileName);
-                    var archivedMetadataFileName = $"{baseFileName}.meta.json";
-                    var archivedMetadataPath = Path.Combine(_archivePath, archivedMetadataFileName);
-                    System.IO.File.Move(metadataFilePath, archivedMetadataPath);
-                    Console.WriteLine($"📦 Archived metadata: {archivedMetadataFileName}");
-                }
-
-                Console.WriteLine($"📦 Archived: {archivedFileName}");
-                return archivedPath;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"⚠️  Warning: Failed to archive file {Path.GetFileName(filePath)}: {ex.Message}");
-                return "";
-            }
-        }
-
-        /// <summary>
-        /// Gets language name from language code
-        /// </summary>
-        private static string GetLanguageName(string? languageCode)
-        {
-            return languageCode?.ToLowerInvariant() switch
-            {
-                "en" => "English",
-                "fr" => "French",
-                "nl" => "Dutch",
-                "de" => "German",
-                "es" => "Spanish",
-                _ => languageCode ?? "Unknown"
-            };
-        }
-
-        /// <summary>
         /// Loads transcript with metadata (including JIRA ticket references) if available
         /// </summary>
         private async Task<MeetingTranscript?> LoadTranscriptWithMetadata(string fileName)
@@ -1093,7 +949,7 @@ namespace MeetingTranscriptProcessor.Controllers
             try
             {
                 // Remove timestamp prefix to get base filename
-                var baseFileName = ExtractBaseFileName(fileName);
+                var baseFileName = ArchiveNames.BaseName(fileName);
                 var metadataFileName = $"{baseFileName}.meta.json";
 
                 // Search in all directories for metadata file
@@ -1113,25 +969,10 @@ namespace MeetingTranscriptProcessor.Controllers
                         };
                         var transcript = System.Text.Json.JsonSerializer.Deserialize<MeetingTranscript>(jsonContent, options);
 
-                        if (transcript != null)
+                        // Metadata written before JSON transcripts were read as text holds the JSON
+                        if (transcript != null && transcript.Content.TrimStart().StartsWith('{'))
                         {
-                            // Convert JSON content to readable text if it's in JSON format
-                            if (!string.IsNullOrEmpty(transcript.Content) &&
-                                transcript.Content.TrimStart().StartsWith("{"))
-                            {
-                                try
-                                {
-                                    var transcriptData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(transcript.Content);
-                                    if (transcriptData?.combinedTranscript != null && transcriptData?.participants != null)
-                                    {
-                                        transcript.Content = ProcessMsTeamsTranscriptForDisplay(transcriptData);
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine($"⚠️ Failed to convert JSON content: {ex.Message}");
-                                }
-                            }
+                            transcript.Content = TranscriptJson.ToText(transcript.Content, includeTimestamps: true);
                         }
 
                         return transcript;
@@ -1148,59 +989,6 @@ namespace MeetingTranscriptProcessor.Controllers
         }
 
         /// <summary>
-        /// Extracts base filename by removing timestamp prefix
-        /// <summary>
-        /// Extracts the base filename from archived filename
-        /// Handles patterns like: YYYYMMDD_HHMMSS_status_language_originalname
-        /// Also handles complex cases like: YYYYMMDD_HHMMSS_status_language_YYYYMMDD_HHMMSS_originalname
-        /// </summary>
-        private static string ExtractBaseFileName(string fileName)
-        {
-            // Remove extension first
-            var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-
-            // Pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
-            // We want to extract the original name part
-            var parts = nameWithoutExt.Split('_');
-
-            if (parts.Length >= 4)
-            {
-                // Check if this follows the archive pattern: YYYYMMDD_HHMMSS_status_[language_]originalname
-                if (parts[0].Length == 8 && parts[0].All(char.IsDigit) && // YYYYMMDD
-                    parts[1].Length == 6 && parts[1].All(char.IsDigit))   // HHMMSS
-                {
-                    // Skip timestamp (parts 0,1) and status (part 2)
-                    var skipCount = 3;
-
-                    // Check if part 3 is a language name
-                    if (parts.Length > 4 && IsLanguageName(parts[3]))
-                    {
-                        skipCount = 4; // also skip language
-                    }
-
-                    var remainingParts = parts.Skip(skipCount).ToList();
-
-                    if (remainingParts.Count > 0)
-                    {
-                        return string.Join("_", remainingParts);
-                    }
-                }
-            }
-
-            // If pattern doesn't match, return as-is
-            return nameWithoutExt;
-        }
-
-        /// <summary>
-        /// Checks if a string might be a language name
-        /// </summary>
-        private static bool IsLanguageName(string part)
-        {
-            var commonLanguages = new[] { "English", "French", "Dutch", "Spanish", "German" };
-            return commonLanguages.Contains(part, StringComparer.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
         /// Gets the title from metadata file if available, otherwise from file content
         /// </summary>
         private async Task<string> GetTitleFromMetadataOrContent(string fileName, string content)
@@ -1208,7 +996,7 @@ namespace MeetingTranscriptProcessor.Controllers
             try
             {
                 // Try to get title from metadata file first
-                var baseFileName = ExtractBaseFileName(fileName);
+                var baseFileName = ArchiveNames.BaseName(fileName);
                 var metadataFileName = $"{baseFileName}.meta.json";
 
                 // Search in all directories for metadata file
@@ -1255,43 +1043,8 @@ namespace MeetingTranscriptProcessor.Controllers
 
                 if (extension == ".json")
                 {
-                    // Handle JSON files - check if it's MS Teams format and convert to readable text
-                    var jsonContent = await System.IO.File.ReadAllTextAsync(filePath);
-
-                    try
-                    {
-                        var transcriptData = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(jsonContent);
-
-                        // Check for MS Teams/Graph API format
-                        if (transcriptData?.combinedTranscript != null && transcriptData?.participants != null)
-                        {
-                            return ProcessMsTeamsTranscriptForPreview(transcriptData);
-                        }
-
-                        // Try common JSON transcript formats
-                        if (transcriptData?.transcript != null)
-                        {
-                            return transcriptData.transcript.ToString();
-                        }
-
-                        if (transcriptData?.content != null)
-                        {
-                            return transcriptData.content.ToString();
-                        }
-
-                        if (transcriptData?.text != null)
-                        {
-                            return transcriptData.text.ToString();
-                        }
-
-                        // If no standard format, return the JSON as text
-                        return jsonContent;
-                    }
-                    catch
-                    {
-                        // If JSON parsing fails, treat as plain text
-                        return jsonContent;
-                    }
+                    // A Teams transcript is shown as its first speaker lines
+                    return TranscriptJson.ToText(await System.IO.File.ReadAllTextAsync(filePath), maxSegments: 5);
                 }
 
                 // For other file types, read as plain text
@@ -1300,177 +1053,6 @@ namespace MeetingTranscriptProcessor.Controllers
             catch
             {
                 return "Error reading file content";
-            }
-        }
-
-        /// <summary>
-        /// Simplified MS Teams transcript processor for preview purposes
-        /// </summary>
-        private static string ProcessMsTeamsTranscriptForPreview(dynamic transcriptData)
-        {
-            try
-            {
-                var result = new List<string>();
-
-                // Add header with meeting information
-                result.Add("MEETING TRANSCRIPT");
-                result.Add("=================");
-
-                if (transcriptData.meetingTitle != null)
-                {
-                    result.Add($"Title: {transcriptData.meetingTitle}");
-                }
-
-                if (transcriptData.startTime != null)
-                {
-                    result.Add($"Date: {transcriptData.startTime}");
-                }
-
-                if (transcriptData.locale != null)
-                {
-                    result.Add($"Language: {transcriptData.locale}");
-                }
-
-                // Add participants
-                if (transcriptData.participants != null)
-                {
-                    result.Add("Participants:");
-                    foreach (var participant in transcriptData.participants)
-                    {
-                        if (participant.displayName != null)
-                        {
-                            result.Add($"- {participant.displayName}");
-                        }
-                    }
-                }
-
-                result.Add("");
-                result.Add("--------------------------------------------------------------");
-                result.Add("");
-
-                // Convert first few transcript segments to readable format for preview
-                if (transcriptData.combinedTranscript != null)
-                {
-                    int segmentCount = 0;
-                    foreach (var segment in transcriptData.combinedTranscript)
-                    {
-                        // Skip system messages
-                        if (segment.speaker?.id == "system")
-                            continue;
-
-                        var speakerName = segment.speaker?.displayName?.ToString() ?? "Unknown Speaker";
-                        var text = segment.text?.ToString() ?? "";
-
-                        if (!string.IsNullOrWhiteSpace(text))
-                        {
-                            result.Add($"{speakerName}: {text}");
-                            result.Add("");
-                            segmentCount++;
-
-                            // Limit preview to first 5 segments
-                            if (segmentCount >= 5) break;
-                        }
-                    }
-                }
-
-                return string.Join("\n", result);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing MS Teams transcript for preview: {ex.Message}");
-                // Fallback to raw JSON
-                return Newtonsoft.Json.JsonConvert.SerializeObject(transcriptData, Newtonsoft.Json.Formatting.Indented);
-            }
-        }
-
-        /// <summary>
-        /// Full MS Teams transcript processor for complete meeting display
-        /// </summary>
-        private static string ProcessMsTeamsTranscriptForDisplay(dynamic transcriptData)
-        {
-            try
-            {
-                Console.WriteLine($"🔍 ProcessMsTeamsTranscriptForDisplay called");
-                var result = new List<string>();
-
-                // Add header with meeting information
-                result.Add("MEETING TRANSCRIPT");
-                result.Add("=================");
-                result.Add("");
-
-                if (transcriptData.meetingTitle != null)
-                {
-                    result.Add($"Title: {transcriptData.meetingTitle}");
-                }
-
-                if (transcriptData.startTime != null)
-                {
-                    result.Add($"Date: {transcriptData.startTime}");
-                }
-
-                if (transcriptData.endTime != null)
-                {
-                    result.Add($"End: {transcriptData.endTime}");
-                }
-
-                if (transcriptData.locale != null)
-                {
-                    result.Add($"Language: {transcriptData.locale}");
-                }
-
-                // Add participants
-                if (transcriptData.participants != null)
-                {
-                    result.Add("");
-                    result.Add("Participants:");
-                    foreach (var participant in transcriptData.participants)
-                    {
-                        if (participant.displayName != null)
-                        {
-                            result.Add($"- {participant.displayName?.ToString()}");
-                        }
-                    }
-                }
-
-                result.Add("");
-                result.Add("--------------------------------------------------------------");
-                result.Add("");
-
-                // Convert ALL transcript segments to readable format
-                if (transcriptData.combinedTranscript != null)
-                {
-                    foreach (var segment in transcriptData.combinedTranscript)
-                    {
-                        // Skip system messages
-                        if (segment.speaker?.id?.ToString() == "system")
-                            continue;
-
-                        var speakerName = segment.speaker?.displayName?.ToString() ?? "Unknown Speaker";
-                        var text = segment.text?.ToString() ?? "";
-                        var timestamp = segment.timestamp?.ToString() ?? "";
-
-                        if (!string.IsNullOrWhiteSpace(text))
-                        {
-                            if (!string.IsNullOrWhiteSpace(timestamp))
-                            {
-                                result.Add($"[{timestamp}] {speakerName}: {text}");
-                            }
-                            else
-                            {
-                                result.Add($"{speakerName}: {text}");
-                            }
-                            result.Add("");
-                        }
-                    }
-                }
-
-                return string.Join("\n", result);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing MS Teams transcript for display: {ex.Message}");
-                // Fallback to raw JSON
-                return Newtonsoft.Json.JsonConvert.SerializeObject(transcriptData, Newtonsoft.Json.Formatting.Indented);
             }
         }
     }

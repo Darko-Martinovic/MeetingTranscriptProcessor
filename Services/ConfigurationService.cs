@@ -14,10 +14,10 @@ public class ConfigurationService : IConfigurationService
     private readonly AppConfiguration _configuration;
     private readonly string _configDirectory;
 
-    public ConfigurationService(Microsoft.Extensions.Logging.ILogger? logger = null)
+    public ConfigurationService(StoragePaths paths, ILogger<ConfigurationService>? logger = null)
     {
         _logger = logger;
-        _configDirectory = GetConfigDirectory();
+        _configDirectory = paths.Config;
         _configuration = new AppConfiguration();
 
         LoadConfiguration();
@@ -148,25 +148,6 @@ public class ConfigurationService : IConfigurationService
         }
 
         return _configuration.AzureOpenAI.SystemPrompt;
-    }
-
-    /// <summary>
-    /// Determines configuration directory path
-    /// </summary>
-    private string GetConfigDirectory()
-    {
-        // Try to find project root directory
-        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        var projectRoot = Directory.GetParent(baseDir)?.Parent?.Parent?.Parent?.FullName ?? baseDir;
-
-        // Check if .env file exists to confirm project root
-        if (File.Exists(Path.Combine(projectRoot, ".env")))
-        {
-            return Path.Combine(projectRoot, "config");
-        }
-
-        // Fallback to base directory
-        return Path.Combine(baseDir, "config");
     }
 
     /// <summary>
