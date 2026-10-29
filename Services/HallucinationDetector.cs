@@ -7,9 +7,9 @@ namespace MeetingTranscriptProcessor.Services;
 /// </summary>
 public class HallucinationDetector : IHallucinationDetector
 {
-    private readonly ILogger? _logger;
+    private readonly ILogger<HallucinationDetector>? _logger;
 
-    public HallucinationDetector(ILogger? logger = null)
+    public HallucinationDetector(ILogger<HallucinationDetector>? logger = null)
     {
         _logger = logger;
     }

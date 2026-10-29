@@ -5,7 +5,7 @@ namespace MeetingTranscriptProcessor.Services;
 /// <summary>
 /// Interface for Jira ticket operations
 /// </summary>
-public interface IJiraTicketService : IDisposable
+public interface IJiraTicketService
 {
     Task<TranscriptProcessingResult> ProcessActionItemsAsync(MeetingTranscript transcript);
 }

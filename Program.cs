@@ -12,11 +12,16 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") != "Testing")
 // --web and --api chose the web mode when there was also a console mode; they are ignored now
 var builder = WebApplication.CreateBuilder(args.Where(arg => arg is not ("--web" or "--api")).ToArray());
 
+// appsettings.json is not used (it's in .gitignore), so the log levels are set here
+builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+
 builder.Services.AddSingleton<StoragePaths>();
-builder.Services.AddSingleton<MeetingTranscriptProcessor.Services.ILogger, ConsoleLogger>();
 builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+builder.Services.AddSingleton<TranscriptReader>();
+builder.Services.AddSingleton<MeetingStore>();
 builder.Services.AddSingleton<IAzureOpenAIService, AzureOpenAIService>();
 builder.Services.AddSingleton<ITranscriptProcessorService, TranscriptProcessorService>();
+builder.Services.AddHttpClient(JiraTicketService.HttpClientName);
 builder.Services.AddSingleton<IJiraTicketService, JiraTicketService>();
 builder.Services.AddSingleton<IProcessingStatusService, ProcessingStatusService>();
 builder.Services.AddSingleton<IActionItemValidator, ActionItemValidator>();
@@ -26,14 +31,12 @@ builder.Services.AddSingleton<SmartTitleGeneratorService>();
 builder.Services.AddSingleton<IFileWatcherService>(provider =>
 {
     var paths = provider.GetRequiredService<StoragePaths>();
-    return new FileWatcherService(
-        paths.Incoming,
-        paths.Processing,
-        provider.GetService<MeetingTranscriptProcessor.Services.ILogger>()
-    );
+    return new FileWatcherService(paths.Incoming, paths.Processing, provider.GetService<ILogger<FileWatcherService>>());
 });
 builder.Services.AddHostedService<TranscriptWorker>();
 
+// An unhandled error answers with a problem details body, without the exception's message
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 builder.Services.AddApiVersioning(options =>
 {
@@ -57,6 +60,9 @@ var corsOrigins = (app.Configuration["CORS_ORIGINS"] is { Length: > 0 } origins
         ? origins
         : "http://localhost:5173,http://localhost:5175,http://localhost:3000,http://localhost:5273")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 // UseCors must come between UseRouting and MapControllers
 app.UseRouting();

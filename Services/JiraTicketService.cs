@@ -1,64 +1,96 @@
-using MeetingTranscriptProcessor.Models;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using MeetingTranscriptProcessor.Models;
 
 namespace MeetingTranscriptProcessor.Services;
 
 /// <summary>
-/// Service for creating and updating Jira tickets from action items
+/// Creates Jira tickets from action items, or comments on the ticket an item names.
+/// Without JIRA_URL, JIRA_EMAIL and JIRA_API_TOKEN the tickets are simulated; when Jira is
+/// configured and refuses a ticket, that ticket fails
 /// </summary>
-public class JiraTicketService : IJiraTicketService, IDisposable
+public class JiraTicketService : IJiraTicketService
 {
+    /// <summary>
+    /// The name of the HTTP client for Jira
+    /// </summary>
+    public const string HttpClientName = "jira";
+
+    private static readonly string[] ConversationPatterns =
+    [
+        "\"context\":",
+        "\"description\":",
+        "context\":",
+        "description\":",
+        "\"title\":",
+        "title\":",
+        @"\w+:\s+I'll",
+        @"\w+:\s+I\s+will",
+        @"\w+:\s+We'll",
+        @"\w+:\s+We\s+will",
+        @"\w+:\s+[A-Z][a-z]+\s+(said|mentioned|discussed)",
+        @"^\s*\{",
+        @"^\s*""[^""]*"":\s*""",
+        @"Create\s+a?\s+Jira\s+ticket",
+        @"Create\s+new\s+Jira\s+ticket"
+    ];
+
+    private static readonly string[] ActionPatterns =
+    [
+        @"I'll\s+(.*?)(?:\.|,|$)",
+        @"I\s+will\s+(.*?)(?:\.|,|$)",
+        @"create\s+(.*?)(?:\.|,|$)",
+        @"fix\s+(.*?)(?:\.|,|$)",
+        @"investigate\s+(.*?)(?:\.|,|$)",
+        @"review\s+(.*?)(?:\.|,|$)",
+        @"update\s+(.*?)(?:\.|,|$)",
+        @"implement\s+(.*?)(?:\.|,|$)"
+    ];
+
     private readonly string? _jiraBaseUrl;
     private readonly string? _jiraApiToken;
     private readonly string? _jiraUserEmail;
-    private readonly string? _defaultProjectKey;
-    private readonly HttpClient _httpClient;
-    private readonly ILogger? _logger;
+    private readonly string _defaultProjectKey;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAzureOpenAIService _aiService;
+    private readonly ILogger<JiraTicketService> _logger;
 
-    public JiraTicketService(IAzureOpenAIService aiService, ILogger? logger = null)
+    public JiraTicketService(
+        IAzureOpenAIService aiService,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
+        ILogger<JiraTicketService> logger)
     {
-        _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
-
-        // Load Jira configuration from environment variables
-        _jiraBaseUrl = Environment.GetEnvironmentVariable("JIRA_URL");
-        _jiraApiToken = Environment.GetEnvironmentVariable("JIRA_API_TOKEN");
-        _jiraUserEmail = Environment.GetEnvironmentVariable("JIRA_EMAIL");
-        _defaultProjectKey =
-            Environment.GetEnvironmentVariable("JIRA_PROJECT_KEY")
-            ?? Environment.GetEnvironmentVariable("JIRA_DEFAULT_PROJECT")
-            ?? "TASK";
+        _aiService = aiService;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
 
-        _httpClient = new HttpClient();
+        _jiraBaseUrl = configuration["JIRA_URL"]?.TrimEnd('/');
+        _jiraApiToken = configuration["JIRA_API_TOKEN"];
+        _jiraUserEmail = configuration["JIRA_EMAIL"];
+        _defaultProjectKey = configuration["JIRA_PROJECT_KEY"] is { Length: > 0 } key ? key
+            : configuration["JIRA_DEFAULT_PROJECT"] is { Length: > 0 } project ? project
+            : "TASK";
 
-        // Configure HttpClient for Jira API if credentials are available
-        if (IsJiraConfigured())
-        {
-            var authString = Convert.ToBase64String(
-                Encoding.ASCII.GetBytes($"{_jiraUserEmail}:{_jiraApiToken}")
-            );
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authString);
-            _httpClient.DefaultRequestHeaders.Accept.Add(
-                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json")
-            );
-            Console.WriteLine("✅ JIRA HTTP client configured for real API calls");
-        }
+        if (IsJiraConfigured)
+            _logger.LogInformation("Jira is configured at {Url}, default project {Project}", _jiraBaseUrl, _defaultProjectKey);
         else
-        {
-            Console.WriteLine("⚠️  JIRA not configured - will use simulation mode");
-        }
+            _logger.LogInformation("Jira isn't configured: tickets are simulated");
     }
 
+    private bool IsJiraConfigured =>
+        !string.IsNullOrWhiteSpace(_jiraBaseUrl)
+        && !string.IsNullOrWhiteSpace(_jiraApiToken)
+        && !string.IsNullOrWhiteSpace(_jiraUserEmail);
+
     /// <summary>
-    /// Processes action items and creates/updates Jira tickets
+    /// Processes action items and creates/updates Jira tickets; the result succeeds when every ticket did
     /// </summary>
-    public async Task<TranscriptProcessingResult> ProcessActionItemsAsync(
-        MeetingTranscript transcript
-    )
+    public async Task<TranscriptProcessingResult> ProcessActionItemsAsync(MeetingTranscript transcript)
     {
+        var started = DateTime.UtcNow;
         var result = new TranscriptProcessingResult
         {
             TranscriptId = transcript.Id,
@@ -66,232 +98,148 @@ public class JiraTicketService : IJiraTicketService, IDisposable
             ActionItemsFound = transcript.ActionItems.Count
         };
 
-        var startTime = DateTime.UtcNow;
-
         try
         {
-            Console.WriteLine(
-                $"🎫 Processing {transcript.ActionItems.Count} action items for Jira tickets"
-            );
-
-            if (!transcript.ActionItems.Any())
-            {
-                result.Success = true;
-                result.ProcessingDuration = DateTime.UtcNow - startTime;
-                Console.WriteLine("ℹ️  No action items found - nothing to process");
-                return result;
-            }
-
             foreach (var actionItem in transcript.ActionItems)
             {
                 if (!actionItem.RequiresJiraTicket)
                 {
-                    var skippedResult = new TicketCreationResult
+                    result.TicketResults.Add(new TicketCreationResult
                     {
                         Success = true,
                         Operation = TicketOperation.Skipped,
                         Message = "Action item marked as not requiring Jira ticket",
                         ActionItemId = actionItem.Id
-                    };
-                    result.TicketResults.Add(skippedResult);
+                    });
                     continue;
                 }
 
-                TicketCreationResult ticketResult;
+                var ticketResult = string.IsNullOrEmpty(actionItem.ExistingTicketKey)
+                    ? await CreateNewTicketAsync(actionItem, transcript)
+                    : await UpdateExistingTicketAsync(actionItem);
 
-                if (!string.IsNullOrEmpty(actionItem.ExistingTicketKey))
-                {
-                    // Update existing ticket
-                    ticketResult = await UpdateExistingTicketAsync(actionItem);
-                    if (ticketResult.Success)
-                        result.TicketsUpdated++;
-                }
-                else
-                {
-                    // Create new ticket
-                    ticketResult = await CreateNewTicketAsync(actionItem, transcript);
-                    if (ticketResult.Success)
-                        result.TicketsCreated++;
-                }
-
+                if (ticketResult.Success && ticketResult.Operation == TicketOperation.Created)
+                    result.TicketsCreated++;
+                if (ticketResult.Success && ticketResult.Operation == TicketOperation.Updated)
+                    result.TicketsUpdated++;
                 result.TicketResults.Add(ticketResult);
             }
 
-            result.Success = result.TicketResults.Any(r => r.Success);
-            result.ProcessingDuration = DateTime.UtcNow - startTime;
-
-            Console.WriteLine(
-                $"✅ Processed {result.TicketsCreated} created, {result.TicketsUpdated} updated tickets"
-            );
-
-            return result;
+            var failed = result.TicketResults.Count(ticket => !ticket.Success);
+            result.Success = failed == 0;
+            if (failed > 0)
+            {
+                result.ErrorMessage = $"{failed} of {result.TicketResults.Count} Jira tickets failed";
+            }
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating the Jira tickets for {FileName}", transcript.FileName);
             result.Success = false;
             result.ErrorMessage = ex.Message;
-            result.ProcessingDuration = DateTime.UtcNow - startTime;
-
-            _logger?.LogError(ex, "Error processing action items");
-            Console.WriteLine($"❌ Error processing action items: {ex.Message}");
-
-            return result;
         }
+
+        result.ProcessingDuration = DateTime.UtcNow - started;
+        return result;
     }
 
-    /// <summary>
-    /// Creates a new Jira ticket from an action item
-    /// </summary>
-    private async Task<TicketCreationResult> CreateNewTicketAsync(
-        ActionItem actionItem,
-        MeetingTranscript transcript
-    )
+    private HttpClient CreateClient()
     {
+        var client = _httpClientFactory.CreateClient(HttpClientName);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_jiraUserEmail}:{_jiraApiToken}")));
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return client;
+    }
+
+    private async Task<TicketCreationResult> CreateNewTicketAsync(ActionItem actionItem, MeetingTranscript transcript)
+    {
+        if (!IsJiraConfigured)
+        {
+            return Simulate(actionItem, TicketOperation.Created, transcript);
+        }
+
         try
         {
-            if (!IsJiraConfigured())
+            var ticket = await FormatTicketWithAIAsync(actionItem, transcript);
+            if (IsConversationSnippet(ticket.Title))
             {
-                return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created, transcript);
-            }
-
-            // Use AI to format the ticket properly
-            var formattedTicket = await FormatTicketWithAIAsync(actionItem, transcript);
-
-            // Check if the title still contains conversation snippets and needs additional cleaning
-            if (IsConversationSnippet(formattedTicket.Title))
-            {
-                Console.WriteLine($"🧹 Title contains conversation snippet: '{formattedTicket.Title}'");
-                Console.WriteLine($"🧹 Attempting AI cleanup...");
-                formattedTicket = await CleanupTitleWithAIAsync(formattedTicket, actionItem, transcript);
-            }
-            else
-            {
-                Console.WriteLine($"✅ Title looks good: '{formattedTicket.Title}'");
+                ticket = await CleanupTitleWithAIAsync(ticket, actionItem);
             }
 
             var projectKey = actionItem.ProjectKey ?? transcript.ProjectKey ?? _defaultProjectKey;
-
-            var issuePayload = new
+            var payload = new
             {
                 fields = new
                 {
                     project = new { key = projectKey },
-                    summary = formattedTicket.Title,
-                    description = CreateJiraDescriptionADF(formattedTicket.Description, transcript),
-                    issuetype = new
-                    {
-                        name = MapActionItemTypeToJiraIssueType(formattedTicket.Type) // Use proper mapping
-                    },
-                    // priority = new { name = MapPriorityToJira(formattedTicket.Priority) }, // Commented out - field not on screen
-                    assignee = string.IsNullOrEmpty(actionItem.AssignedTo)
-                        ? null
-                        : new { name = actionItem.AssignedTo },
+                    summary = ticket.Title,
+                    description = CreateJiraDescriptionADF(ticket.Description, transcript),
+                    issuetype = new { name = MapActionItemTypeToJiraIssueType(ticket.Type) },
+                    assignee = string.IsNullOrEmpty(actionItem.AssignedTo) ? null : new { name = actionItem.AssignedTo },
                     duedate = actionItem.DueDate?.ToString("yyyy-MM-dd"),
-                    labels = formattedTicket.Labels ?? CreateLabels(actionItem, transcript)
+                    labels = ticket.Labels ?? CreateLabels(actionItem, transcript)
                 }
             };
 
-            var json = JsonSerializer.Serialize(
-                issuePayload,
-                new JsonSerializerOptions { WriteIndented = true }
-            );
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var client = CreateClient();
+            using var response = await client.PostAsync(
+                $"{_jiraBaseUrl}/rest/api/3/issue",
+                new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+            var body = await response.Content.ReadAsStringAsync();
 
-            var url = $"{_jiraBaseUrl}/rest/api/3/issue";
-
-            Console.WriteLine("═══════ JIRA TICKET CREATION DEBUG ═══════");
-            Console.WriteLine($"🔍 Making JIRA API call:");
-            Console.WriteLine($"   URL: {url}");
-            Console.WriteLine($"   Project Key: {projectKey}");
-            Console.WriteLine($"   Action Item ProjectKey: {actionItem.ProjectKey}");
-            Console.WriteLine($"   Transcript ProjectKey: {transcript.ProjectKey}");
-            Console.WriteLine($"   Default ProjectKey: {_defaultProjectKey}");
-            Console.WriteLine($"   Title: {formattedTicket.Title}");
-            Console.WriteLine("═══════════════════════════════════════════");
-
-            var response = await _httpClient.PostAsync(url, content);
-
-            if (response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode
+                && JsonSerializer.Deserialize<JsonElement>(body).TryGetProperty("key", out var keyElement)
+                && keyElement.GetString() is { Length: > 0 } ticketKey)
             {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var responseData = JsonSerializer.Deserialize<JsonElement>(responseContent);
-
-                if (responseData.TryGetProperty("key", out var keyElement))
+                var ticketUrl = $"{_jiraBaseUrl}/browse/{ticketKey}";
+                transcript.CreatedJiraTickets.Add(new JiraTicketReference
                 {
-                    var ticketKey = keyElement.GetString();
-                    var ticketUrl = $"{_jiraBaseUrl}/browse/{ticketKey}";
+                    TicketKey = ticketKey,
+                    TicketUrl = ticketUrl,
+                    Title = ticket.Title,
+                    ActionItemId = actionItem.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    Priority = ticket.Priority.ToString(),
+                    Type = ticket.Type.ToString(),
+                    AssignedTo = actionItem.AssignedTo,
+                    Status = "Open"
+                });
+                _logger.LogInformation("Created Jira ticket {TicketKey} in {Project}", ticketKey, projectKey);
 
-                    Console.WriteLine($"✅ Created Jira ticket: {ticketKey}");
-
-                    // Add ticket reference to transcript
-                    var ticketReference = new JiraTicketReference
-                    {
-                        TicketKey = ticketKey ?? "",
-                        TicketUrl = ticketUrl,
-                        Title = formattedTicket.Title,
-                        ActionItemId = actionItem.Id,
-                        CreatedAt = DateTime.UtcNow,
-                        Priority = formattedTicket.Priority.ToString(),
-                        Type = formattedTicket.Type.ToString(),
-                        AssignedTo = actionItem.AssignedTo,
-                        Status = "Open"
-                    };
-
-                    transcript.CreatedJiraTickets.Add(ticketReference);
-                    Console.WriteLine($"📎 Added ticket reference to meeting: {ticketKey}");
-
-                    return new TicketCreationResult
-                    {
-                        Success = true,
-                        TicketKey = ticketKey,
-                        TicketUrl = ticketUrl,
-                        Operation = TicketOperation.Created,
-                        Message = $"Successfully created ticket {ticketKey}",
-                        ActionItemId = actionItem.Id
-                    };
-                }
+                return new TicketCreationResult
+                {
+                    Success = true,
+                    TicketKey = ticketKey,
+                    TicketUrl = ticketUrl,
+                    Operation = TicketOperation.Created,
+                    Message = $"Successfully created ticket {ticketKey}",
+                    ActionItemId = actionItem.Id
+                };
             }
 
-            var errorContent = await response.Content.ReadAsStringAsync();
-            _logger?.LogError(
-                new Exception($"Jira API error: {response.StatusCode}"),
-                errorContent
-            );
-
-            Console.WriteLine($"❌ JIRA API Error: {response.StatusCode}");
-            Console.WriteLine($"   Response: {errorContent}");
-            Console.WriteLine("   Falling back to simulation mode");
-
-            // Fallback to simulation
-            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created, transcript);
+            _logger.LogError(
+                "Jira refused the ticket for {Title} in {Project}: {Status} {Body}",
+                ticket.Title, projectKey, (int)response.StatusCode, body);
+            return Failed(actionItem, TicketOperation.Created, $"Jira answered {(int)response.StatusCode}", body);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(
-                ex,
-                $"Error creating Jira ticket for action item: {actionItem.Title}"
-            );
-            Console.WriteLine($"❌ Exception creating JIRA ticket: {ex.Message}");
-            Console.WriteLine("   Falling back to simulation mode");
-            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Created, transcript);
+            _logger.LogError(ex, "Error creating a Jira ticket for {Title}", actionItem.Title);
+            return Failed(actionItem, TicketOperation.Created, "Could not reach Jira", ex.Message);
         }
     }
 
-    /// <summary>
-    /// Updates an existing Jira ticket with action item information
-    /// </summary>
     private async Task<TicketCreationResult> UpdateExistingTicketAsync(ActionItem actionItem)
     {
+        if (!IsJiraConfigured)
+        {
+            return Simulate(actionItem, TicketOperation.Updated);
+        }
+
         try
         {
-            if (!IsJiraConfigured())
-            {
-                return await SimulateTicketCreationAsync(actionItem, TicketOperation.Updated);
-            }
-
-            // Add comment to existing ticket
-            var comment = CreateUpdateComment(actionItem);
-            var commentPayload = new
+            var payload = new
             {
                 body = new
                 {
@@ -299,94 +247,73 @@ public class JiraTicketService : IJiraTicketService, IDisposable
                     version = 1,
                     content = new[]
                     {
-                        new
-                        {
-                            type = "paragraph",
-                            content = new[] { new { type = "text", text = comment } }
-                        }
+                        new { type = "paragraph", content = new[] { new { type = "text", text = CreateUpdateComment(actionItem) } } }
                     }
                 }
             };
 
-            var json = JsonSerializer.Serialize(commentPayload);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var url = $"{_jiraBaseUrl}/rest/api/3/issue/{actionItem.ExistingTicketKey}/comment";
-            var response = await _httpClient.PostAsync(url, content);
+            using var client = CreateClient();
+            using var response = await client.PostAsync(
+                $"{_jiraBaseUrl}/rest/api/3/issue/{Uri.EscapeDataString(actionItem.ExistingTicketKey!)}/comment",
+                new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 
             if (response.IsSuccessStatusCode)
             {
-                var ticketUrl = $"{_jiraBaseUrl}/browse/{actionItem.ExistingTicketKey}";
-
-                Console.WriteLine($"✅ Updated Jira ticket: {actionItem.ExistingTicketKey}");
-
+                _logger.LogInformation("Commented on Jira ticket {TicketKey}", actionItem.ExistingTicketKey);
                 return new TicketCreationResult
                 {
                     Success = true,
                     TicketKey = actionItem.ExistingTicketKey,
-                    TicketUrl = ticketUrl,
+                    TicketUrl = $"{_jiraBaseUrl}/browse/{actionItem.ExistingTicketKey}",
                     Operation = TicketOperation.Updated,
                     Message = $"Successfully updated ticket {actionItem.ExistingTicketKey}",
                     ActionItemId = actionItem.Id
                 };
             }
 
-            // Fallback to simulation
-            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Updated);
+            var body = await response.Content.ReadAsStringAsync();
+            _logger.LogError(
+                "Jira refused the comment on {TicketKey}: {Status} {Body}",
+                actionItem.ExistingTicketKey, (int)response.StatusCode, body);
+            return Failed(actionItem, TicketOperation.Updated, $"Jira answered {(int)response.StatusCode}", body);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"Error updating Jira ticket: {actionItem.ExistingTicketKey}");
-            return await SimulateTicketCreationAsync(actionItem, TicketOperation.Updated);
+            _logger.LogError(ex, "Error updating Jira ticket {TicketKey}", actionItem.ExistingTicketKey);
+            return Failed(actionItem, TicketOperation.Updated, "Could not reach Jira", ex.Message);
         }
     }
 
-    /// <summary>
-    /// Simulates ticket creation/update when Jira is not configured
-    /// </summary>
-    private async Task<TicketCreationResult> SimulateTicketCreationAsync(
-        ActionItem actionItem,
-        TicketOperation operation,
-        MeetingTranscript? transcript = null
-    )
-    {
-        await Task.Delay(100); // Simulate API call time
-
-        var ticketKey =
-            operation == TicketOperation.Updated
-            && !string.IsNullOrEmpty(actionItem.ExistingTicketKey)
-                ? actionItem.ExistingTicketKey
-                : GenerateSimulatedTicketKey(actionItem);
-
-        var message = operation switch
+    private static TicketCreationResult Failed(ActionItem actionItem, TicketOperation operation, string message, string error) =>
+        new()
         {
-            TicketOperation.Created => $"Would create new ticket: {ticketKey}",
-            TicketOperation.Updated => $"Would update existing ticket: {ticketKey}",
-            _ => $"Would process ticket: {ticketKey}"
+            Success = false,
+            Operation = operation,
+            TicketKey = actionItem.ExistingTicketKey,
+            Message = message,
+            ErrorMessage = error,
+            ActionItemId = actionItem.Id
         };
 
-        Console.WriteLine($"🎫 {message}");
-        Console.WriteLine($"   📋 Title: {actionItem.Title}");
-        Console.WriteLine($"   🔹 Type: {actionItem.Type}");
-        Console.WriteLine($"   ⭐ Priority: {actionItem.Priority}");
+    /// <summary>
+    /// What would be created or updated when Jira isn't configured
+    /// </summary>
+    private TicketCreationResult Simulate(ActionItem actionItem, TicketOperation operation, MeetingTranscript? transcript = null)
+    {
+        var ticketKey = operation == TicketOperation.Updated && !string.IsNullOrEmpty(actionItem.ExistingTicketKey)
+            ? actionItem.ExistingTicketKey
+            : $"{actionItem.ProjectKey ?? _defaultProjectKey}-{Random.Shared.Next(1000, 9999)}";
+        var message = operation == TicketOperation.Updated
+            ? $"Would update existing ticket: {ticketKey}"
+            : $"Would create new ticket: {ticketKey}";
+        var ticketUrl = $"[Simulated] {_jiraBaseUrl}/browse/{ticketKey}";
 
-        if (!string.IsNullOrEmpty(actionItem.AssignedTo))
-        {
-            Console.WriteLine($"   👤 Assigned: {actionItem.AssignedTo}");
-        }
-
-        if (actionItem.DueDate.HasValue)
-        {
-            Console.WriteLine($"   📅 Due: {actionItem.DueDate.Value:yyyy-MM-dd}");
-        }
-
-        // Add ticket reference to transcript even in simulation mode
         if (transcript != null && operation == TicketOperation.Created)
         {
-            var ticketReference = new JiraTicketReference
+            transcript.CreatedJiraTickets.Add(new JiraTicketReference
             {
-                TicketKey = ticketKey ?? "",
-                TicketUrl = $"[Simulated] {_jiraBaseUrl}/browse/{ticketKey}",
+                TicketKey = ticketKey,
+                TicketUrl = ticketUrl,
                 Title = actionItem.Title,
                 ActionItemId = actionItem.Id,
                 CreatedAt = DateTime.UtcNow,
@@ -394,17 +321,15 @@ public class JiraTicketService : IJiraTicketService, IDisposable
                 Type = actionItem.Type.ToString(),
                 AssignedTo = actionItem.AssignedTo,
                 Status = "Open"
-            };
-
-            transcript.CreatedJiraTickets.Add(ticketReference);
-            Console.WriteLine($"📎 Added simulated ticket reference to meeting: {ticketKey}");
+            });
         }
 
+        _logger.LogInformation("{Message}: {Title} ({Type}, {Priority})", message, actionItem.Title, actionItem.Type, actionItem.Priority);
         return new TicketCreationResult
         {
             Success = true,
             TicketKey = ticketKey,
-            TicketUrl = $"[Simulated] {_jiraBaseUrl}/browse/{ticketKey}",
+            TicketUrl = ticketUrl,
             Operation = operation,
             Message = message,
             ActionItemId = actionItem.Id
@@ -412,179 +337,35 @@ public class JiraTicketService : IJiraTicketService, IDisposable
     }
 
     /// <summary>
-    /// Creates a Jira description from action item
-    /// </summary>
-    /// <summary>
-    /// Creates a Jira description in Atlassian Document Format (ADF)
+    /// A Jira description in Atlassian Document Format (ADF)
     /// </summary>
     private static object CreateJiraDescriptionADF(string description, MeetingTranscript transcript)
     {
-        var content = new List<object>();
+        static object Strong(string text) => new { type = "text", text, marks = new object[] { new { type = "strong" } } };
+        static object Plain(string text) => new { type = "text", text };
+        static object Paragraph(params object[] content) => new { type = "paragraph", content };
 
-        // Header
-        content.Add(
-            new
-            {
-                type = "paragraph",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = "Generated from Meeting Transcript",
-                        marks = new object[] { new { type = "strong" } }
-                    }
-                }
-            }
-        );
-
-        // Meeting details
-        content.Add(
-            new
-            {
-                type = "paragraph",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = "Meeting: ",
-                        marks = new object[] { new { type = "strong" } }
-                    },
-                    new { type = "text", text = transcript.Title }
-                }
-            }
-        );
-
-        content.Add(
-            new
-            {
-                type = "paragraph",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = "Date: ",
-                        marks = new object[] { new { type = "strong" } }
-                    },
-                    new { type = "text", text = transcript.MeetingDate.ToString("yyyy-MM-dd") }
-                }
-            }
-        );
-
-        content.Add(
-            new
-            {
-                type = "paragraph",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = "Transcript File: ",
-                        marks = new object[] { new { type = "strong" } }
-                    },
-                    new { type = "text", text = transcript.FileName }
-                }
-            }
-        );
-
-        // Description
-        content.Add(
-            new
-            {
-                type = "paragraph",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = "Description:",
-                        marks = new object[] { new { type = "strong" } }
-                    }
-                }
-            }
-        );
-
-        content.Add(
-            new
-            {
-                type = "paragraph",
-                content = new object[] { new { type = "text", text = description } }
-            }
-        );
-
-        // Participants if available
-        if (transcript.Participants.Any())
+        var content = new List<object>
         {
-            content.Add(
-                new
-                {
-                    type = "paragraph",
-                    content = new object[]
-                    {
-                        new
-                        {
-                            type = "text",
-                            text = "Meeting Participants: ",
-                            marks = new object[] { new { type = "strong" } }
-                        },
-                        new { type = "text", text = string.Join(", ", transcript.Participants) }
-                    }
-                }
-            );
-        }
-
-        return new
-        {
-            type = "doc",
-            version = 1,
-            content = content
+            Paragraph(Strong("Generated from Meeting Transcript")),
+            Paragraph(Strong("Meeting: "), Plain(transcript.Title)),
+            Paragraph(Strong("Date: "), Plain(transcript.MeetingDate.ToString("yyyy-MM-dd"))),
+            Paragraph(Strong("Transcript File: "), Plain(transcript.FileName)),
+            Paragraph(Strong("Description:")),
+            Paragraph(Plain(description))
         };
-    }
 
-    /// <summary>
-    /// Creates a Jira description in plain text format (legacy method)
-    /// </summary>
-    private static string CreateJiraDescription(ActionItem actionItem, MeetingTranscript transcript)
-    {
-        var description = new StringBuilder();
-
-        description.AppendLine("*Generated from Meeting Transcript*");
-        description.AppendLine();
-        description.AppendLine($"*Meeting:* {transcript.Title}");
-        description.AppendLine($"*Date:* {transcript.MeetingDate:yyyy-MM-dd}");
-        description.AppendLine($"*Transcript File:* {transcript.FileName}");
-        description.AppendLine();
-        description.AppendLine("*Description:*");
-        description.AppendLine(actionItem.Description);
-
-        if (!string.IsNullOrEmpty(actionItem.Context))
+        if (transcript.Participants.Count > 0)
         {
-            description.AppendLine();
-            description.AppendLine("*Original Context:*");
-            description.AppendLine($"{{quote}}{actionItem.Context}{{quote}}");
+            content.Add(Paragraph(Strong("Meeting Participants: "), Plain(string.Join(", ", transcript.Participants))));
         }
 
-        if (transcript.Participants.Any())
-        {
-            description.AppendLine();
-            description.AppendLine(
-                $"*Meeting Participants:* {string.Join(", ", transcript.Participants)}"
-            );
-        }
-
-        return description.ToString();
+        return new { type = "doc", version = 1, content };
     }
 
-    /// <summary>
-    /// Creates an update comment for existing tickets
-    /// </summary>
     private static string CreateUpdateComment(ActionItem actionItem)
     {
         var comment = new StringBuilder();
-
         comment.AppendLine("🤖 *Meeting Transcript Update*");
         comment.AppendLine();
         comment.AppendLine($"*Action Item:* {actionItem.Title}");
@@ -605,104 +386,44 @@ public class JiraTicketService : IJiraTicketService, IDisposable
         return comment.ToString();
     }
 
-    /// <summary>
-    /// Maps action item type to Jira issue type
-    /// </summary>
-    private static string MapActionItemTypeToJiraIssueType(ActionItemType type)
+    private static string MapActionItemTypeToJiraIssueType(ActionItemType type) => type switch
     {
-        return type switch
-        {
-            ActionItemType.Bug => "Bug",
-            ActionItemType.Story => "Story",
-            ActionItemType.Epic => "Epic",
-            ActionItemType.Investigation => "Task",
-            ActionItemType.Documentation => "Task",
-            ActionItemType.Review => "Task",
-            ActionItemType.Task => "Task",
-            _ => "Task"
-        };
-    }
+        ActionItemType.Bug => "Bug",
+        ActionItemType.Story => "Story",
+        ActionItemType.Epic => "Epic",
+        _ => "Task"
+    };
+
+    private static string[] CreateLabels(ActionItem actionItem, MeetingTranscript transcript) =>
+    [
+        "meeting-transcript",
+        "ai-generated",
+        $"type-{actionItem.Type.ToString().ToLowerInvariant()}",
+        .. actionItem.Labels,
+        $"meeting-{transcript.MeetingDate:yyyy-MM-dd}"
+    ];
 
     /// <summary>
-    /// Cleans AI JSON response by removing markdown code blocks and other formatting
+    /// True when a title still looks like dialogue or JSON rather than an action
     /// </summary>
-    private static string CleanAIJsonResponse(string aiResponse)
-    {
-        if (string.IsNullOrWhiteSpace(aiResponse))
-            return aiResponse;
-
-        // Remove markdown code blocks
-        var cleaned = aiResponse.Trim();
-
-        // Remove leading/trailing backticks and json specifier
-        if (cleaned.StartsWith("```json"))
-            cleaned = cleaned.Substring(7);
-        else if (cleaned.StartsWith("```"))
-            cleaned = cleaned.Substring(3);
-
-        if (cleaned.EndsWith("```"))
-            cleaned = cleaned.Substring(0, cleaned.Length - 3);
-
-        return cleaned.Trim();
-    }
+    private static bool IsConversationSnippet(string title) =>
+        !string.IsNullOrEmpty(title)
+        && ConversationPatterns.Any(pattern => Regex.IsMatch(title, pattern, RegexOptions.IgnoreCase));
 
     /// <summary>
-    /// Checks if a title contains conversation snippets that need cleaning
+    /// Asks the model for a clean title when the formatted one still looks like dialogue
     /// </summary>
-    private static bool IsConversationSnippet(string title)
-    {
-        if (string.IsNullOrEmpty(title))
-            return false;
-
-        // Check for common conversation snippet patterns
-        var conversationPatterns = new[]
-        {
-            "\"context\":",
-            "\"description\":",
-            "context\":",
-            "description\":",
-            "\"title\":",
-            "title\":",
-            @"\w+:\s+I'll",
-            @"\w+:\s+I\s+will",
-            @"\w+:\s+We'll",
-            @"\w+:\s+We\s+will",
-            @"\w+:\s+[A-Z][a-z]+\s+(said|mentioned|discussed)",
-            @"^\s*\{", // Starts with JSON-like structure
-            @"^\s*""[^""]*"":\s*""", // Starts with JSON key-value
-            @"Create\s+a?\s+Jira\s+ticket", // Literal "Create Jira ticket" text
-            @"Create\s+new\s+Jira\s+ticket" // Literal "Create new Jira ticket" text
-        };
-
-        var foundPattern = conversationPatterns.Any(pattern =>
-            System.Text.RegularExpressions.Regex.IsMatch(title, pattern,
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase));
-
-        if (foundPattern)
-        {
-            Console.WriteLine($"🔍 Detected conversation snippet pattern in: '{title}'");
-        }
-
-        return foundPattern;
-    }
-
-    /// <summary>
-    /// Uses AI to clean up malformed titles that contain conversation snippets
-    /// </summary>
-    private async Task<FormattedTicket> CleanupTitleWithAIAsync(
-        FormattedTicket originalTicket,
-        ActionItem actionItem,
-        MeetingTranscript transcript)
+    private async Task<FormattedTicket> CleanupTitleWithAIAsync(FormattedTicket ticket, ActionItem actionItem)
     {
         try
         {
-            var cleanupPrompt = $@"
+            var prompt = $@"
 URGENT TITLE CLEANUP TASK:
 
 You have a malformed JIRA ticket title that contains conversation snippets. Your job is to extract a clean, actionable title.
 
-MALFORMED TITLE: {originalTicket.Title}
-DESCRIPTION: {originalTicket.Description}
+MALFORMED TITLE: {ticket.Title}
+DESCRIPTION: {ticket.Description}
 ACTION ITEM CONTEXT: {actionItem.Context}
 
 TASK: Create a clean, actionable JIRA ticket title that:
@@ -719,221 +440,75 @@ EXAMPLES:
 Respond with ONLY the clean title, nothing else. No JSON, no quotes, just the clean title.
 ";
 
-            var cleanTitle = await _aiService.ProcessTranscriptAsync(cleanupPrompt);
-
-            // Clean up any extra formatting from AI response
-            var titleText = cleanTitle.Content.Trim().Trim('"').Trim();
-
-            // Ensure it's not empty and not too long
-            if (string.IsNullOrEmpty(titleText) || titleText.Length > 80)
-            {
-                titleText = "Complete meeting action item";
-            }
-
-            Console.WriteLine($"✅ Title cleaned: '{originalTicket.Title}' → '{titleText}'");
-
-            return new FormattedTicket
-            {
-                Title = titleText,
-                Description = originalTicket.Description,
-                Priority = originalTicket.Priority,
-                Type = originalTicket.Type,
-                Labels = originalTicket.Labels
-            };
+            var answer = await _aiService.ProcessTranscriptAsync(prompt);
+            var title = answer.Content.Trim().Trim('"').Trim();
+            ticket.Title = string.IsNullOrEmpty(title) || title.Length > 80 ? "Complete meeting action item" : title;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error cleaning up title with AI");
-            Console.WriteLine($"❌ Title cleanup failed, using fallback");
-
-            // Fallback to simple cleanup
-            var fallbackTitle = ExtractActionFromConversation(originalTicket.Title, originalTicket.Description);
-            return new FormattedTicket
-            {
-                Title = fallbackTitle,
-                Description = originalTicket.Description,
-                Priority = originalTicket.Priority,
-                Type = originalTicket.Type,
-                Labels = originalTicket.Labels
-            };
+            _logger.LogWarning(ex, "Title cleanup with the model failed; using rules");
+            ticket.Title = ExtractActionFromConversation(ticket.Title, ticket.Description);
         }
+
+        return ticket;
     }
 
-    /// <summary>
-    /// Extracts actionable title from conversation snippets (fallback method)
-    /// </summary>
     private static string ExtractActionFromConversation(string conversationTitle, string description)
     {
-        // Look for common action patterns in the conversation
-        var actionPatterns = new[]
+        var text = conversationTitle + " " + description;
+        foreach (var pattern in ActionPatterns)
         {
-            @"I'll\s+(.*?)(?:\.|,|$)",
-            @"I\s+will\s+(.*?)(?:\.|,|$)",
-            @"create\s+(.*?)(?:\.|,|$)",
-            @"fix\s+(.*?)(?:\.|,|$)",
-            @"investigate\s+(.*?)(?:\.|,|$)",
-            @"review\s+(.*?)(?:\.|,|$)",
-            @"update\s+(.*?)(?:\.|,|$)",
-            @"implement\s+(.*?)(?:\.|,|$)"
-        };
-
-        var textToSearch = conversationTitle + " " + (description ?? "");
-
-        foreach (var pattern in actionPatterns)
-        {
-            var match = System.Text.RegularExpressions.Regex.Match(
-                textToSearch,
-                pattern,
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase
-            );
+            var match = Regex.Match(text, pattern, RegexOptions.IgnoreCase);
             if (match.Success && match.Groups[1].Value.Trim().Length > 3)
             {
-                var action = match.Groups[1].Value.Trim();
-                // Clean up common suffixes
-                action = action.Replace("a ticket", "").Replace("the ticket", "").Trim();
-                return char.ToUpper(action[0]) + action.Substring(1);
+                var action = match.Groups[1].Value.Replace("a ticket", "").Replace("the ticket", "").Trim();
+                if (action.Length > 0)
+                {
+                    return char.ToUpper(action[0]) + action[1..];
+                }
             }
         }
 
-        // Default fallback
         return "Complete meeting action item";
     }
 
     /// <summary>
-    /// Maps priority to Jira priority names
+    /// Asks the model for a clean, English title and description; the action item's own are kept when that fails
     /// </summary>
-    private static string MapPriorityToJira(ActionItemPriority priority)
-    {
-        return priority switch
-        {
-            ActionItemPriority.Critical => "Highest",
-            ActionItemPriority.High => "High",
-            ActionItemPriority.Medium => "Medium",
-            ActionItemPriority.Low => "Low",
-            _ => "Medium"
-        };
-    }
-
-    /// <summary>
-    /// Creates labels for Jira tickets
-    /// </summary>
-    private static string[] CreateLabels(ActionItem actionItem, MeetingTranscript transcript)
-    {
-        var labels = new List<string> { "meeting-transcript", "ai-generated" };
-
-        // Add action item type as label
-        labels.Add($"type-{actionItem.Type.ToString().ToLowerInvariant()}");
-
-        // Add custom labels from action item
-        labels.AddRange(actionItem.Labels);
-
-        // Add meeting date as label
-        labels.Add($"meeting-{transcript.MeetingDate:yyyy-MM-dd}");
-
-        return labels.ToArray();
-    }
-
-    /// <summary>
-    /// Generates a simulated ticket key for demo purposes
-    /// </summary>
-    private string GenerateSimulatedTicketKey(ActionItem actionItem)
-    {
-        var projectKey = actionItem.ProjectKey ?? _defaultProjectKey;
-        var ticketNumber = new Random().Next(1000, 9999);
-        return $"{projectKey}-{ticketNumber}";
-    }
-
-    /// <summary>
-    /// Checks if Jira is properly configured
-    /// </summary>
-    private bool IsJiraConfigured()
-    {
-        return !string.IsNullOrWhiteSpace(_jiraBaseUrl)
-            && !string.IsNullOrWhiteSpace(_jiraApiToken)
-            && !string.IsNullOrWhiteSpace(_jiraUserEmail);
-    }
-
-    /// <summary>
-    /// Disposes of the HttpClient resources
-    /// </summary>
-    public void Dispose()
-    {
-        _httpClient?.Dispose();
-    }
-
-    /// <summary>
-    /// Formats a ticket using AI to clean up title and description
-    /// </summary>
-    private async Task<FormattedTicket> FormatTicketWithAIAsync(
-        ActionItem actionItem,
-        MeetingTranscript transcript
-    )
+    private async Task<FormattedTicket> FormatTicketWithAIAsync(ActionItem actionItem, MeetingTranscript transcript)
     {
         try
         {
-            var participants = string.Join(", ", transcript.Participants);
-            var context = $"Meeting: {transcript.Title}, Date: {transcript.MeetingDate:yyyy-MM-dd}";
-
-            var formattedJson = await _aiService.FormatJiraTicketAsync(
+            var formatted = await _aiService.FormatJiraTicketAsync(
                 actionItem.Title,
                 actionItem.Description,
-                context,
-                participants
-            );
+                $"Meeting: {transcript.Title}, Date: {transcript.MeetingDate:yyyy-MM-dd}",
+                string.Join(", ", transcript.Participants));
+            var data = JsonSerializer.Deserialize<JsonElement>(AiResponseParser.WithoutCodeFence(formatted));
 
-            // Clean up potential markdown formatting from AI response
-            var cleanedJson = CleanAIJsonResponse(formattedJson);
-
-            var formattedData = JsonSerializer.Deserialize<JsonElement>(cleanedJson);
+            string? Text(string name) =>
+                data.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
             return new FormattedTicket
             {
-                Title = formattedData.TryGetProperty("title", out var titleElement)
-                    ? titleElement.GetString() ?? actionItem.Title
-                    : actionItem.Title,
-                Description = formattedData.TryGetProperty("description", out var descElement)
-                    ? descElement.GetString() ?? actionItem.Description
-                    : actionItem.Description,
-                Priority = Enum.TryParse<ActionItemPriority>(
-                    formattedData.TryGetProperty("priority", out var priorityElement)
-                        ? priorityElement.GetString() ?? "Medium"
-                        : "Medium",
-                    out var priority
-                )
-                    ? priority
-                    : ActionItemPriority.Medium,
-                Type = Enum.TryParse<ActionItemType>(
-                    formattedData.TryGetProperty("type", out var typeElement)
-                        ? typeElement.GetString() ?? "Task"
-                        : "Task",
-                    out var type
-                )
-                    ? type
-                    : ActionItemType.Task,
-                Labels =
-                    formattedData.TryGetProperty("labels", out var labelsElement)
-                    && labelsElement.ValueKind == JsonValueKind.Array
-                        ? labelsElement
-                            .EnumerateArray()
-                            .Select(l => l.GetString())
-                            .Where(l => l != null)
-                            .Cast<string>()
-                            .ToArray()
-                        : null
+                Title = Text("title") ?? actionItem.Title,
+                Description = Text("description") ?? actionItem.Description,
+                Priority = Enum.TryParse<ActionItemPriority>(Text("priority"), true, out var priority) ? priority : ActionItemPriority.Medium,
+                Type = Enum.TryParse<ActionItemType>(Text("type"), true, out var type) ? type : ActionItemType.Task,
+                Labels = data.TryGetProperty("labels", out var labels) && labels.ValueKind == JsonValueKind.Array
+                    ? labels.EnumerateArray().Select(label => label.GetString()).OfType<string>().ToArray()
+                    : null
             };
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error formatting ticket with AI, using fallback");
-
-            // Fallback to original action item data
+            _logger.LogWarning(ex, "Formatting the ticket with the model failed; using the action item as it is");
             return new FormattedTicket
             {
                 Title = actionItem.Title,
                 Description = actionItem.Description,
                 Priority = actionItem.Priority,
-                Type = actionItem.Type,
-                Labels = null
+                Type = actionItem.Type
             };
         }
     }

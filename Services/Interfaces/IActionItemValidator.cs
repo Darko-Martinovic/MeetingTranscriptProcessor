@@ -12,5 +12,4 @@ public interface IActionItemValidator
         List<ActionItem> ruleBasedExtracted,
         MeetingTranscript transcript
     );
-    static ValidationMetrics GetValidationMetrics() => ActionItemValidator.GetValidationMetrics();
 }

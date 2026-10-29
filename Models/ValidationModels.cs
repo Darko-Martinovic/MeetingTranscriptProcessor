@@ -35,21 +35,6 @@ public class ValidationResult
 }
 
 /// <summary>
-/// Aggregated validation metrics
-/// </summary>
-public class ValidationMetrics
-{
-    public int TotalValidations { get; set; }
-    public double AverageConfidence { get; set; }
-    public double AverageCrossValidationScore { get; set; }
-    public double AverageContextCoherence { get; set; }
-    public int TotalFalsePositives { get; set; }
-    public int TotalFalseNegatives { get; set; }
-    public double HighConfidenceRate { get; set; }
-    public double LowConfidenceRate { get; set; }
-}
-
-/// <summary>
 /// Analysis result for hallucination detection
 /// </summary>
 public class HallucinationAnalysis

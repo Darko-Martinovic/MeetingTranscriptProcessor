@@ -34,6 +34,11 @@ public class ConfigurationService : IConfigurationService
     public AzureOpenAISettings GetAzureOpenAISettings() => _configuration.AzureOpenAI;
 
     /// <summary>
+    /// Gets the processing settings
+    /// </summary>
+    public ProcessingSettings GetProcessingSettings() => _configuration.Processing;
+
+    /// <summary>
     /// Gets extraction settings
     /// </summary>
     public ExtractionSettings GetExtractionSettings() => _configuration.Extraction;
@@ -73,6 +78,7 @@ public class ConfigurationService : IConfigurationService
 
             // Save each configuration section separately for better maintainability
             await SaveConfigurationSectionAsync("azure-openai.json", _configuration.AzureOpenAI);
+            await SaveConfigurationSectionAsync("processing.json", _configuration.Processing);
             await SaveConfigurationSectionAsync("extraction.json", _configuration.Extraction);
             await SaveConfigurationSectionAsync("meeting-types.json", _configuration.MeetingTypes);
             await SaveConfigurationSectionAsync("languages.json", _configuration.Languages);
@@ -106,6 +112,14 @@ public class ConfigurationService : IConfigurationService
             _logger?.LogError(ex, "Failed to save Azure OpenAI settings");
             throw;
         }
+    }
+
+    public async Task SaveProcessingSettingsAsync(ProcessingSettings settings)
+    {
+        Directory.CreateDirectory(_configDirectory);
+        _configuration.Processing = settings;
+        await SaveConfigurationSectionAsync("processing.json", settings);
+        _logger?.LogInformation("Processing settings saved");
     }
 
     /// <summary>
@@ -177,6 +191,7 @@ public class ConfigurationService : IConfigurationService
     private void LoadFromConfigurationFiles()
     {
         LoadConfigurationSection("azure-openai.json", (AzureOpenAISettings settings) => _configuration.AzureOpenAI = settings);
+        LoadConfigurationSection("processing.json", (ProcessingSettings settings) => _configuration.Processing = settings);
         LoadConfigurationSection("extraction.json", (ExtractionSettings settings) => _configuration.Extraction = settings);
         LoadConfigurationSection("meeting-types.json", (MeetingTypeSettings settings) => _configuration.MeetingTypes = settings);
         LoadConfigurationSection("languages.json", (LanguageSettings settings) => _configuration.Languages = settings);
@@ -244,6 +259,18 @@ public class ConfigurationService : IConfigurationService
 
         SetIfNotNull(_configuration.AzureOpenAI, nameof(AzureOpenAISettings.SystemPrompt),
             Environment.GetEnvironmentVariable("AI_SYSTEM_PROMPT"));
+
+        // Processing settings
+        SetIfNotNull(_configuration.Processing, nameof(ProcessingSettings.MaxConcurrentFiles),
+            GetIntFromEnv("MAX_CONCURRENT_FILES"));
+        SetIfNotNull(_configuration.Processing, nameof(ProcessingSettings.ValidationConfidenceThreshold),
+            GetDoubleFromEnv("VALIDATION_CONFIDENCE_THRESHOLD"));
+        SetIfNotNull(_configuration.Processing, nameof(ProcessingSettings.EnableValidation),
+            GetBoolFromEnv("ENABLE_VALIDATION"));
+        SetIfNotNull(_configuration.Processing, nameof(ProcessingSettings.EnableHallucinationDetection),
+            GetBoolFromEnv("ENABLE_HALLUCINATION_DETECTION"));
+        SetIfNotNull(_configuration.Processing, nameof(ProcessingSettings.EnableConsistencyManagement),
+            GetBoolFromEnv("ENABLE_CONSISTENCY_MANAGEMENT"));
 
         // Extraction settings
         SetListFromEnv(_configuration.Extraction, nameof(ExtractionSettings.ActionKeywords), "EXTRACTION_ACTION_KEYWORDS");
@@ -333,6 +360,15 @@ public class ConfigurationService : IConfigurationService
     {
         var value = Environment.GetEnvironmentVariable(envVarName);
         return int.TryParse(value, out var result) ? result : null;
+    }
+
+    /// <summary>
+    /// Gets a true or false value from an environment variable
+    /// </summary>
+    private static bool? GetBoolFromEnv(string envVarName)
+    {
+        var value = Environment.GetEnvironmentVariable(envVarName);
+        return bool.TryParse(value, out var result) ? result : null;
     }
 
     /// <summary>

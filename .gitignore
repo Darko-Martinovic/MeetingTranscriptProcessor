@@ -36,6 +36,7 @@ appsettings.json
 appsettings.*.json
 secrets.json
 config/azure-openai.json
+config/processing.json
 config/jira.json
 
 # NuGet

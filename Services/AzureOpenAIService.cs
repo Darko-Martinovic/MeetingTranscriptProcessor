@@ -20,9 +20,9 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
 {
     private readonly IConfigurationService _configService;
     private readonly HttpClient _httpClient;
-    private readonly ILogger? _logger;
+    private readonly ILogger<AzureOpenAIService>? _logger;
 
-    public AzureOpenAIService(IConfigurationService configService, ILogger? logger = null)
+    public AzureOpenAIService(IConfigurationService configService, ILogger<AzureOpenAIService>? logger = null)
     {
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _logger = logger;
@@ -40,9 +40,10 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
     }
 
     /// <summary>
-    /// Processes transcript content using Azure OpenAI to extract action items
+    /// Processes transcript content using Azure OpenAI to extract action items,
+    /// at the given temperature or the configured one
     /// </summary>
-    public async Task<OpenAIResult> ProcessTranscriptAsync(string prompt)
+    public async Task<OpenAIResult> ProcessTranscriptAsync(string prompt, double? temperature = null)
     {
         if (!IsConfigured())
         {
@@ -58,8 +59,6 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
 
         try
         {
-            Console.WriteLine("🤖 Calling Azure OpenAI for transcript analysis...");
-
             var settings = _configService.GetAzureOpenAISettings();
 
             // Merge system prompt with custom prompt if available
@@ -67,7 +66,6 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
             if (!string.IsNullOrWhiteSpace(settings.CustomPrompt))
             {
                 systemPrompt = $"{settings.SystemPrompt}\n\nAdditional guidance based on training feedback:\n{settings.CustomPrompt}";
-                Console.WriteLine("📝 Using merged system + custom prompt");
             }
 
             var requestBody = new
@@ -82,7 +80,7 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
                     new { role = "user", content = prompt }
                 },
                 max_tokens = settings.MaxTokens,
-                temperature = settings.Temperature,
+                temperature = temperature ?? settings.Temperature,
                 top_p = settings.TopP
             };
 
@@ -128,7 +126,7 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
                 // For simplicity, using average of $0.045/1K tokens
                 decimal estimatedCost = (tokensUsed / 1000m) * 0.045m;
 
-                Console.WriteLine($"✅ Azure OpenAI analysis completed - Tokens: {tokensUsed}, Cost: ${estimatedCost:F4}");
+                _logger?.LogInformation("Azure OpenAI answered: {Tokens} tokens, about ${Cost:F4}", tokensUsed, estimatedCost);
 
                 return new OpenAIResult
                 {
@@ -140,11 +138,7 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                _logger?.LogError(
-                    new Exception($"Azure OpenAI API error: {response.StatusCode}"),
-                    errorContent
-                );
-                Console.WriteLine($"❌ Azure OpenAI API error: {response.StatusCode}");
+                _logger?.LogError("Azure OpenAI answered {Status}: {Body}", response.StatusCode, errorContent);
 
                 // Fallback to local processing
                 var fallbackResult = await ProcessWithFallbackAsync(prompt);
@@ -159,7 +153,6 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error calling Azure OpenAI");
-            Console.WriteLine($"❌ Azure OpenAI error: {ex.Message}");
 
             // Fallback to local processing
             var fallbackResult = await ProcessWithFallbackAsync(prompt);
@@ -194,8 +187,6 @@ public class AzureOpenAIService : IAzureOpenAIService, IDisposable
 
         try
         {
-            Console.WriteLine($"🎫 Formatting Jira ticket for: {actionItemTitle}");
-
             var prompt =
                 $@"
 You are an expert at creating well-formatted Jira tickets. Your task is to create a clean, actionable Jira ticket from the following meeting action item.
@@ -279,7 +270,6 @@ EXAMPLES OF BAD TITLES TO AVOID:
                     )
                     {
                         var result = messageContent.GetString() ?? "";
-                        Console.WriteLine("✅ Jira ticket formatting completed");
                         return result;
                     }
                 }
@@ -289,10 +279,7 @@ EXAMPLES OF BAD TITLES TO AVOID:
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                _logger?.LogError(
-                    new Exception($"Azure OpenAI API error: {response.StatusCode}"),
-                    errorContent
-                );
+                _logger?.LogError("Azure OpenAI answered {Status}: {Body}", response.StatusCode, errorContent);
                 return await FormatJiraTicketFallbackAsync(
                     actionItemTitle,
                     actionItemDescription,
@@ -303,7 +290,6 @@ EXAMPLES OF BAD TITLES TO AVOID:
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error calling Azure OpenAI for Jira ticket formatting");
-            Console.WriteLine($"❌ Azure OpenAI formatting failed: {ex.Message}");
             return await FormatJiraTicketFallbackAsync(
                 actionItemTitle,
                 actionItemDescription,
@@ -331,8 +317,6 @@ EXAMPLES OF BAD TITLES TO AVOID:
     private async Task<string> ProcessWithFallbackAsync(string prompt)
     {
         await Task.Delay(100); // Simulate processing time
-
-        Console.WriteLine("⚙️ Using rule-based fallback processing...");
 
         var lines = prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var actionItems = new List<object>();

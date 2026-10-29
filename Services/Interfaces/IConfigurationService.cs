@@ -9,6 +9,7 @@ public interface IConfigurationService
 {
     AppConfiguration GetConfiguration();
     AzureOpenAISettings GetAzureOpenAISettings();
+    ProcessingSettings GetProcessingSettings();
     ExtractionSettings GetExtractionSettings();
     MeetingTypeSettings GetMeetingTypeSettings();
     LanguageSettings GetLanguageSettings();
@@ -16,6 +17,7 @@ public interface IConfigurationService
     void ReloadConfiguration();
     Task SaveConfigurationAsync();
     Task SaveAzureOpenAISettingsAsync(AzureOpenAISettings settings);
+    Task SaveProcessingSettingsAsync(ProcessingSettings settings);
     string GetExtractionPrompt(MeetingTranscript transcript, string? meetingType = null, string? language = null);
     string GetSystemPrompt(string? language = null);
 }
