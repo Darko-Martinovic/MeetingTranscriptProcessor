@@ -254,8 +254,11 @@ public class ConfigurationService : IConfigurationService
         SetIfNotNull(_configuration.AzureOpenAI, nameof(AzureOpenAISettings.TopP),
             GetDoubleFromEnv("AI_TOP_P"));
 
-        SetIfNotNull(_configuration.AzureOpenAI, nameof(AzureOpenAISettings.ApiVersion),
-            Environment.GetEnvironmentVariable("AI_API_VERSION"));
+        SetIfNotNull(_configuration.AzureOpenAI, nameof(AzureOpenAISettings.InputPricePer1K),
+            GetDecimalFromEnv("AI_INPUT_PRICE_PER_1K"));
+
+        SetIfNotNull(_configuration.AzureOpenAI, nameof(AzureOpenAISettings.OutputPricePer1K),
+            GetDecimalFromEnv("AI_OUTPUT_PRICE_PER_1K"));
 
         SetIfNotNull(_configuration.AzureOpenAI, nameof(AzureOpenAISettings.SystemPrompt),
             Environment.GetEnvironmentVariable("AI_SYSTEM_PROMPT"));
@@ -369,6 +372,15 @@ public class ConfigurationService : IConfigurationService
     {
         var value = Environment.GetEnvironmentVariable(envVarName);
         return bool.TryParse(value, out var result) ? result : null;
+    }
+
+    /// <summary>
+    /// Gets a decimal value from an environment variable
+    /// </summary>
+    private static decimal? GetDecimalFromEnv(string envVarName)
+    {
+        var value = Environment.GetEnvironmentVariable(envVarName);
+        return decimal.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : null;
     }
 
     /// <summary>

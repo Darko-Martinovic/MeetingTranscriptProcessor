@@ -2,6 +2,8 @@ using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using MeetingTranscriptProcessor.Models;
+using UglyToad.PdfPig;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace MeetingTranscriptProcessor.Services;
 
@@ -66,10 +68,10 @@ public class TranscriptReader
         }
         else
         {
-            // The first line of a WebVTT, Word or PDF transcript is usually someone speaking, so those get a
+            // The first line of a WebVTT or Word transcript is usually someone speaking, so those get a
             // generic title that SmartTitleGeneratorService replaces
             var firstLine = transcript.Content.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-            transcript.Title = extension is ".vtt" or ".docx" or ".pdf" || firstLine == null
+            transcript.Title = extension is ".vtt" or ".docx" || firstLine == null
                 ? "Meeting Transcript"
                 : ExtractTitle(firstLine) ?? Path.GetFileNameWithoutExtension(transcript.FileName);
             transcript.MeetingDate = ExtractMeetingDate(transcript.Content) ?? DateTime.UtcNow.Date;
@@ -96,6 +98,7 @@ public class TranscriptReader
             ".xml" => ReadXml(await File.ReadAllTextAsync(filePath)),
             ".vtt" => ReadVtt(await File.ReadAllTextAsync(filePath)),
             ".docx" => ReadDocx(filePath),
+            ".pdf" => ReadPdf(filePath),
             _ => await File.ReadAllTextAsync(filePath)
         };
     }
@@ -139,6 +142,21 @@ public class TranscriptReader
         {
             _logger.LogWarning(ex, "Could not read the Word file {FileName}", Path.GetFileName(filePath));
             return $"[Error reading DOCX file: {ex.Message}]";
+        }
+    }
+
+    private string ReadPdf(string filePath)
+    {
+        try
+        {
+            // The text in reading order, a line per line on the page; a scanned PDF has no text
+            using var document = PdfDocument.Open(filePath);
+            return string.Join('\n', document.GetPages().Select(page => ContentOrderTextExtractor.GetText(page))).Trim();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read the PDF file {FileName}", Path.GetFileName(filePath));
+            return $"[Error reading PDF file: {ex.Message}]";
         }
     }
 

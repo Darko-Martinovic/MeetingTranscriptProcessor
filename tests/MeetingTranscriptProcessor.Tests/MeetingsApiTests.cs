@@ -59,6 +59,13 @@ public class MeetingsApiTests(AppFactory app) : IClassFixture<AppFactory>
             ["Alice Johnson", "Bob Smith", "Carol Davis", "David Wilson"],
             transcript.GetProperty("participants").EnumerateArray().Select(p => p.GetString()));
 
+        // Without a model or Jira, the rules find the items and the tickets are simulated
+        var items = transcript.GetProperty("actionItems").GetArrayLength();
+        Assert.True(items > 0);
+        var tickets = transcript.GetProperty("createdJiraTickets").EnumerateArray().ToList();
+        Assert.Equal(items, tickets.Count);
+        Assert.All(tickets, ticket => Assert.StartsWith("[Simulated]", ticket.GetProperty("ticketUrl").GetString()));
+
         var deleted = await client.DeleteAsync(
             $"/api/v1/meetings/meeting/{Path.GetFileName(archived)}", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, deleted.StatusCode);

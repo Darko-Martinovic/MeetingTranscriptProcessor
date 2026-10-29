@@ -135,7 +135,6 @@ export interface ConfigurationDto {
 export interface AzureOpenAIDto {
   endpoint: string;
   deploymentName: string;
-  apiVersion: string;
   temperature: number;
   maxTokens: number;
   topP: number;

@@ -4,7 +4,8 @@ namespace MeetingTranscriptProcessor.Services;
 
 /// <summary>
 /// Reads a transcript and finds its action items: the model's, checked against the rule-based ones
-/// and for hallucinations as the processing settings say, then merged
+/// and for hallucinations as the processing settings say, then merged. Without a model, or when the
+/// model fails, the rules find them
 /// </summary>
 public class TranscriptProcessorService : ITranscriptProcessorService
 {
@@ -78,9 +79,17 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         var settings = _configService.GetProcessingSettings();
         var extractionSettings = _configService.GetExtractionSettings();
 
+        transcript.DetectedLanguage = _consistencyManager.CreateExtractionConfiguration(transcript).Language;
+
+        if (!_aiService.IsConfigured())
+        {
+            _logger.LogInformation("No model is configured; finding the action items of {FileName} with rules", transcript.FileName);
+            transcript.ActionItems = FindWithRules(transcript, extractionSettings);
+            return;
+        }
+
         try
         {
-            transcript.DetectedLanguage = _consistencyManager.CreateExtractionConfiguration(transcript).Language;
 
             // The consistency manager adds the meeting type and language to the prompt
             ConsistencyContext? consistencyContext = null;
@@ -133,7 +142,11 @@ public class TranscriptProcessorService : ITranscriptProcessorService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Extraction with the model failed for {FileName}; using rules", transcript.FileName);
-            transcript.ActionItems = RuleBasedExtractor.Extract(transcript.Content, transcript.ProjectKey, extractionSettings);
+            transcript.ActionItems = FindWithRules(transcript, extractionSettings);
         }
     }
+
+    private static List<ActionItem> FindWithRules(MeetingTranscript transcript, ExtractionSettings extractionSettings) =>
+        ActionItemMerger.Deduplicate(ActionItemMerger.ApplyBusinessRules(
+            RuleBasedExtractor.Extract(transcript.Content, transcript.ProjectKey, extractionSettings)));
 }

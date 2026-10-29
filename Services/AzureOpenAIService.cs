@@ -1,5 +1,9 @@
-using System.Text;
+using System.ClientModel;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using MeetingTranscriptProcessor.Models;
+using Microsoft.Extensions.AI;
+using OpenAI;
 
 namespace MeetingTranscriptProcessor.Services;
 
@@ -14,181 +18,124 @@ public class OpenAIResult
 }
 
 /// <summary>
-/// Service for processing transcript content using Azure OpenAI
+/// Calls the model through Microsoft.Extensions.AI. The chat client is built from the settings
+/// (AOAI_ENDPOINT, AOAI_APIKEY and the deployment) against Azure OpenAI's v1 API, and rebuilt when
+/// the deployment changes on the Settings page
 /// </summary>
-public class AzureOpenAIService : IAzureOpenAIService, IDisposable
+public class AzureOpenAIService : IAzureOpenAIService
 {
+    private const string JiraSystemPrompt =
+        "You are an expert at creating well-formatted Jira tickets in ENGLISH ONLY. Regardless of the input language, you must always translate and create clear, actionable ticket titles and descriptions in English. You always respond with valid JSON format.";
+
+    private static readonly string[] ActionPatterns =
+    [
+        @"I'll\s+(.*?)(?:\.|,|$)",
+        @"I\s+will\s+(.*?)(?:\.|,|$)",
+        @"create\s+(.*?)(?:\.|,|$)",
+        @"fix\s+(.*?)(?:\.|,|$)",
+        @"investigate\s+(.*?)(?:\.|,|$)",
+        @"review\s+(.*?)(?:\.|,|$)",
+        @"update\s+(.*?)(?:\.|,|$)",
+        @"implement\s+(.*?)(?:\.|,|$)"
+    ];
+
     private readonly IConfigurationService _configService;
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<AzureOpenAIService>? _logger;
+    private readonly Func<AzureOpenAISettings, IChatClient> _createChatClient;
+    private readonly ILogger<AzureOpenAIService> _logger;
+    private readonly Lock _clientLock = new();
+    private (string Key, IChatClient Client)? _chatClient;
 
-    public AzureOpenAIService(IConfigurationService configService, ILogger<AzureOpenAIService>? logger = null)
+    public AzureOpenAIService(
+        IConfigurationService configService,
+        ILogger<AzureOpenAIService> logger,
+        Func<AzureOpenAISettings, IChatClient>? createChatClient = null)
     {
-        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+        _configService = configService;
         _logger = logger;
-        _httpClient = new HttpClient();
-
-        // Configure HttpClient for Azure OpenAI API if credentials are available
-        if (IsConfigured())
-        {
-            var settings = _configService.GetAzureOpenAISettings();
-            _httpClient.DefaultRequestHeaders.Add("api-key", settings.ApiKey);
-            _httpClient.DefaultRequestHeaders.Accept.Add(
-                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json")
-            );
-        }
+        _createChatClient = createChatClient ?? CreateChatClient;
     }
 
     /// <summary>
-    /// Processes transcript content using Azure OpenAI to extract action items,
-    /// at the given temperature or the configured one
+    /// A chat client for the deployment on Azure OpenAI's v1 API, with the key in the request
+    /// </summary>
+    public static IChatClient CreateChatClient(AzureOpenAISettings settings) =>
+        new OpenAIClient(
+                new ApiKeyCredential(settings.ApiKey!),
+                new OpenAIClientOptions { Endpoint = V1Endpoint(settings.Endpoint!) })
+            .GetChatClient(settings.DeploymentName)
+            .AsIChatClient();
+
+    /// <summary>
+    /// The v1 API under a resource endpoint: https://name.openai.azure.com becomes
+    /// https://name.openai.azure.com/openai/v1/; an endpoint that already ends in /openai/v1 is kept
+    /// </summary>
+    public static Uri V1Endpoint(string endpoint)
+    {
+        var trimmed = endpoint.Trim().TrimEnd('/');
+        return new Uri(trimmed.EndsWith("/openai/v1", StringComparison.OrdinalIgnoreCase) ? trimmed + "/" : trimmed + "/openai/v1/");
+    }
+
+    /// <summary>
+    /// True when the endpoint, the key and the deployment are set
+    /// </summary>
+    public bool IsConfigured()
+    {
+        var settings = _configService.GetAzureOpenAISettings();
+        return !string.IsNullOrEmpty(settings.Endpoint)
+            && !string.IsNullOrEmpty(settings.ApiKey)
+            && !string.IsNullOrEmpty(settings.DeploymentName);
+    }
+
+    /// <summary>
+    /// Asks the model to extract action items, at the given temperature or the configured one.
+    /// Throws when the model isn't configured or the call fails; the caller falls back to rules
     /// </summary>
     public async Task<OpenAIResult> ProcessTranscriptAsync(string prompt, double? temperature = null)
     {
-        if (!IsConfigured())
+        var settings = _configService.GetAzureOpenAISettings();
+        var systemPrompt = string.IsNullOrWhiteSpace(settings.CustomPrompt)
+            ? settings.SystemPrompt
+            : $"{settings.SystemPrompt}\n\nAdditional guidance based on training feedback:\n{settings.CustomPrompt}";
+
+        var response = await ChatClient(settings).GetResponseAsync(
+            [new ChatMessage(ChatRole.System, systemPrompt), new ChatMessage(ChatRole.User, prompt)],
+            new ChatOptions
+            {
+                Temperature = (float)(temperature ?? settings.Temperature),
+                TopP = (float)settings.TopP,
+                MaxOutputTokens = settings.MaxTokens
+            });
+
+        var inputTokens = response.Usage?.InputTokenCount ?? 0;
+        var outputTokens = response.Usage?.OutputTokenCount ?? 0;
+        var result = new OpenAIResult
         {
-            _logger?.LogWarning("Azure OpenAI not configured, using fallback processing");
-            var fallbackResult = await ProcessWithFallbackAsync(prompt);
-            return new OpenAIResult
-            {
-                Content = fallbackResult,
-                TokensUsed = 0,
-                EstimatedCost = 0
-            };
-        }
+            Content = response.Text,
+            TokensUsed = (int)(response.Usage?.TotalTokenCount ?? inputTokens + outputTokens),
+            EstimatedCost = inputTokens / 1000m * settings.InputPricePer1K + outputTokens / 1000m * settings.OutputPricePer1K
+        };
 
-        try
-        {
-            var settings = _configService.GetAzureOpenAISettings();
-
-            // Merge system prompt with custom prompt if available
-            var systemPrompt = settings.SystemPrompt;
-            if (!string.IsNullOrWhiteSpace(settings.CustomPrompt))
-            {
-                systemPrompt = $"{settings.SystemPrompt}\n\nAdditional guidance based on training feedback:\n{settings.CustomPrompt}";
-            }
-
-            var requestBody = new
-            {
-                messages = new[]
-                {
-                    new
-                    {
-                        role = "system",
-                        content = systemPrompt
-                    },
-                    new { role = "user", content = prompt }
-                },
-                max_tokens = settings.MaxTokens,
-                temperature = temperature ?? settings.Temperature,
-                top_p = settings.TopP
-            };
-
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var url = $"{settings.Endpoint}/openai/deployments/{settings.DeploymentName}/chat/completions?api-version={settings.ApiVersion}";
-            var response = await _httpClient.PostAsync(url, content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var responseData = JsonSerializer.Deserialize<JsonElement>(responseContent);
-
-                string resultContent = "";
-                int tokensUsed = 0;
-
-                if (
-                    responseData.TryGetProperty("choices", out var choices)
-                    && choices.GetArrayLength() > 0
-                )
-                {
-                    var firstChoice = choices[0];
-                    if (
-                        firstChoice.TryGetProperty("message", out var message)
-                        && message.TryGetProperty("content", out var messageContent)
-                    )
-                    {
-                        resultContent = messageContent.GetString() ?? "";
-                    }
-                }
-
-                // Extract token usage
-                if (responseData.TryGetProperty("usage", out var usage))
-                {
-                    if (usage.TryGetProperty("total_tokens", out var totalTokens))
-                    {
-                        tokensUsed = totalTokens.GetInt32();
-                    }
-                }
-
-                // Calculate estimated cost (GPT-4 pricing: ~$0.03/1K prompt tokens, ~$0.06/1K completion tokens)
-                // For simplicity, using average of $0.045/1K tokens
-                decimal estimatedCost = (tokensUsed / 1000m) * 0.045m;
-
-                _logger?.LogInformation("Azure OpenAI answered: {Tokens} tokens, about ${Cost:F4}", tokensUsed, estimatedCost);
-
-                return new OpenAIResult
-                {
-                    Content = resultContent,
-                    TokensUsed = tokensUsed,
-                    EstimatedCost = estimatedCost
-                };
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger?.LogError("Azure OpenAI answered {Status}: {Body}", response.StatusCode, errorContent);
-
-                // Fallback to local processing
-                var fallbackResult = await ProcessWithFallbackAsync(prompt);
-                return new OpenAIResult
-                {
-                    Content = fallbackResult,
-                    TokensUsed = 0,
-                    EstimatedCost = 0
-                };
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Error calling Azure OpenAI");
-
-            // Fallback to local processing
-            var fallbackResult = await ProcessWithFallbackAsync(prompt);
-            return new OpenAIResult
-            {
-                Content = fallbackResult,
-                TokensUsed = 0,
-                EstimatedCost = 0
-            };
-        }
+        _logger.LogInformation(
+            "The model answered: {Tokens} tokens, about ${Cost:F4}", result.TokensUsed, result.EstimatedCost);
+        return result;
     }
 
     /// <summary>
-    /// Formats action items into properly structured Jira ticket data using Azure OpenAI
+    /// Asks the model for a clean, English Jira ticket (JSON with title, description, priority, type, labels);
+    /// without a model, or when the call fails, the ticket is made from the action item with rules
     /// </summary>
     public async Task<string> FormatJiraTicketAsync(
         string actionItemTitle,
         string actionItemDescription,
         string meetingContext,
-        string participants
-    )
+        string participants)
     {
         if (!IsConfigured())
         {
-            _logger?.LogWarning("Azure OpenAI not configured, using fallback formatting");
-            return await FormatJiraTicketFallbackAsync(
-                actionItemTitle,
-                actionItemDescription,
-                meetingContext
-            );
+            return FormatJiraTicketFallback(actionItemTitle, actionItemDescription);
         }
 
-        try
-        {
-            var prompt =
-                $@"
+        var prompt = $@"
 You are an expert at creating well-formatted Jira tickets. Your task is to create a clean, actionable Jira ticket from the following meeting action item.
 
 CRITICAL RULES:
@@ -230,136 +177,46 @@ EXAMPLES OF BAD TITLES TO AVOID:
 - ""We discussed the API issue""
 ";
 
-            var settings = _configService.GetAzureOpenAISettings();
-            var requestBody = new
-            {
-                messages = new[]
-                {
-                    new
-                    {
-                        role = "system",
-                        content = "You are an expert at creating well-formatted Jira tickets in ENGLISH ONLY. Regardless of the input language, you must always translate and create clear, actionable ticket titles and descriptions in English. You always respond with valid JSON format."
-                    },
-                    new { role = "user", content = prompt }
-                },
-                max_tokens = 1500,
-                temperature = 0.2, // Low temperature for consistent formatting
-                top_p = 0.9
-            };
-
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var url = $"{settings.Endpoint}/openai/deployments/{settings.DeploymentName}/chat/completions?api-version={settings.ApiVersion}";
-            var response = await _httpClient.PostAsync(url, content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var responseData = JsonSerializer.Deserialize<JsonElement>(responseContent);
-
-                if (
-                    responseData.TryGetProperty("choices", out var choices)
-                    && choices.GetArrayLength() > 0
-                )
-                {
-                    var firstChoice = choices[0];
-                    if (
-                        firstChoice.TryGetProperty("message", out var message)
-                        && message.TryGetProperty("content", out var messageContent)
-                    )
-                    {
-                        var result = messageContent.GetString() ?? "";
-                        return result;
-                    }
-                }
-
-                throw new InvalidOperationException("Unexpected response format from Azure OpenAI");
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger?.LogError("Azure OpenAI answered {Status}: {Body}", response.StatusCode, errorContent);
-                return await FormatJiraTicketFallbackAsync(
-                    actionItemTitle,
-                    actionItemDescription,
-                    meetingContext
-                );
-            }
+        try
+        {
+            var response = await ChatClient(_configService.GetAzureOpenAISettings()).GetResponseAsync(
+                [new ChatMessage(ChatRole.System, JiraSystemPrompt), new ChatMessage(ChatRole.User, prompt)],
+                new ChatOptions { Temperature = 0.2f, TopP = 0.9f, MaxOutputTokens = 1500 });
+            return response.Text;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error calling Azure OpenAI for Jira ticket formatting");
-            return await FormatJiraTicketFallbackAsync(
-                actionItemTitle,
-                actionItemDescription,
-                meetingContext
-            );
+            _logger.LogWarning(ex, "Formatting the Jira ticket with the model failed; using rules");
+            return FormatJiraTicketFallback(actionItemTitle, actionItemDescription);
         }
     }
 
-    /// <summary>
-    /// Checks if Azure OpenAI is properly configured
-    /// </summary>
-    public bool IsConfigured()
+    private IChatClient ChatClient(AzureOpenAISettings settings)
     {
-        var settings = _configService.GetAzureOpenAISettings();
-        var isConfigured = !string.IsNullOrEmpty(settings.Endpoint)
-            && !string.IsNullOrEmpty(settings.ApiKey)
-            && !string.IsNullOrEmpty(settings.DeploymentName);
-
-        return isConfigured;
-    }
-
-    /// <summary>
-    /// Fallback processing when Azure OpenAI is not available
-    /// </summary>
-    private async Task<string> ProcessWithFallbackAsync(string prompt)
-    {
-        await Task.Delay(100); // Simulate processing time
-
-        var lines = prompt.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var actionItems = new List<object>();
-
-        foreach (var line in lines)
+        if (!IsConfigured())
         {
-            var trimmedLine = line.Trim();
-
-            // Look for action item indicators
-            if (ContainsActionItemKeywords(trimmedLine) && trimmedLine.Length > 10)
-            {
-                var actionItem = new
-                {
-                    title = ExtractTitle(trimmedLine),
-                    description = trimmedLine,
-                    assignedTo = ExtractAssignee(trimmedLine),
-                    dueDate = ExtractDueDate(trimmedLine),
-                    priority = DeterminePriority(trimmedLine),
-                    type = DetermineType(trimmedLine),
-                    context = trimmedLine,
-                    requiresJiraTicket = true
-                };
-
-                actionItems.Add(actionItem);
-            }
+            throw new InvalidOperationException("Azure OpenAI isn't configured: set AOAI_ENDPOINT, AOAI_APIKEY and the deployment");
         }
 
-        var result = new { actionItems };
-        return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+        // One client per endpoint, deployment and key; a change on the Settings page builds a new one
+        var key = $"{settings.Endpoint}|{settings.DeploymentName}|{settings.ApiKey!.GetHashCode()}";
+        lock (_clientLock)
+        {
+            if (_chatClient is not { } current || current.Key != key)
+            {
+                _chatClient = (key, _createChatClient(settings));
+            }
+
+            return _chatClient.Value.Client;
+        }
     }
 
     /// <summary>
-    /// Fallback method for formatting Jira tickets when AI is not available
+    /// A ticket made from the action item: its title without "Action item:" and similar prefixes,
+    /// or the action in it when it reads like dialogue
     /// </summary>
-    private async Task<string> FormatJiraTicketFallbackAsync(
-        string title,
-        string description,
-        string context
-    )
+    private static string FormatJiraTicketFallback(string title, string description)
     {
-        await Task.Delay(50); // Simulate processing time
-
-        // Clean up the title
         var cleanTitle = title
             .Replace("Create new Jira ticket:", "", StringComparison.OrdinalIgnoreCase)
             .Replace("Create Jira ticket:", "", StringComparison.OrdinalIgnoreCase)
@@ -367,206 +224,54 @@ EXAMPLES OF BAD TITLES TO AVOID:
             .Replace("TODO:", "", StringComparison.OrdinalIgnoreCase)
             .Trim();
 
-        // Check if title contains conversation snippets and extract action
-        if (cleanTitle.Contains("\"context\":") || cleanTitle.Contains("context\":"))
+        if (cleanTitle.Contains("context\":"))
         {
-            // Extract action from conversation snippet
             cleanTitle = ExtractActionFromConversation(cleanTitle, description);
         }
 
-        // If title is still empty or too long, use a fallback
         if (string.IsNullOrEmpty(cleanTitle))
         {
             cleanTitle = "Review meeting action item";
         }
         else if (cleanTitle.Length > 80)
         {
-            cleanTitle = cleanTitle.Substring(0, 77) + "...";
+            cleanTitle = cleanTitle[..77] + "...";
         }
 
-        var formattedTicket = new
+        return JsonSerializer.Serialize(new
         {
             title = cleanTitle,
-            description = !string.IsNullOrEmpty(description) ? description : cleanTitle,
+            description = string.IsNullOrEmpty(description) ? cleanTitle : description,
             priority = "Medium",
             type = "Task",
             labels = new[] { "meeting-generated", "action-item" }
-        };
-
-        return JsonSerializer.Serialize(
-            formattedTicket,
-            new JsonSerializerOptions { WriteIndented = true }
-        );
+        });
     }
 
-    /// <summary>
-    /// Extracts actionable title from conversation snippets
-    /// </summary>
     private static string ExtractActionFromConversation(string conversationTitle, string description)
     {
-        // Look for common action patterns in the conversation
-        var actionPatterns = new[]
+        foreach (var text in new[] { conversationTitle, description })
         {
-            @"I'll\s+(.*?)(?:\.|,|$)",
-            @"I\s+will\s+(.*?)(?:\.|,|$)",
-            @"create\s+(.*?)(?:\.|,|$)",
-            @"fix\s+(.*?)(?:\.|,|$)",
-            @"investigate\s+(.*?)(?:\.|,|$)",
-            @"review\s+(.*?)(?:\.|,|$)",
-            @"update\s+(.*?)(?:\.|,|$)",
-            @"implement\s+(.*?)(?:\.|,|$)"
-        };
-
-        foreach (var pattern in actionPatterns)
-        {
-            var match = System.Text.RegularExpressions.Regex.Match(
-                conversationTitle,
-                pattern,
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase
-            );
-            if (match.Success && match.Groups[1].Value.Trim().Length > 3)
+            foreach (var pattern in ActionPatterns)
             {
-                var action = match.Groups[1].Value.Trim();
-                return char.ToUpper(action[0]) + action.Substring(1);
-            }
-        }
-
-        // If no action found, try to extract from description
-        if (!string.IsNullOrEmpty(description))
-        {
-            foreach (var pattern in actionPatterns)
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(
-                    description,
-                    pattern,
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase
-                );
+                var match = Regex.Match(text ?? "", pattern, RegexOptions.IgnoreCase);
                 if (match.Success && match.Groups[1].Value.Trim().Length > 3)
                 {
                     var action = match.Groups[1].Value.Trim();
-                    return char.ToUpper(action[0]) + action.Substring(1);
+                    return char.ToUpper(action[0]) + action[1..];
                 }
             }
         }
 
-        // Default fallback
         return "Complete meeting action item";
     }
 
-    #region Helper Methods
-
-    // These values are hard-coded for simplicity, but in reality they would be in a configuration file
-    private static bool ContainsActionItemKeywords(string line)
-    {
-        var keywords = new[]
-        {
-            "action",
-            "todo",
-            "task",
-            "implement",
-            "create",
-            "fix",
-            "review",
-            "update",
-            "investigate"
-        };
-        return keywords.Any(keyword => line.Contains(keyword, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static string ExtractTitle(string line)
-    {
-        // Clean up the line to extract a proper title
-        var title = line.Replace("Action item:", "", StringComparison.OrdinalIgnoreCase)
-            .Replace("TODO:", "", StringComparison.OrdinalIgnoreCase)
-            .Replace("Create new Jira ticket:", "", StringComparison.OrdinalIgnoreCase)
-            .Trim();
-
-        return string.IsNullOrEmpty(title) ? "Action item" : title;
-    }
-
-    private static string? ExtractAssignee(string line)
-    {
-        var patterns = new[] { @"assigned\s+to:?\s*([^\s,]+)", @"@([^\s,]+)" };
-
-        foreach (var pattern in patterns)
-        {
-            var match = System.Text.RegularExpressions.Regex.Match(
-                line,
-                pattern,
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase
-            );
-            if (match.Success)
-            {
-                return match.Groups[1].Value;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? ExtractDueDate(string line)
-    {
-        var patterns = new[] { @"due:?\s*(\d{4}-\d{2}-\d{2})", @"by\s+(\d{1,2}/\d{1,2}/\d{4})" };
-
-        foreach (var pattern in patterns)
-        {
-            var match = System.Text.RegularExpressions.Regex.Match(
-                line,
-                pattern,
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase
-            );
-            if (match.Success)
-            {
-                return match.Groups[1].Value;
-            }
-        }
-
-        return null;
-    }
-
-    private static string DeterminePriority(string line)
-    {
-        var lowerLine = line.ToLowerInvariant();
-
-        if (
-            lowerLine.Contains("urgent")
-            || lowerLine.Contains("critical")
-            || lowerLine.Contains("high")
-        )
-            return "High";
-
-        if (lowerLine.Contains("low") || lowerLine.Contains("minor"))
-            return "Low";
-
-        return "Medium";
-    }
-
-    private static string DetermineType(string line)
-    {
-        var lowerLine = line.ToLowerInvariant();
-
-        if (lowerLine.Contains("bug") || lowerLine.Contains("fix"))
-            return "Bug";
-
-        if (lowerLine.Contains("investigate") || lowerLine.Contains("research"))
-            return "Investigation";
-
-        if (lowerLine.Contains("document") || lowerLine.Contains("doc"))
-            return "Documentation";
-
-        if (lowerLine.Contains("review"))
-            return "Review";
-
-        return "Task";
-    }
-
-    #endregion
-
     /// <summary>
-    /// Disposes of the HttpClient resources
+    /// Disposes the chat client
     /// </summary>
     public void Dispose()
     {
-        _httpClient?.Dispose();
+        _chatClient?.Client.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

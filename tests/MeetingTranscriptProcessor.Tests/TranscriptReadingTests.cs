@@ -73,6 +73,28 @@ public class TranscriptReadingTests(AppFactory app) : IClassFixture<AppFactory>
     }
 
     [Fact]
+    public async Task A_pdf_file_is_read_as_text()
+    {
+        var transcript = await ProcessAsync("sample_meeting_transcript.pdf");
+
+        Assert.Equal(TranscriptStatus.Processed, transcript.Status);
+        Assert.Equal("Weekly Team Standup - Project Phoenix", transcript.Title);
+        Assert.Equal(new DateTime(2024, 1, 15), transcript.MeetingDate);
+        Assert.Equal(["Alice Johnson", "Bob Smith", "Carol Davis", "David Wilson"], transcript.Participants);
+        Assert.Contains("password reset", transcript.Content);
+    }
+
+    [Fact]
+    public async Task Without_a_model_the_rules_find_the_action_items()
+    {
+        var transcript = await ProcessAsync("sample_meeting_transcript.txt");
+
+        Assert.NotEmpty(transcript.ActionItems);
+        Assert.Contains(transcript.ActionItems, item => item.Title.Contains("password reset", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, transcript.TokensUsed ?? 0);
+    }
+
+    [Fact]
     public async Task An_empty_file_is_an_error()
     {
         var empty = Path.Combine(app.Root, "empty.txt");

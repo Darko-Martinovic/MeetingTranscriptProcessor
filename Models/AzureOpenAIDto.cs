@@ -7,7 +7,6 @@ namespace MeetingTranscriptProcessor.Models
     {
         public string Endpoint { get; set; } = string.Empty;
         public string DeploymentName { get; set; } = string.Empty;
-        public string ApiVersion { get; set; } = string.Empty;
         public double Temperature { get; set; }
         public int MaxTokens { get; set; }
         public double TopP { get; set; }

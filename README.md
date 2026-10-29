@@ -1,239 +1,145 @@
 # Meeting Transcript Processor
 
-An intelligent web application that automatically processes meeting transcripts and creates Jira tickets from extracted action items using Azure OpenAI.
+A web application that reads meeting transcripts, finds the action items with Azure OpenAI (or with rules when no model is configured), and creates Jira tickets for them.
+
+[![CI](https://github.com/Darko-Martinovic/MeetingTranscriptProcessor/actions/workflows/ci.yml/badge.svg)](https://github.com/Darko-Martinovic/MeetingTranscriptProcessor/actions/workflows/ci.yml)
 
 ## ✨ Key Features
 
-- 🤖 **AI-Powered Extraction** - Uses Azure OpenAI with advanced validation (hallucination detection, consistency management)
-- 🎫 **Jira Integration** - Automatically creates tickets from action items
-- � **Modern Web UI** - React frontend with folder management, filtering, and batch upload
-- � **Multi-format Support** - Processes .txt, .md, .json, .xml, .docx, .pdf, and .vtt files
-- � **Fallback Mode** - Works without AI credentials using rule-based extraction
-- 🎯 **Context-Aware** - Adapts to meeting types (standup, sprint, incident, etc.) and languages (EN/FR/NL)
+- 🤖 **AI extraction** with Azure OpenAI, checked against rule-based extraction and for hallucinations
+- 🎫 **Jira integration**: a ticket per action item, or simulated tickets when Jira isn't configured
+- 🖥️ **Web UI**: React frontend with folders, filters, favourites and batch upload
+- 📄 **Formats**: .txt, .md, .json (including the MS Teams / Graph layout), .xml, .docx, .pdf and .vtt (MS Teams recordings)
+- ⚙️ **Offline mode**: without a model, the action items are found with rules
+- 🎯 **Context-aware**: adapts the prompt to the meeting type (standup, sprint, incident...) and language (English, French, Dutch)
+- 💰 **Token usage and cost** of every meeting
 
 ## 🎬 Demo Video
 
-See the Meeting Transcript Processor in action:
-
 https://github.com/user-attachments/assets/a66fb21f-1d1f-48f7-9840-7bbb8113e0d9
-
-_Watch how the application automatically processes meeting transcripts, extracts action items using Azure OpenAI, and creates Jira tickets seamlessly._
 
 ### Latest Features Demo
 
 https://github.com/user-attachments/assets/12b2ecf6-cfd0-4797-958a-8018b7a732e4
 
-**Main Features Showcased:**
+1. **Train AI**: try the extraction on a transcript at a chosen temperature and turn feedback into a custom prompt
+2. **Dutch** as an input language
+3. **Token usage and cost** on each meeting card
+4. **VTT and DOCX files** (native MS Teams transcripts)
 
-1. **Train AI** - Advanced AI model training and validation
-2. **Support for Dutch as an input language** - Multi-language processing capabilities
-3. **Token usage and Cost present within a meetings card** - Real-time AI cost tracking
-4. **Support for VTT files (native MS Teams transcripts) and DOCX files** - Enhanced file format compatibility
+The videos show version 1, which is kept under the [`v1`](https://github.com/Darko-Martinovic/MeetingTranscriptProcessor/tree/v1) tag.
 
 ## 🚀 Quick Start
 
-### Prerequisites
+Prerequisites: the .NET 10 SDK and Node.js 20 or later. Azure OpenAI and Jira are optional.
 
-- .NET 10 SDK
-- Node.js 18+ and npm
-- Azure OpenAI account (optional)
-- Jira account with API access (optional)
+```powershell
+git clone https://github.com/Darko-Martinovic/MeetingTranscriptProcessor.git
+cd MeetingTranscriptProcessor
+Copy-Item .env.example .env      # then fill in what you have, or leave the credentials out
 
-### Installation & Setup
+# Backend, from the repository root (it reads .env, config/ and data/ from there)
+dotnet run
 
-1. **Clone and restore dependencies:**
+# Frontend, in a second terminal
+cd frontend/meeting-transcript-ui
+npm install
+npm run dev
+```
 
-   ```powershell
-   git clone <repository-url>
-   cd MeetingTranscriptProcessor
-   dotnet restore
-   ```
-
-2. **Configure environment (optional):**
-
-   ```powershell
-   Copy-Item .env.example .env
-   # Edit .env with your Azure OpenAI and Jira credentials
-   ```
-
-3. **Run the application:**
-
-   **Backend** (from the repository root, so it finds `.env`, `config/` and `data/`):
-
-   ```powershell
-   dotnet run
-   ```
-
-   **Frontend:**
-
-   ```powershell
-   cd frontend/meeting-transcript-ui
-   npm install
-   npm run dev
-   ```
-
-4. **Access the application:**
-   - Frontend: http://localhost:5175
-   - Backend API: http://localhost:5100
+Open http://localhost:5175. The API listens on http://localhost:5100/api/v1.
 
 ## 📁 How It Works
 
 ```
-📤 Upload → � Processing → 🤖 AI Analysis → 🎫 Jira Tickets → 📦 Archive
+Upload → data/Incoming → data/Processing → model or rules → Jira → data/Archive
 ```
 
-1. Upload transcript files via web interface
-2. Files automatically move through Incoming → Processing → Archive
-3. AI extracts action items with validation
-4. Jira tickets created automatically
-5. View results in the Archive folder with filtering
+1. A file uploaded on the web page, or copied into `data/Incoming`, is picked up by the background worker. Several files are processed at a time (3 by default).
+2. The file is read as text with its title, date, participants and Jira project.
+3. The model extracts the action items. With validation on, they are compared with what the rules find; with hallucination detection on, items the transcript doesn't support are dropped. Similar items are merged.
+4. A Jira ticket is created for each item that needs one. If Jira refuses a ticket, the meeting is archived with the `error` status.
+5. The file is archived as `yyyyMMdd_HHmmss_status_Language_name`, with what was found saved beside it in `name.meta.json`.
 
 ## ⚙️ Configuration
 
-All settings are **optional** - the app works in simulation mode without credentials.
+Everything is optional: with no credentials, the rules find the action items and the tickets are simulated.
 
-### Port Configuration
+### `.env`
 
-The application uses the following default ports:
-- **Frontend (React + Vite)**: Port `5175` (configured in `vite.config.ts`)
-- **Backend (.NET API)**: Port `5100` (configured in `Properties/launchSettings.json`)
+| Setting | What it does |
+|---|---|
+| `AOAI_ENDPOINT`, `AOAI_APIKEY`, `CHATCOMPLETION_DEPLOYMENTNAME` | The Azure OpenAI resource, its key and the deployment. The app calls the resource's v1 API (`<endpoint>/openai/v1/`), so no API version is needed |
+| `AI_TEMPERATURE`, `AI_TOP_P`, `AI_MAX_TOKENS`, `AI_SYSTEM_PROMPT` | Model settings, also editable on the Settings page |
+| `AI_INPUT_PRICE_PER_1K`, `AI_OUTPUT_PRICE_PER_1K` | Prices in dollars of 1,000 tokens, for the cost shown with each meeting (gpt-4o's by default) |
+| `JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | Jira Cloud and the default project. A transcript that names a project (`Project: ABC`, or an issue key such as `ABC-123`) uses that one |
+| `ENABLE_VALIDATION`, `ENABLE_HALLUCINATION_DETECTION`, `ENABLE_CONSISTENCY_MANAGEMENT`, `VALIDATION_CONFIDENCE_THRESHOLD`, `MAX_CONCURRENT_FILES` | The checks on what the model finds and how many files are processed at a time |
+| `INCOMING_DIRECTORY`, `PROCESSING_DIRECTORY`, `ARCHIVE_DIRECTORY` | The folders, `data/...` by default; relative paths start from the folder the app runs in |
+| `API_KEY`, `CORS_ORIGINS` | Reaching the API from other machines (below) |
+| `EXTRACTION_*`, `MEETING_*` | The keywords of the rule-based extraction and the meeting type detection |
 
-To use different ports:
-- **Frontend**: Set `VITE_API_URL` in `frontend/meeting-transcript-ui/.env`
-- **Backend**: Modify the `applicationUrl` in `Properties/launchSettings.json`
+The credentials are read from `.env` only. The Settings page shows them but can't change them, and the API key is never written to the files in `config/`.
 
-### Environment Variables (.env)
+### The Settings page
 
-```env
-# Azure OpenAI (Optional - enables AI extraction)
-AOAI_ENDPOINT=https://your-resource.openai.azure.com/
-AOAI_APIKEY=your-api-key
-CHATCOMPLETION_DEPLOYMENTNAME=gpt-35-turbo
-
-# Jira (Optional - enables actual ticket creation)
-JIRA_URL=https://your-domain.atlassian.net
-JIRA_API_TOKEN=your-api-token
-JIRA_EMAIL=your-email@company.com
-JIRA_PROJECT_KEY=TASK
-
-# AI Validation (Optional)
-ENABLE_VALIDATION=true
-ENABLE_HALLUCINATION_DETECTION=true
-ENABLE_CONSISTENCY_MANAGEMENT=true
-```
+The Settings page changes the model settings (deployment, temperature, max tokens, top P) and the processing settings (the checks, the confidence threshold, files at a time). They are saved in `config/azure-openai.json` and `config/processing.json` and apply to the next file. A value set in `.env` wins when the app starts.
 
 ### Reaching the API from other machines
 
-The backend listens on this machine only. To serve other machines, set `API_KEY` in `.env` (the backend refuses to listen on any other address without it), put the same value in `VITE_API_KEY` in the frontend's `.env`, and list the frontend's origin in `CORS_ORIGINS`. Anyone who can open the frontend can read the key from it, so serve it only to people you trust.
+The backend and the Vite dev server listen on this machine only. To serve other machines:
 
-### Operation Modes
+1. Set `API_KEY` in `.env`. Without it, the backend refuses to start on an address other machines can reach, such as `ASPNETCORE_URLS=http://0.0.0.0:5100`. With it, every `/api` request must send the key in the `X-Api-Key` header.
+2. Put the same value in `VITE_API_KEY` in `frontend/meeting-transcript-ui/.env`, and list the frontend's origin in `CORS_ORIGINS`.
+3. Start the frontend with `npm run dev -- --host`.
 
-- **🤖 Full AI Mode**: Azure OpenAI + Jira (recommended)
-- **🔧 Hybrid Mode**: Either Azure OpenAI OR Jira
-- **⚙️ Offline Mode**: No credentials needed, rule-based extraction
+Anyone who can open the frontend can read the key from it, so serve it only to people you trust.
 
 ## 🏗️ Architecture
 
-### Frontend (React + TypeScript)
+- **Backend** (.NET 10, ASP.NET Core): `Program.cs` hosts the API and `TranscriptWorker`, the background service that processes incoming files.
+  - `TranscriptReader` reads every format.
+  - `TranscriptProcessorService` runs the extraction and the checks, with `ConsistencyManager`, `ActionItemValidator` and `HallucinationDetector`.
+  - `AzureOpenAIService` calls the model through Microsoft.Extensions.AI.
+  - `JiraTicketService` creates the tickets.
+  - `MeetingStore` manages the folders and the metadata.
+- **Frontend** (React 19, TypeScript, Vite): folder navigation, filters, batch upload, favourites, the Settings page and the Train AI page. `src/services/api.ts` is the API client.
+- **Tests**: xUnit v3 in `tests/`. They run the app on temporary folders with a fake model and a fake Jira, and never call Azure OpenAI or Jira.
 
-- Modern React 18 with TypeScript
-- Vite for fast development
-- CSS Modules for styling
-- Responsive design with mobile support
+## 📖 API
 
-### Backend (.NET 10)
+All routes are under `/api/v1`.
 
-- ASP.NET Core Web API
-- Background file processing services
-- Advanced AI validation pipeline
-- RESTful API endpoints
+| Route | What it does |
+|---|---|
+| `GET meetings/folders` | The folders with their meeting counts |
+| `GET meetings/folders/{Archive\|Incoming\|Processing\|Recent\|Favorites}/meetings` | The meetings in a folder; filters: `search`, `status`, `language`, `participants`, `dateFrom`, `dateTo`, `hasJiraTickets`, `sortBy`, `sortOrder`, `favoriteFileNames` |
+| `GET meetings/meeting/{fileName}` | A meeting with its action items and tickets |
+| `GET meetings/meeting/{fileName}/tickets` | Its Jira tickets |
+| `POST meetings/upload` | Upload a transcript (form field `file`) |
+| `PUT meetings/meeting/{fileName}/title`, `PUT .../move`, `DELETE meetings/meeting/{fileName}` | Rename, move or delete a meeting |
+| `GET processing/queue`, `GET processing/status/{id}`, `DELETE processing/completed` | The processing queue |
+| `GET configuration`, `GET configuration/system-status` | Settings and status |
+| `PUT configuration/azure-openai`, `PUT configuration/extraction`, `PUT configuration/prompts` | Model settings, processing settings, custom prompt |
+| `POST training/process` | Extract the action items of a transcript at a given `temperature` without archiving it or creating tickets |
 
-### AI/ML Validation Services
-
-- **HallucinationDetector**: 6-step validation preventing false positives
-- **ConsistencyManager**: Context-aware extraction for 8 meeting types + 3 languages
-- **ActionItemValidator**: 4-technique validation with weighted scoring
-
-## � Sample Files & Usage
-
-### Supported Formats
-
-- Text files (.txt, .md)
-- JSON/XML (.json, .xml)
-- Documents (.docx, .pdf)
-- WebVTT (.vtt) - MS Teams recording transcripts
-
-### Sample Transcript
-
-```text
-Meeting: Sprint Planning - Q1 2025
-Date: 2025-01-15
-Participants: Alice, Bob, Carol
-
-Alice: We need to implement user authentication by Friday.
-Bob: I'll fix the login bug and create API documentation.
-Carol: Let's schedule the UI review meeting.
-
-Action Items:
-- Alice: Implement authentication (Due: Friday)
-- Bob: Fix login bug, create docs (Due: This week)
-- Carol: Schedule UI review meeting
-```
+The Postman collection in `postman/` has every request.
 
 ## 🛠️ Development
 
-### Build & Test
-
 ```powershell
-# Backend (the tests never call Azure OpenAI or Jira)
 dotnet build
-dotnet test
-dotnet watch run
+dotnet test                 # never calls Azure OpenAI or Jira
 
-# Frontend
 cd frontend/meeting-transcript-ui
-npm install
+npm run lint
 npm run build
-npm run dev
 ```
 
-### Project Structure
-
-```
-MeetingTranscriptProcessor/
-├── Controllers/           # Web API
-├── Services/             # Business logic & AI validation
-├── Models/               # Data contracts
-├── tests/                # xUnit tests
-├── frontend/            # React application
-├── data/                # File storage
-└── .env.example         # Configuration template
-```
-
-## 📖 API Endpoints
-
-- **GET** `/api/meetings/folders` - Get folders with meeting counts
-- **GET** `/api/meetings/folders/{type}/meetings` - Get meetings with filtering
-- **POST** `/api/meetings/upload` - Upload transcript files
-- **GET** `/api/configuration` - Get current settings
-- **PUT** `/api/configuration/azure-openai` - Update the model settings (the endpoint and key are set in `.env` only)
-- **GET** `/api/status` - System health and metrics
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+GitHub Actions runs the same checks on every pull request. Sample transcripts in every format are in `data/Templates`.
 
 ## 📄 License
 
-This project is licensed under the MIT License.
-
----
-
-**Perfect for:** Teams wanting to automate action item tracking from meeting transcripts with enterprise-grade AI validation and Jira integration.
+MIT. See [LICENSE](LICENSE).
 
 ## ⚠️ Disclaimer
 
