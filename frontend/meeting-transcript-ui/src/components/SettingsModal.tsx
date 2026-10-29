@@ -33,14 +33,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const updateAzureOpenAI = async (formData: FormData) => {
     try {
       setLoading(true);
-      const endpoint = formData.get("endpoint") as string;
-      const apiKey = formData.get("apiKey") as string;
-      const deploymentName = formData.get("deploymentName") as string;
-
       await configurationApi.updateAzureOpenAI({
-        endpoint,
-        apiKey,
-        deploymentName,
+        deploymentName: formData.get("deploymentName") as string,
+        temperature: parseFloat(formData.get("temperature") as string),
+        maxTokens: parseInt(formData.get("maxTokens") as string),
+        topP: parseFloat(formData.get("topP") as string),
       });
       await loadConfiguration();
       alert("Azure OpenAI configuration updated successfully!");
@@ -94,29 +91,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       alert("Extraction configuration updated successfully!");
     } catch {
       alert("Failed to update extraction configuration");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateJira = async (formData: FormData) => {
-    try {
-      setLoading(true);
-      const url = formData.get("url") as string;
-      const email = formData.get("email") as string;
-      const apiToken = formData.get("apiToken") as string;
-      const defaultProject = formData.get("defaultProject") as string;
-
-      await configurationApi.updateJira({
-        url,
-        email,
-        apiToken,
-        defaultProject,
-      });
-      await loadConfiguration();
-      alert("Jira configuration updated successfully!");
-    } catch {
-      alert("Failed to update Jira configuration");
     } finally {
       setLoading(false);
     }
@@ -203,7 +177,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           )}
 
           {activeTab === "jira" && (
-            <JiraTab config={config} loading={loading} onSubmit={updateJira} />
+            <JiraTab config={config} />
           )}
         </div>
       </div>

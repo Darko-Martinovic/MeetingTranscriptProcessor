@@ -4,9 +4,8 @@ This directory contains configuration files for the MeetingTranscriptProcessor a
 
 ## Setup Instructions
 
-1. Copy `azure-openai.json.example` to `azure-openai.json`
-2. Fill in your actual Azure OpenAI credentials in `azure-openai.json`
-3. The `azure-openai.json` file is **gitignored** to protect your API keys
+1. Copy `azure-openai.json.example` to `azure-openai.json` to change the model settings (deployment, temperature, max tokens, top P, prompts); the Settings page saves them there too
+2. The Azure OpenAI endpoint and key are set in `.env` (`AOAI_ENDPOINT`, `AOAI_APIKEY`), never in these files: the key is neither read from nor written to `azure-openai.json`
 
 ## Important Security Note
 

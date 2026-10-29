@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace MeetingTranscriptProcessor.Models;
 
@@ -13,8 +14,9 @@ public class AzureOpenAISettings
     public string? Endpoint { get; set; }
 
     /// <summary>
-    /// Azure OpenAI API key
+    /// Azure OpenAI API key, from AOAI_APIKEY in .env only: never read from or written to the configuration files
     /// </summary>
+    [JsonIgnore]
     public string? ApiKey { get; set; }
 
     /// <summary>

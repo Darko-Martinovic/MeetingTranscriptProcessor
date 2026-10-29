@@ -122,6 +122,10 @@ ENABLE_HALLUCINATION_DETECTION=true
 ENABLE_CONSISTENCY_MANAGEMENT=true
 ```
 
+### Reaching the API from other machines
+
+The backend listens on this machine only. To serve other machines, set `API_KEY` in `.env` (the backend refuses to listen on any other address without it), put the same value in `VITE_API_KEY` in the frontend's `.env`, and list the frontend's origin in `CORS_ORIGINS`. Anyone who can open the frontend can read the key from it, so serve it only to people you trust.
+
 ### Operation Modes
 
 - **🤖 Full AI Mode**: Azure OpenAI + Jira (recommended)
@@ -212,8 +216,7 @@ MeetingTranscriptProcessor/
 - **GET** `/api/meetings/folders/{type}/meetings` - Get meetings with filtering
 - **POST** `/api/meetings/upload` - Upload transcript files
 - **GET** `/api/configuration` - Get current settings
-- **PUT** `/api/configuration/azure-openai` - Update AI settings
-- **PUT** `/api/configuration/jira` - Update Jira settings
+- **PUT** `/api/configuration/azure-openai` - Update the model settings (the endpoint and key are set in `.env` only)
 - **GET** `/api/status` - System health and metrics
 
 ## 🤝 Contributing

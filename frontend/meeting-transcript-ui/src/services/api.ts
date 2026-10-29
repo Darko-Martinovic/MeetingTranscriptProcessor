@@ -2,12 +2,20 @@ import axios from "axios";
 
 // API configuration - set via VITE_API_URL environment variable
 // Note: API versioning is handled by adding /v1 to the base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5100/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5100/api/v1";
+
+// The backend's API_KEY, needed when the backend is reached from other machines
+const API_KEY: string | undefined = import.meta.env.VITE_API_KEY;
+
+export const apiKeyHeaders: Record<string, string> = API_KEY
+  ? { "X-Api-Key": API_KEY }
+  : {};
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
+    ...apiKeyHeaders,
   },
 });
 
@@ -128,6 +136,9 @@ export interface AzureOpenAIDto {
   endpoint: string;
   deploymentName: string;
   apiVersion: string;
+  temperature: number;
+  maxTokens: number;
+  topP: number;
   isConfigured: boolean;
   systemPrompt?: string;
   customPrompt?: string;
@@ -333,9 +344,10 @@ export const configurationApi = {
   },
 
   updateAzureOpenAI: async (config: {
-    endpoint?: string;
-    apiKey?: string;
     deploymentName?: string;
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
   }) => {
     const response = await api.put("/configuration/azure-openai", config);
     return response.data;
@@ -349,16 +361,6 @@ export const configurationApi = {
     enableConsistencyManagement?: boolean;
   }) => {
     const response = await api.put("/configuration/extraction", config);
-    return response.data;
-  },
-
-  updateJira: async (config: {
-    url?: string;
-    email?: string;
-    apiToken?: string;
-    defaultProject?: string;
-  }) => {
-    const response = await api.put("/configuration/jira", config);
     return response.data;
   },
 

@@ -1,6 +1,4 @@
 {
-  "endpoint": "https://your-resource-name.openai.azure.com",
-  "apiKey": "your-azure-openai-api-key-here",
   "deploymentName": "gpt-4o",
   "maxTokens": 4000,
   "temperature": 0.1,

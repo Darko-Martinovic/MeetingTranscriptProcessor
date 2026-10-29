@@ -9,11 +9,8 @@ import {
   ThumbsDown,
   Download,
 } from "lucide-react";
+import { API_BASE_URL, apiKeyHeaders } from "../services/api";
 import styles from "./TrainAIModal.module.css";
-
-// API configuration - set via VITE_API_URL environment variable
-// Note: API versioning is handled by adding /v1 to the base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5100/api/v1";
 
 interface ActionItem {
   id: string;
@@ -73,6 +70,7 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
         `${API_BASE_URL}/training/process`,
         {
           method: "POST",
+          headers: apiKeyHeaders,
           body: formData,
         }
       );
@@ -125,11 +123,12 @@ const TrainAIModal: React.FC<TrainAIModalProps> = ({ onClose }) => {
     setUpdatingPrompt(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/configuration/custom-prompt`,
+        `${API_BASE_URL}/configuration/prompts`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            ...apiKeyHeaders,
           },
           body: JSON.stringify({ customPrompt }),
         }

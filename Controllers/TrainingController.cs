@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Cors;
 using Asp.Versioning;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
@@ -9,7 +8,6 @@ namespace MeetingTranscriptProcessor.Controllers;
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiVersion("1.0")]
-[EnableCors("AllowFrontend")]
 public class TrainingController : ControllerBase
 {
     private readonly ITranscriptProcessorService _transcriptProcessor;
@@ -36,11 +34,18 @@ public class TrainingController : ControllerBase
                 return BadRequest(new { error = "No file provided" });
             }
 
-            _logger.LogInformation($"Processing training transcript: {file.FileName} with temperature: {temperature ?? 0.1}");
+            var fileName = MeetingFileNames.FromUpload(file.FileName);
+            if (fileName == null)
+            {
+                return BadRequest(new { error = "Invalid file name" });
+            }
 
-            // Save file temporarily
-            var tempPath = Path.Combine(Path.GetTempPath(), file.FileName);
-            using (var stream = new FileStream(tempPath, FileMode.Create))
+            _logger.LogInformation("Processing training transcript {FileName} with temperature {Temperature}", fileName, temperature ?? 0.1);
+
+            // Save the file in a temporary folder of its own; the name is kept for the title
+            var tempFolder = Directory.CreateTempSubdirectory("mtp-training-").FullName;
+            var tempPath = Path.Combine(tempFolder, fileName);
+            using (var stream = new FileStream(tempPath, FileMode.CreateNew))
             {
                 await file.CopyToAsync(stream);
             }
@@ -63,7 +68,7 @@ public class TrainingController : ControllerBase
                 // Convert to training result format
                 var result = new TrainingResult
                 {
-                    FileName = file.FileName,
+                    FileName = fileName,
                     TokensUsed = transcript.TokensUsed ?? 0,
                     EstimatedCost = transcript.EstimatedCost ?? 0,
                     ModelName = aiSettings.DeploymentName,
@@ -87,47 +92,13 @@ public class TrainingController : ControllerBase
             }
             finally
             {
-                // Clean up temp file
-                if (System.IO.File.Exists(tempPath))
-                {
-                    System.IO.File.Delete(tempPath);
-                }
+                Directory.Delete(tempFolder, recursive: true);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing training transcript");
             return StatusCode(500, new { error = "Failed to process transcript", details = ex.Message });
-        }
-    }
-
-    [HttpPut("/api/configuration/custom-prompt")]
-    public async Task<ActionResult> UpdateCustomPrompt([FromBody] CustomPromptUpdateDto dto)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(dto.CustomPrompt))
-            {
-                return BadRequest(new { error = "Custom prompt cannot be empty" });
-            }
-
-            var configService = HttpContext.RequestServices.GetRequiredService<IConfigurationService>();
-            var currentConfig = configService.GetAzureOpenAISettings();
-
-            // Update custom prompt
-            currentConfig.CustomPrompt = dto.CustomPrompt;
-
-            // Save configuration
-            await configService.SaveAzureOpenAISettingsAsync(currentConfig);
-
-            _logger.LogInformation("Custom prompt updated successfully");
-
-            return Ok(new { message = "Custom prompt updated successfully", customPrompt = dto.CustomPrompt });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating custom prompt");
-            return StatusCode(500, new { error = "Failed to update custom prompt", details = ex.Message });
         }
     }
 }
@@ -152,9 +123,4 @@ public class TrainingActionItem
     public string Priority { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public string? AssignedTo { get; set; }
-}
-
-public class CustomPromptUpdateDto
-{
-    public string CustomPrompt { get; set; } = string.Empty;
 }

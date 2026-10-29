@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Cors;
 using Asp.Versioning;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
@@ -9,7 +8,6 @@ namespace MeetingTranscriptProcessor.Controllers
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiVersion("1.0")]
-    [EnableCors("AllowFrontend")]
     public class ConfigurationController : ControllerBase
     {
         private readonly IConfigurationService _configurationService;
@@ -35,9 +33,13 @@ namespace MeetingTranscriptProcessor.Controllers
                         Endpoint = azureOpenAI.Endpoint ?? string.Empty,
                         DeploymentName = azureOpenAI.DeploymentName,
                         ApiVersion = azureOpenAI.ApiVersion,
+                        Temperature = azureOpenAI.Temperature,
+                        MaxTokens = azureOpenAI.MaxTokens,
+                        TopP = azureOpenAI.TopP,
                         IsConfigured =
                             !string.IsNullOrEmpty(azureOpenAI.Endpoint)
-                            && !string.IsNullOrEmpty(azureOpenAI.ApiKey),
+                            && !string.IsNullOrEmpty(azureOpenAI.ApiKey)
+                            && !string.IsNullOrEmpty(azureOpenAI.DeploymentName),
                         SystemPrompt = azureOpenAI.SystemPrompt,
                         CustomPrompt = azureOpenAI.CustomPrompt
                     },
@@ -88,26 +90,27 @@ namespace MeetingTranscriptProcessor.Controllers
             }
         }
 
+        /// <summary>
+        /// Updates the model settings and saves them in config/azure-openai.json.
+        /// The endpoint and the key are set in .env only
+        /// </summary>
         [HttpPut("azure-openai")]
-        public ActionResult UpdateAzureOpenAIConfiguration([FromBody] AzureOpenAIUpdateDto dto)
+        public async Task<ActionResult> UpdateAzureOpenAIConfiguration([FromBody] AzureOpenAIUpdateDto dto)
         {
             try
             {
-                // Update environment variables
-                if (!string.IsNullOrEmpty(dto.Endpoint))
-                    Environment.SetEnvironmentVariable("AZURE_OPENAI_ENDPOINT", dto.Endpoint);
+                var settings = _configurationService.GetAzureOpenAISettings();
 
-                if (!string.IsNullOrEmpty(dto.ApiKey))
-                    Environment.SetEnvironmentVariable("AZURE_OPENAI_API_KEY", dto.ApiKey);
+                if (!string.IsNullOrWhiteSpace(dto.DeploymentName))
+                    settings.DeploymentName = dto.DeploymentName.Trim();
+                if (dto.Temperature.HasValue)
+                    settings.Temperature = dto.Temperature.Value;
+                if (dto.MaxTokens.HasValue)
+                    settings.MaxTokens = dto.MaxTokens.Value;
+                if (dto.TopP.HasValue)
+                    settings.TopP = dto.TopP.Value;
 
-                if (!string.IsNullOrEmpty(dto.DeploymentName))
-                    Environment.SetEnvironmentVariable(
-                        "AZURE_OPENAI_DEPLOYMENT_NAME",
-                        dto.DeploymentName
-                    );
-
-                // Reload configuration
-                _configurationService.ReloadConfiguration();
+                await _configurationService.SaveAzureOpenAISettingsAsync(settings);
 
                 return Ok(new { message = "Azure OpenAI configuration updated successfully" });
             }
@@ -178,32 +181,6 @@ namespace MeetingTranscriptProcessor.Controllers
                 _configurationService.ReloadConfiguration();
 
                 return Ok(new { message = "Extraction configuration updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
-        [HttpPut("jira")]
-        public ActionResult UpdateJiraConfiguration([FromBody] JiraUpdateDto dto)
-        {
-            try
-            {
-                // Update environment variables
-                if (!string.IsNullOrEmpty(dto.Url))
-                    Environment.SetEnvironmentVariable("JIRA_URL", dto.Url);
-
-                if (!string.IsNullOrEmpty(dto.Email))
-                    Environment.SetEnvironmentVariable("JIRA_EMAIL", dto.Email);
-
-                if (!string.IsNullOrEmpty(dto.ApiToken))
-                    Environment.SetEnvironmentVariable("JIRA_API_TOKEN", dto.ApiToken);
-
-                if (!string.IsNullOrEmpty(dto.DefaultProject))
-                    Environment.SetEnvironmentVariable("JIRA_DEFAULT_PROJECT", dto.DefaultProject);
-
-                return Ok(new { message = "Jira configuration updated successfully" });
             }
             catch (Exception ex)
             {

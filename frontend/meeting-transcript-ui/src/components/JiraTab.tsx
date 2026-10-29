@@ -4,69 +4,49 @@ import styles from "./JiraTab.module.css";
 
 interface JiraTabProps {
   config: ConfigurationDto;
-  loading: boolean;
-  onSubmit: (formData: FormData) => Promise<void>;
 }
 
-const JiraTab: React.FC<JiraTabProps> = React.memo(
-  ({ config, loading, onSubmit }) => {
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      onSubmit(new FormData(e.currentTarget));
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className={styles.form}>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Jira URL</label>
-          <input
-            type="url"
-            name="url"
-            defaultValue={config.environment.jiraUrl}
-            className={styles.input}
-            placeholder="https://your-domain.atlassian.net"
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Email</label>
-          <input
-            type="email"
-            name="email"
-            defaultValue={config.environment.jiraEmail}
-            className={styles.input}
-            placeholder="your-email@example.com"
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>API Token</label>
-          <input
-            type="password"
-            name="apiToken"
-            className={styles.input}
-            placeholder="Enter your Jira API token"
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Default Project</label>
-          <input
-            type="text"
-            name="defaultProject"
-            defaultValue={config.environment.jiraDefaultProject}
-            className={styles.input}
-            placeholder="TASK"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className={styles.submitButton}
-        >
-          {loading ? "Updating..." : "Update Jira Settings"}
-        </button>
-      </form>
-    );
-  }
-);
+// Jira's URL, email, token and project are set in the backend's .env, so they're shown here, not edited
+const JiraTab: React.FC<JiraTabProps> = React.memo(({ config }) => {
+  return (
+    <div className={styles.form}>
+      <p className={styles.note}>
+        {config.environment.isJiraConfigured
+          ? "Jira is configured. "
+          : "Jira isn't configured: tickets are simulated. "}
+        Set JIRA_URL, JIRA_EMAIL, JIRA_API_TOKEN and JIRA_PROJECT_KEY in the
+        backend's .env file and restart it to change them.
+      </p>
+      <div className={styles.formGroup}>
+        <label className={styles.label}>Jira URL</label>
+        <input
+          type="url"
+          value={config.environment.jiraUrl ?? ""}
+          className={styles.input}
+          disabled
+        />
+      </div>
+      <div className={styles.formGroup}>
+        <label className={styles.label}>Email</label>
+        <input
+          type="email"
+          value={config.environment.jiraEmail ?? ""}
+          className={styles.input}
+          disabled
+        />
+      </div>
+      <div className={styles.formGroup}>
+        <label className={styles.label}>Default Project</label>
+        <input
+          type="text"
+          value={config.environment.jiraDefaultProject ?? ""}
+          className={styles.input}
+          disabled
+        />
+      </div>
+    </div>
+  );
+});
 
 JiraTab.displayName = "JiraTab";
 

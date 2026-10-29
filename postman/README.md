@@ -36,15 +36,11 @@ This directory contains Postman collection and environment files for testing the
 - **`fileName`** - Sample meeting file name for testing
 - **`processingId`** - Sample processing ID for testing
 
-#### Configuration Variables (Optional - for configuration testing)
+#### API Key
 
-- **`azureOpenAIEndpoint`** - Your Azure OpenAI endpoint
-- **`azureOpenAIApiKey`** - Your Azure OpenAI API key (secret)
-- **`azureOpenAIDeployment`** - Your deployment name (e.g., "gpt-4")
-- **`jiraUrl`** - Your Jira instance URL
-- **`jiraEmail`** - Your Jira account email
-- **`jiraApiToken`** - Your Jira API token (secret)
-- **`jiraProjectKey`** - Your Jira project key
+- **`apiKey`** - The backend's `API_KEY`, sent in the `X-Api-Key` header of every request. Leave it empty when the backend has none (the default, when it listens on this machine only)
+
+The Azure OpenAI and Jira credentials are not sent through the API: they are set in the backend's `.env`.
 
 ### 3. Start the Application
 
@@ -52,10 +48,7 @@ Before testing, ensure the Meeting Transcript Processor is running:
 
 ```powershell
 # In the project root directory
-dotnet run --web
-
-# Or use the deployment scripts
-.\Deploy\Local\START-EVERYTHING.cmd
+dotnet run
 ```
 
 The API will be available at `http://localhost:5100/api/v1`
@@ -107,9 +100,8 @@ To test different API versions, update the `apiVersion` environment variable:
 
 - **Get Configuration** - Retrieve current system settings
 - **Get System Status** - Check system health and metrics
-- **Update Azure OpenAI Configuration** - Configure AI settings (with temperature, maxTokens, topP)
+- **Update Azure OpenAI Configuration** - Model settings: deployment, temperature, maxTokens, topP (the endpoint and the key are set in `.env`)
 - **Update Extraction Configuration** - Configure extraction settings
-- **Update Jira Configuration** - Configure Jira integration
 - **Update Custom Prompts** - Configure custom AI prompts
 
 ### 🤖 AI Training
@@ -195,7 +187,7 @@ When testing Archive folder filtering, you can use these parameters:
 
 1. **Test Filtering** - Use various filter combinations on Archive folder
 2. **Test Recent Folder** - Verify last 5 meetings are shown
-3. **Test Configuration** - Update Azure OpenAI and Jira settings
+3. **Test Configuration** - Update the Azure OpenAI model settings
 4. **Test Multiple Upload** - Upload several files at once
 5. **Test AI Training** - Process training transcripts with custom temperature
 
@@ -216,12 +208,15 @@ apiVersion: v1
 
 ```
 protocol: http
-host: 10.74.42.54
+host: 192.168.1.20
 port: 5100
 apiVersion: v1
+apiKey: the backend's API_KEY
 ```
 
-**URL:** `http://10.74.42.54:5100/api/v1`
+**URL:** `http://192.168.1.20:5100/api/v1`
+
+The backend refuses to listen on an address other machines can reach unless `API_KEY` is set in its `.env`.
 
 ### Production (HTTPS)
 
@@ -240,7 +235,7 @@ apiVersion: v1
 
 **"Connection refused" errors:**
 
-- Ensure the backend is running with `dotnet run --web` or deployment scripts
+- Ensure the backend is running (`dotnet run` in the project root)
 - Check the `protocol`, `host`, and `port` variables in your environment
 - Verify the backend is listening on `http://0.0.0.0:5100` for remote access
 
@@ -279,12 +274,11 @@ apiVersion: v1
 If testing from a web browser or Postman web version:
 
 - Use Postman desktop application instead
-- Verify CORS policy includes your IP/domain
-- Check `HybridProgram.cs` for allowed origins
+- Verify `CORS_ORIGINS` in the backend's `.env` includes your frontend's origin
 
 ## 🔐 Security Notes
 
-- **Secret Variables:** `azureOpenAIApiKey` and `jiraApiToken` are marked as secret
+- **Secret Variables:** `apiKey` is marked as secret
 - Never commit actual API keys to version control
 - Use environment-specific configurations for different deployment targets
 - For production, always use HTTPS (`protocol: https`)

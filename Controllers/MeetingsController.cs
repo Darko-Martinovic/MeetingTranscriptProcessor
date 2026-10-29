@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Cors;
 using Asp.Versioning;
 using MeetingTranscriptProcessor.Models;
 using MeetingTranscriptProcessor.Services;
@@ -10,7 +9,7 @@ namespace MeetingTranscriptProcessor.Controllers
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiVersion("1.0")]
-    [EnableCors("AllowFrontend")]
+    [SafeFileName]
     public class MeetingsController : ControllerBase
     {
         private readonly ITranscriptProcessorService _transcriptProcessor;
@@ -176,9 +175,8 @@ namespace MeetingTranscriptProcessor.Controllers
 
                 foreach (var path in allPaths)
                 {
-                    var filePath = Path.Combine(path, fileName);
-                    Console.WriteLine($"🔍 Checking fallback path: {filePath}");
-                    if (System.IO.File.Exists(filePath))
+                    var filePath = MeetingFileNames.PathIn(path, fileName);
+                    if (filePath != null && System.IO.File.Exists(filePath))
                     {
                         Console.WriteLine($"📄 Found file, processing transcript...");
                         transcript = await _transcriptProcessor.ProcessTranscriptAsync(filePath);
@@ -240,19 +238,24 @@ namespace MeetingTranscriptProcessor.Controllers
                 if (file == null || file.Length == 0)
                     return BadRequest(new { error = "No file provided" });
 
+                // Only the last part of the name the browser sent is kept
+                var originalName = MeetingFileNames.FromUpload(file.FileName);
+                if (originalName == null)
+                    return BadRequest(new { error = "Invalid file name" });
+
                 var allowedExtensions = new[] { ".txt", ".md", ".json", ".xml", ".docx", ".pdf", ".vtt" };
-                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                var fileExtension = Path.GetExtension(originalName).ToLowerInvariant();
 
                 if (!allowedExtensions.Contains(fileExtension))
                     return BadRequest(new { error = "File type not supported" });
 
-                var fileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{file.FileName}";
-                var filePath = Path.Combine(_incomingPath, fileName);
-
-                Directory.CreateDirectory(_incomingPath);
+                var fileName = $"{DateTime.Now:yyyyMMdd_HHmmss}_{originalName}";
+                var filePath = MeetingFileNames.PathIn(_incomingPath, fileName);
+                if (filePath == null)
+                    return BadRequest(new { error = "Invalid file name" });
 
                 // Save the uploaded file to Incoming folder
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                using (var stream = new FileStream(filePath, FileMode.CreateNew))
                 {
                     await file.CopyToAsync(stream);
                 }
@@ -283,8 +286,8 @@ namespace MeetingTranscriptProcessor.Controllers
 
                 foreach (var path in allPaths)
                 {
-                    var filePath = Path.Combine(path, fileName);
-                    if (System.IO.File.Exists(filePath))
+                    var filePath = MeetingFileNames.PathIn(path, fileName);
+                    if (filePath != null && System.IO.File.Exists(filePath))
                     {
                         // Delete the transcript file
                         System.IO.File.Delete(filePath);
@@ -341,8 +344,8 @@ namespace MeetingTranscriptProcessor.Controllers
 
                 foreach (var path in allPaths)
                 {
-                    var filePath = Path.Combine(path, fileName);
-                    if (System.IO.File.Exists(filePath))
+                    var filePath = MeetingFileNames.PathIn(path, fileName);
+                    if (filePath != null && System.IO.File.Exists(filePath))
                     {
                         // Read the current file content
                         var content = await System.IO.File.ReadAllTextAsync(filePath);
@@ -447,8 +450,8 @@ namespace MeetingTranscriptProcessor.Controllers
                 // Find the source file
                 foreach (var path in sourcePaths)
                 {
-                    var filePath = Path.Combine(path, fileName);
-                    if (System.IO.File.Exists(filePath))
+                    var filePath = MeetingFileNames.PathIn(path, fileName);
+                    if (filePath != null && System.IO.File.Exists(filePath))
                     {
                         sourceFilePath = filePath;
                         sourceFolderName = Path.GetFileName(path);
@@ -723,8 +726,8 @@ namespace MeetingTranscriptProcessor.Controllers
             {
                 foreach (var path in allPaths)
                 {
-                    var filePath = Path.Combine(path, fileName);
-                    if (System.IO.File.Exists(filePath))
+                    var filePath = MeetingFileNames.PathIn(path, fileName);
+                    if (filePath != null && System.IO.File.Exists(filePath))
                     {
                         var folderType = path == _archivePath ? FolderType.Archive :
                                         path == _incomingPath ? FolderType.Incoming :
