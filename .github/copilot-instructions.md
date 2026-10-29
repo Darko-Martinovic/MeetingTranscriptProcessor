@@ -13,7 +13,7 @@ MeetingTranscriptProcessor is an intelligent, full-stack application for process
   - Logging is `ILogger<T>` everywhere; JSON is System.Text.Json only.
   - `Models/`: Data contracts (MeetingTranscript, ActionItem, FolderInfo, etc.).
   - **File Flow:** `data/Incoming` → `data/Processing` → AI/Rule Extraction → Jira → `data/Archive`.
-  - **AI/ML:** Azure OpenAI for extraction, with cross-validation, hallucination detection, and context-aware prompts.
+  - **AI/ML:** Azure OpenAI for extraction through Microsoft.Extensions.AI (`IChatClient` on the resource's v1 API, built in `AzureOpenAIService`), with cross-validation, hallucination detection, and context-aware prompts. Without a model, `RuleBasedExtractor` finds the action items. PDFs are read with PdfPig.
 
 - **Frontend (React 18, TypeScript, Vite)**
   - `src/components/`: Modular, memoized components (e.g., `MeetingDetails.tsx`, `MeetingFilter`, `AppHeader`, `WorkflowModal`).

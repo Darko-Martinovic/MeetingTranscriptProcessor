@@ -44,10 +44,16 @@ public class AzureOpenAISettings
     public double TopP { get; set; } = 0.95;
 
     /// <summary>
-    /// API version for Azure OpenAI
+    /// Price in dollars of 1,000 input tokens, for the cost shown with each meeting (gpt-4o's by default)
     /// </summary>
-    [DefaultValue("2024-02-15-preview")]
-    public string ApiVersion { get; set; } = "2024-02-15-preview";
+    [DefaultValue(0.0025)]
+    public decimal InputPricePer1K { get; set; } = 0.0025m;
+
+    /// <summary>
+    /// Price in dollars of 1,000 output tokens (gpt-4o's by default)
+    /// </summary>
+    [DefaultValue(0.01)]
+    public decimal OutputPricePer1K { get; set; } = 0.01m;
 
     /// <summary>
     /// System prompt for AI assistant

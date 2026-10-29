@@ -29,7 +29,6 @@ public class ConfigurationController(
             {
                 Endpoint = azureOpenAI.Endpoint ?? string.Empty,
                 DeploymentName = azureOpenAI.DeploymentName,
-                ApiVersion = azureOpenAI.ApiVersion,
                 Temperature = azureOpenAI.Temperature,
                 MaxTokens = azureOpenAI.MaxTokens,
                 TopP = azureOpenAI.TopP,
